@@ -11,3 +11,5 @@ gpg --output HANDOVER.md --decrypt HANDOVER.md.asc
 ```
 
 GPG pedirá la contraseña de forma interactiva.
+
+**Pista de contraseña (solo para el propietario):** es la misma que la del wifi de casa.
