@@ -106,7 +106,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .st-repeat{background:#ffe1ee;color:#a41457}
 .item .tagrow{margin:7px 0}
 .itemzone{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);margin:2px 0 4px}
-.itemzone .zonemapbtn{background:none;border:0;color:var(--blue);font-weight:850;font-size:.72rem;padding:2px 4px;white-space:nowrap}
+.zonemapbtn{background:none;border:0;color:var(--blue);font-weight:850;font-size:.72rem;padding:2px 4px;white-space:nowrap}
 .itembtns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .itembtns button{min-height:42px;border-radius:11px;border:1px solid var(--line);background:#f8f9f7;font-size:1rem}
 .itembtns button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -129,14 +129,46 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .fab{position:fixed;z-index:45;right:max(14px,env(safe-area-inset-right));bottom:calc(96px + env(safe-area-inset-bottom));background:var(--orange);color:#fff;border:0;border-radius:999px;padding:13px 18px;font-weight:950;box-shadow:0 8px 20px #ed7d2450;display:none}
 .fab.show{display:block}
 
-.mapmodal{position:fixed;inset:0;z-index:80;display:none;background:#17293580;padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom))}
-.mapmodal.show{display:flex;flex-direction:column}
-.mapmodal .mapmodalcard{margin:auto;width:min(100%,720px);height:100%;background:#fff;border-radius:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
-.mapmodal .mapmodalhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;background:linear-gradient(135deg,#1579c5,#0b5e8e);color:#fff}
-.mapmodal .mapmodalhead b{font-size:.95rem}
-.mapmodal .mapmodalbtns{display:flex;gap:8px}
-.mapmodal .mapmodalbtns a,.mapmodal .mapmodalbtns button{background:#ffffff28;color:#fff;border:0;border-radius:10px;padding:8px 10px;font-weight:850;font-size:.78rem;text-decoration:none}
-.mapmodal iframe{flex:1;width:100%;border:0;background:#eef2f4}
+body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}
+
+/* ---------- Visor de mapa (full-screen sheet) ----------
+   Único componente reutilizable para "Ver en el mapa" en toda la app
+   (recomendación actual, checklist, favoritas, alternativas y el bloque
+   general de Tips) — ver openParkMap(attractionId) más abajo. z-index 500
+   queda muy por encima del header/FAB/bottom nav (≤45) pero por debajo del
+   overlay de login (9999 en auth.css), que siempre debe ganar. */
+.mapsheet{position:fixed;left:0;right:0;top:0;height:100dvh;z-index:500;visibility:hidden;pointer-events:none}
+.mapsheet.show{visibility:visible;pointer-events:auto}
+.mapsheet-backdrop{position:absolute;inset:0;background:#0b1b2680;opacity:0;transition:opacity .22s ease}
+.mapsheet.show .mapsheet-backdrop{opacity:1}
+.mapsheet-panel{position:absolute;left:0;right:0;top:0;height:100dvh;background:#fff;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .26s cubic-bezier(.32,.72,0,1)}
+.mapsheet.show .mapsheet-panel{transform:translateY(0)}
+.mapsheet-header{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 10px 10px;background:linear-gradient(135deg,#1579c5,#0b5e8e);color:#fff}
+.mapsheet-close{min-height:48px;min-width:48px;padding:0 16px;border:0;border-radius:13px;background:#ffffff26;color:#fff;font-weight:900;font-size:.9rem;white-space:nowrap}
+.mapsheet-title{flex:1;min-width:0;text-align:center;display:flex;flex-direction:column;line-height:1.25}
+.mapsheet-title b{font-size:.92rem;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mapsheet-titlesub{font-size:.74rem;font-weight:800;opacity:.92}
+.mapsheet-external{flex:0 0 auto;color:#fff;text-decoration:none;font-size:1.15rem;padding:8px;border-radius:11px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.mapsheet-help{flex:0 0 auto;background:#fff7e4;border-bottom:1px solid #f0d38a}
+.mapsheet-helphead{width:100%;display:flex;align-items:center;gap:10px;padding:10px 14px;border:0;background:none;text-align:left}
+.mapsheet-helpinfo{flex:1;min-width:0}
+.mapsheet-helpname{font-size:.78rem;font-weight:850;color:#8a6a05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mapsheet-helpbig{font-size:1.15rem;font-weight:950;color:#8a4805;letter-spacing:.01em}
+.mapsheet-helpchevron{flex:0 0 auto;font-weight:900;color:#8a6a05;transition:transform .2s;font-size:1rem}
+.mapsheet-help.collapsed .mapsheet-helpchevron{transform:rotate(-90deg)}
+.mapsheet-helpbody{padding:0 14px 12px;font-size:.82rem;color:#5a4207;display:flex;flex-direction:column;gap:4px}
+.mapsheet-help.collapsed .mapsheet-helpbody{display:none}
+.mapsheet-viewer{flex:1;position:relative;min-height:0;background:#eef2f4}
+.mapsheet-viewer iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.mapsheet-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#eef2f4;font-size:.82rem;font-weight:800;color:var(--muted)}
+.mapsheet-loading .spinner{width:34px;height:34px;border-radius:99px;border:4px solid #cfe0e8;border-top-color:var(--blue);animation:mapspin .8s linear infinite}
+@keyframes mapspin{to{transform:rotate(360deg)}}
+.mapsheet-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;background:#fff}
+.mapsheet-fallback .emoji{font-size:2.4rem}
+.mapsheet-fallback p{margin:0;font-weight:800;color:var(--ink);max-width:280px}
+.mapsheet-fallback a{background:var(--blue);color:#fff;text-decoration:none;font-weight:900;padding:12px 18px;border-radius:13px}
+.mapsheet-footer{flex:0 0 auto;padding:8px 14px calc(10px + env(safe-area-inset-bottom));text-align:center;border-top:1px solid var(--line)}
+.mapsheet-footer a{color:var(--blue);text-decoration:none;font-weight:850;font-size:.8rem}
 
 .bottom{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom));width:min(calc(100% - 20px),560px);display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:7px;background:#ffffffee;border:1px solid #d4e2e8;border-radius:18px;backdrop-filter:blur(12px);box-shadow:0 6px 24px #133f5828}
 .bottom button{min-height:56px;border:0;border-radius:12px;background:#fff;color:var(--ink);font-weight:900;font-size:.72rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
@@ -164,16 +196,39 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 <button id="navTips" onclick="setTab('tips')"><span class="bi">ℹ️</span>Tips</button>
 </div>
 
-<div class="mapmodal" id="mapModal">
-  <div class="mapmodalcard">
-    <div class="mapmodalhead">
-      <b>🗺️ Park Map oficial</b>
-      <div class="mapmodalbtns">
-        <a id="mapModalExternal" href="#" target="_blank" rel="noopener noreferrer">↗️ Pestaña nueva</a>
-        <button onclick="closeParkMap()">✕ Cerrar</button>
+<div class="mapsheet" id="mapSheet" role="dialog" aria-modal="true" aria-labelledby="mapSheetTitleMain" aria-hidden="true">
+  <div class="mapsheet-backdrop" onclick="closeParkMap()"></div>
+  <div class="mapsheet-panel" role="document">
+    <div class="mapsheet-header">
+      <button class="mapsheet-close" id="mapSheetClose" onclick="closeParkMap()">← Cerrar</button>
+      <div class="mapsheet-title">
+        <b id="mapSheetTitleMain">🗺️ Mapa oficial de Story Land</b>
+        <span class="mapsheet-titlesub" id="mapSheetTitleSub"></span>
+      </div>
+      <a class="mapsheet-external" id="mapSheetExternalTop" href="#" target="_blank" rel="noopener noreferrer" aria-label="Abrir mapa completo en pestaña nueva" title="Abrir mapa completo en pestaña nueva">↗️</a>
+    </div>
+    <div class="mapsheet-help" id="mapSheetHelp" hidden>
+      <button class="mapsheet-helphead" id="mapSheetHelpToggle" onclick="toggleMapHelp()" aria-expanded="true" aria-controls="mapSheetHelpBody">
+        <div class="mapsheet-helpinfo">
+          <div class="mapsheet-helpname" id="mapSheetHelpName"></div>
+          <div class="mapsheet-helpbig" id="mapSheetHelpBig"></div>
+        </div>
+        <span class="mapsheet-helpchevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="mapsheet-helpbody" id="mapSheetHelpBody"></div>
+    </div>
+    <div class="mapsheet-viewer">
+      <div class="mapsheet-loading" id="mapSheetLoading"><div class="spinner" aria-hidden="true"></div><span>Cargando el mapa…</span></div>
+      <iframe id="mapSheetFrame" title="Park Map oficial de Story Land" loading="lazy"></iframe>
+      <div class="mapsheet-fallback" id="mapSheetFallback" hidden>
+        <span class="emoji" aria-hidden="true">🗺️</span>
+        <p>No pudimos mostrar el mapa dentro de la app.</p>
+        <a id="mapSheetFallbackLink" href="#" target="_blank" rel="noopener noreferrer">Abrir mapa oficial ↗</a>
       </div>
     </div>
-    <iframe id="mapModalFrame" title="Park Map oficial de Story Land" loading="lazy"></iframe>
+    <div class="mapsheet-footer">
+      <a id="mapSheetExternalBottom" href="#" target="_blank" rel="noopener noreferrer">Abrir mapa completo ↗</a>
+    </div>
   </div>
 </div>
 
@@ -188,14 +243,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
      agrupaciones razonables por tema para planear la ruta, no coordenadas
      verificadas — no hacía falta GPS, solo evitar caminatas tontas.
    - mapNumber: número visible en el Park Map oficial 2026 (fuente única:
-     https://hfe.widen.net/view/pdf/icf5sgszuz/STL26_General_ParkMap_Download.pdf,
-     tal como la proporcionó el usuario en la tabla oficial 2026 — en su
-     momento ese dominio estaba bloqueado en este entorno y no pudimos
-     abrir el PDF nosotros mismos, así que estos números venían
-     exclusivamente de esa tabla, no de una búsqueda ni de una suposición.
-     2026-08: el usuario adjuntó el PDF directamente y ahora vive local en
-     assets/park-map/ para poder embeberlo en la app (ver PARK_MAP_PDF /
-     openParkMap más abajo); los números de esta lista no se re-verificaron
+     PARK_MAP_URL, tal como la proporcionó el usuario en la tabla oficial
+     2026 — en su momento ese dominio estaba bloqueado en el entorno de
+     desarrollo y no pudimos abrir el PDF nosotros mismos, así que estos
+     números venían exclusivamente de esa tabla, no de una búsqueda ni de
+     una suposición. 2026-08: el visor interno (ver openParkMap más abajo)
+     embebe PARK_MAP_URL directamente en un <iframe> dentro de la app — el
+     bloqueo de red era propio del entorno de desarrollo, no del navegador
+     real de la familia; los números de esta lista no se re-verificaron
      contra las páginas del PDF, siguen siendo los de la tabla). Corregidos 2026-08:
      varias atracciones tenían el número de una numeración anterior/errónea
      (ver commit para la lista antes→después). Turtle Twirl y Crazy Barn,
@@ -215,7 +270,6 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
      perfectamente sin estos campos (ver mapOrientationHtml()).
 */
 const PARK_MAP_URL='https://hfe.widen.net/view/pdf/icf5sgszuz/STL26_General_ParkMap_Download.pdf?t.download=true&u=exbmhu';
-const PARK_MAP_PDF='assets/park-map/STL26_General_ParkMap_Download.pdf';
 const ALL=[
 {id:'polar',name:'Polar Coaster',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:34,mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[35,36],nearbyAttractions:['roar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','👨‍👦 CON ADULTO'],why:'Es la montaña rusa principal del parque: conviene hacerla temprano, antes de que se formen filas, y sirve para probar cómo tolera una montaña rusa antes de Roar-O-Saurus.'},
 {id:'roar',name:'Roar-O-Saurus',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:36,mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[34,35],nearbyAttractions:['polar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','🦕 DINOSAURIOS','👨‍👦 CON ADULTO'],why:'La montaña rusa temática de dinosaurios: la gran favorita del día.'},
@@ -246,13 +300,6 @@ const CATS=[['imperdible','🔥 Imperdibles'],['agua','💦 Agua'],['clasico','�
 const CHILD_FAVORITE_IDS=['farmtractors','antiquecars','raptour','flyingfish'];
 const WATER_IDS=['drgeyser','splashbattle','moolagoon'];
 const DINO_IDS=['polar','roar','raptour'];
-function openParkMap(){
-  const frame=document.getElementById('mapModalFrame');
-  if(!frame.src)frame.src=PARK_MAP_PDF;
-  document.getElementById('mapModalExternal').href=PARK_MAP_PDF;
-  document.getElementById('mapModal').classList.add('show');
-}
-function closeParkMap(){document.getElementById('mapModal').classList.remove('show')}
 function zoneLine(a){return a.mapNumber!=null?`📍 Mapa #${a.mapNumber} · ${a.zone}`:`📍 ${a.zone}`}
 
 /* ---------- Referencia visual rápida para el Park Map (mapRegion) ----------
@@ -295,6 +342,114 @@ function mapOrientationHtml(a){
     ${chips.length?`<div>👀 Busca también: ${chips.join(' · ')}</div>`:''}
   </div></div>`;
 }
+
+/* ---------- Visor de mapa (openParkMap) ----------
+   Un único visor reutilizable para "Ver en el mapa" en toda la app:
+   recomendación actual, checklist, favoritas, alternativas y el bloque
+   general de "Tips". openParkMap(attractionId) — con id abre mostrando la
+   tarjeta de ayuda de esa atracción; sin id abre el mapa general, sin
+   inventar ninguna atracción "seleccionada". La única fuente del PDF es
+   PARK_MAP_URL (arriba) — no se duplica la URL en ningún otro sitio: el
+   iframe, el link de "pestaña nueva" del header, el de "Abrir mapa
+   completo" del pie y el del fallback apuntan todos al mismo valor. */
+let mapPrevFocus=null,mapPrevScrollY=0,mapLoadTimer=null;
+/* Nombre + número de las atracciones vecinas, ordenadas por número de mapa
+   (no por el orden en que aparecen en nearbyAttractions) para que la frase
+   "Cerca de #X y #Y" salga en el mismo orden en que aparecerían los
+   números si se recorre el mapa — solo usa datos que ya existen. */
+function nearbyAttractionsSorted(a){
+  if(!a.nearbyAttractions||!a.nearbyAttractions.length)return [];
+  return a.nearbyAttractions.map(id=>BY_ID[id]).filter(x=>x&&x.mapNumber!=null).sort((x,y)=>x.mapNumber-y.mapNumber);
+}
+function nearbyHelpLine(a){
+  let near=nearbyAttractionsSorted(a);
+  if(!near.length)return '';
+  let parts=near.map(x=>`#${x.mapNumber} ${x.name}`);
+  let joined=parts.length>1?parts.slice(0,-1).join(', ')+' y '+parts[parts.length-1]:parts[0];
+  return `Cerca de ${joined}`;
+}
+/* Tarjeta de ayuda de la atracción: el elemento dominante es siempre
+   "🔎 BUSCA EL #N" (el dato que hace falta leer de un vistazo durante el
+   recorrido); el resto (zona, vecinas, orientación) usa exactamente los
+   mismos campos/función que ya usa el resto de la app (mapOrientationHtml),
+   sin inventar coordenadas nuevas. */
+function mapHelpData(a){
+  let icon=(catLabel(a.cat)||'📍').split(' ')[0];
+  let big=a.mapNumber!=null?`🔎 BUSCA EL #${a.mapNumber}`:'🔎 Búscala en el mapa oficial';
+  let near=nearbyHelpLine(a);
+  let body=`<div class="mapsheet-helpzone">${a.zone}</div>${near?`<div>${near}</div>`:''}${mapOrientationHtml(a)}`;
+  return {icon,big,body};
+}
+function openParkMap(attractionId){
+  const sheet=document.getElementById('mapSheet'),frame=document.getElementById('mapSheetFrame'),
+    help=document.getElementById('mapSheetHelp'),titleSub=document.getElementById('mapSheetTitleSub'),
+    titleMain=document.getElementById('mapSheetTitleMain');
+  const a=attractionId?BY_ID[attractionId]:null;
+  if(a){
+    titleMain.textContent=a.name;
+    titleSub.textContent=a.mapNumber!=null?`Mapa #${a.mapNumber}`:'';
+    let h=mapHelpData(a);
+    document.getElementById('mapSheetHelpName').textContent=`${h.icon} ${a.name}`;
+    document.getElementById('mapSheetHelpBig').textContent=h.big;
+    document.getElementById('mapSheetHelpBody').innerHTML=h.body;
+    help.hidden=false;
+    help.classList.remove('collapsed');
+    document.getElementById('mapSheetHelpToggle').setAttribute('aria-expanded','true');
+  }else{
+    titleMain.textContent='🗺️ Mapa oficial de Story Land';
+    titleSub.textContent='';
+    help.hidden=true;
+  }
+  document.getElementById('mapSheetExternalTop').href=PARK_MAP_URL;
+  document.getElementById('mapSheetExternalBottom').href=PARK_MAP_URL;
+  document.getElementById('mapSheetFallbackLink').href=PARK_MAP_URL;
+  document.getElementById('mapSheetFallback').hidden=true;
+  frame.hidden=false;
+  if(frame.src!==PARK_MAP_URL){
+    document.getElementById('mapSheetLoading').hidden=false;
+    clearTimeout(mapLoadTimer);
+    mapLoadTimer=setTimeout(showMapFallback,9000);
+    frame.src=PARK_MAP_URL; // única fuente — nunca se duplica esta URL en otro sitio
+  }else{
+    document.getElementById('mapSheetLoading').hidden=true; // ya se cargó antes en esta sesión
+  }
+  mapPrevFocus=document.activeElement;
+  mapPrevScrollY=window.scrollY;
+  document.body.classList.add('noscroll');
+  document.body.style.top=`-${mapPrevScrollY}px`;
+  sheet.setAttribute('aria-hidden','false');
+  sheet.classList.add('show');
+  document.addEventListener('keydown',onMapKeydown);
+  requestAnimationFrame(()=>document.getElementById('mapSheetClose').focus());
+}
+function closeParkMap(){
+  const sheet=document.getElementById('mapSheet');
+  if(!sheet.classList.contains('show'))return; // evita restaurar scroll dos veces si se cierra repetido
+  sheet.classList.remove('show');
+  sheet.setAttribute('aria-hidden','true');
+  document.removeEventListener('keydown',onMapKeydown);
+  document.body.classList.remove('noscroll');
+  document.body.style.top='';
+  window.scrollTo(0,mapPrevScrollY);
+  if(mapPrevFocus&&typeof mapPrevFocus.focus==='function')mapPrevFocus.focus();
+}
+function onMapKeydown(e){if(e.key==='Escape')closeParkMap()}
+function toggleMapHelp(){
+  const help=document.getElementById('mapSheetHelp');
+  let collapsed=help.classList.toggle('collapsed');
+  document.getElementById('mapSheetHelpToggle').setAttribute('aria-expanded',String(!collapsed));
+}
+function hideMapLoading(){clearTimeout(mapLoadTimer);document.getElementById('mapSheetLoading').hidden=true}
+function showMapFallback(){
+  document.getElementById('mapSheetLoading').hidden=true;
+  document.getElementById('mapSheetFrame').hidden=true;
+  document.getElementById('mapSheetFallback').hidden=false;
+}
+/* addEventListener (no onload= inline) porque el iframe ya existe en el DOM
+   sin "src" antes de que este <script> corra: un onload= inline dispararía
+   sobre el about:blank inicial antes de que estas funciones existan. */
+document.getElementById('mapSheetFrame').addEventListener('load',hideMapLoading);
+document.getElementById('mapSheetFrame').addEventListener('error',showMapFallback);
 
 /* ---------- Estado / localStorage ----------
    Se mantiene la misma clave "storyland_state_v1" (en vez de crear una nueva
@@ -706,7 +861,7 @@ function renderAhora(){
         <button class="actbtn skip" onclick="actSkip('${rec.id}')">⏭️ SALTAR POR AHORA</button>
         <button class="actbtn repeat" onclick="actRepeat('${rec.id}')">❤️ QUIERE REPETIR</button>
         <button class="actbtn long" onclick="actLong('${rec.id}')">👥 FILA MUY LARGA</button>
-        <button class="actbtn map" onclick="openParkMap()">🗺️ VER PARK MAP OFICIAL</button>
+        <button class="actbtn map" onclick="openParkMap('${rec.id}')">🗺️ VER PARK MAP OFICIAL</button>
       </div>
     </div>`;
     html+=alternativesHtml(rec);
@@ -745,6 +900,7 @@ function alternativesHtml(rec){
       <div class="altbtns">
         <button onclick="actDone('${alt.id}')">✅ Hecho</button>
         <button onclick="actSkip('${alt.id}')">⏭️ Saltar</button>
+        <button onclick="openParkMap('${alt.id}')">🗺️ Mapa</button>
       </div>
     </div>`;
   }).join('')}</div>`;
@@ -815,7 +971,7 @@ function renderChecklist(){
         <h4><span class="expandicon">${open?'▾':'▸'}</span>${a.name}</h4>
         <span class="statusChip st-${s}">${stLabel}</span>
       </div>
-      <div class="itemzone"><span>${zoneLine(a)}</span><button class="zonemapbtn" onclick="openParkMap()">🗺️ Ver mapa</button></div>
+      <div class="itemzone"><span>${zoneLine(a)}</span><button class="zonemapbtn" onclick="event.stopPropagation();openParkMap('${a.id}')">🗺️ Ver mapa</button></div>
       <div class="tagrow">${a.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
       ${open?`<div class="expandbox">
         ${mapOrientationHtml(a)}
@@ -846,7 +1002,7 @@ function renderFavoritas(){
     el.innerHTML=`<div class="favempty"><span class="emoji">❤️</span>Aún no han marcado ninguna atracción para repetir.<br>Cuando algo le encante, toca <b>❤️ QUIERE REPETIR</b>.</div>`;
     return;
   }
-  el.innerHTML=`<div class="miniSectTitle">❤️ Quiere repetir</div><div class="minilist">${repeats.map(a=>`<div class="miniitem"><span>${a.name}<small>${catLabel(a.cat)}</small></span><span class="pill">❤️</span></div>`).join('')}</div>`;
+  el.innerHTML=`<div class="miniSectTitle">❤️ Quiere repetir</div><div class="minilist">${repeats.map(a=>`<div class="miniitem"><span>${a.name}<small>${catLabel(a.cat)}</small></span><button class="zonemapbtn" onclick="openParkMap('${a.id}')">🗺️ Ver mapa</button><span class="pill">❤️</span></div>`).join('')}</div>`;
 }
 
 /* ---------- Render: Tips + Mapa ---------- */
