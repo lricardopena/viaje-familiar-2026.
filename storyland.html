@@ -53,7 +53,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .actbtn.skip{background:#edf2f4;color:var(--ink);border:1px solid var(--line)}
 .actbtn.repeat{background:#ffe1ee;color:#a41457;border:1px solid #f5b9d4}
 .actbtn.long{background:#fff0e0;color:#a4530a;border:1px solid #f0c896}
-.actbtn.map{background:#e4f5ff;color:#0b5e8e;border:1px solid #a9dcf5;grid-column:1/-1}
+.actbtn.closed{background:#fde2e1;color:#a4241d;border:1px solid #f5b3ae}
+.actbtn.map{background:#e4f5ff;color:#0b5e8e;border:1px solid #a9dcf5}
 
 .reactcard{background:#fff;border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--shadow);text-align:center}
 .reactcard h2{margin:6px 0 4px;font-size:1.25rem}
@@ -111,10 +112,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .st-skipped{background:#f1eee6;color:#8a7548}
 .st-later{background:#ffe6d4;color:#a4530a}
 .st-repeat{background:#ffe1ee;color:#a41457}
+.st-closed{background:#fde2e1;color:#a4241d}
 .item .tagrow{margin:7px 0}
 .itemzone{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);margin:2px 0 4px}
 .zonemapbtn{background:none;border:0;color:var(--blue);font-weight:850;font-size:.72rem;padding:2px 4px;white-space:nowrap}
-.itembtns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.itembtns{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
 .itembtns button{min-height:42px;border-radius:11px;border:1px solid var(--line);background:#f8f9f7;font-size:1rem}
 .itembtns button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
 
@@ -1424,12 +1426,17 @@ function computeScore(a){
   return priorityScore+sameZoneBonus(a)+proximityBonus(a)+childBonus(a)+timeOfDayBonus(a)
     +earlyDinoBonus(a)+reactionBonus(a)+restBonus(a)-deferredPenalty-skipPenalty;
 }
-/* candidateList(): TODO lo que no esté "done" — incluye "repeat", para que
-   los favoritos puedan volver a competir más adelante (item 9) en vez de
-   desaparecer del todo. Se recalcula por completo en cada llamada: no hay
-   itinerario guardado, solo el estado actual de cada atracción. */
+/* candidateList(): TODO lo que no esté "done" ni "closed" — incluye
+   "repeat", para que los favoritos puedan volver a competir más adelante
+   (item 9) en vez de desaparecer del todo. "closed" (atracción cerrada —
+   mantenimiento, clima, etc.) se excluye igual que "done": no tiene
+   sentido seguir recomendándola mientras esté marcada así. A diferencia de
+   "done", closed no significa que ya la disfrutaron — por eso no cuenta
+   para "Imperdibles: x/7" ni aparece en Favoritas, solo deja de competir.
+   Se recalcula por completo en cada llamada: no hay itinerario guardado,
+   solo el estado actual de cada atracción. */
 function candidateList(){
-  return ALL.filter(a=>getStatus(a.id)!=='done')
+  return ALL.filter(a=>!['done','closed'].includes(getStatus(a.id)))
     .map(a=>({...a,tier:effectiveTier(a),score:computeScore(a),deferred:isOnCooldown(a.id),skipCooldown:isOnSkipCooldown(a.id)}))
     .sort((a,b)=>b.score-a.score||a._i-b._i);
 }
@@ -1499,8 +1506,13 @@ function tipFor(a){
 }
 /* prioLabel(a): recibe un candidato (id + tier + deferred/skipCooldown
    opcionales, como los que produce candidateList()). El estado "repeat" se
-   revisa primero porque manda sobre el tier numérico. */
+   revisa primero porque manda sobre el tier numérico. "closed" también se
+   revisa primero, aunque en la práctica solo se llega acá para una cerrada
+   desde el detalle del checklist (candidateList() ya la excluye de la
+   recomendación) — mostrar su tier numérico ahí sería engañoso, como si
+   siguiera compitiendo. */
 function prioLabel(a){
+  if(getStatus(a.id)==='closed')return {t:'🚫 CERRADA',c:'priolow'};
   if(getStatus(a.id)==='repeat')return {t:'🔁 REPETIR (favorita)',c:'priorepeat'};
   if(a.deferred)return {t:'🕐 EN ESPERA (fila larga)',c:'priomed'};
   if(a.skipCooldown)return {t:'⏭️ SALTADA HACE POCO',c:'priomed'};
@@ -1548,6 +1560,17 @@ function actLong(id){
   state.deferred[id]={atCount:state.recommendationCount,zone:BY_ID[id].zone};
   if(state.skipped)delete state.skipped[id];
   setStatus(id,'later');
+}
+/* Atracción cerrada (mantenimiento, clima, etc.) — deja de competir por la
+   recomendación (candidateList()) sin marcarla como "hecha". Reabrir es
+   simétrico a los demás estados: tocar de nuevo el mismo botón (🚫 en el
+   checklist, o "🚫 Cerrada" repetido) la vuelve a "pending" — mismo
+   mecanismo genérico de cycleStatus(), no hace falta una acción aparte. */
+function actClose(id){
+  tick();
+  if(state.deferred)delete state.deferred[id];
+  if(state.skipped)delete state.skipped[id];
+  setStatus(id,'closed');
 }
 function recheckLine(id){
   if(state.deferred)delete state.deferred[id];
@@ -1650,6 +1673,7 @@ function renderAhora(){
         <button class="actbtn skip" onclick="actSkip('${rec.id}')">⏭️ SALTAR POR AHORA</button>
         <button class="actbtn repeat" onclick="actRepeat('${rec.id}')">❤️ QUIERE REPETIR</button>
         <button class="actbtn long" onclick="actLong('${rec.id}')">👥 FILA MUY LARGA</button>
+        <button class="actbtn closed" onclick="actClose('${rec.id}')">🚫 CERRADA</button>
         <button class="actbtn map" onclick="openParkMap('${rec.id}')">🗺️ VER PARK MAP OFICIAL</button>
       </div>
     </div>`;
@@ -1716,6 +1740,10 @@ function extraSectionsHtml(){
     if(roarOpcional)html+=`<div class="miniitem"><span>Roar-O-Saurus<small>Opcional para después — no insistimos por ahora.</small></span><span class="pill">Opcional</span></div>`;
     html+='</div>';
   }
+  let closed=ALL.filter(a=>getStatus(a.id)==='closed');
+  if(closed.length){
+    html+=`<div class="miniSectTitle">🚫 Cerradas</div><div class="minilist">${closed.map(a=>`<div class="miniitem"><span>${a.name}<small>No la sugerimos mientras esté cerrada. Tocá 🚫 de nuevo en el checklist si reabre.</small></span><span class="pill">🚫</span></div>`).join('')}</div>`;
+  }
   return html;
 }
 
@@ -1739,6 +1767,7 @@ function cycleStatus(id,val){
   else if(val==='later')actLong(id);
   else if(val==='repeat')actRepeat(id);
   else if(val==='skipped')actSkip(id);
+  else if(val==='closed')actClose(id);
 }
 function renderChecklist(){
   let el=document.getElementById('tab-checklist');
@@ -1748,7 +1777,7 @@ function renderChecklist(){
     html+=`<div class="catblock"><h3>${label}</h3>`;
     items.forEach(a=>{
       let s=getStatus(a.id);
-      let stLabel={pending:'⬜ Pendiente',done:'✅ Hecho',skipped:'⏭️ Saltado',later:'🕐 Volver después',repeat:'❤️ Repetir'}[s];
+      let stLabel={pending:'⬜ Pendiente',done:'✅ Hecho',skipped:'⏭️ Saltado',later:'🕐 Volver después',repeat:'❤️ Repetir',closed:'🚫 Cerrada'}[s];
       let open=expandedItems.has(a.id);
       // Mismo tipo de detalle que la tarjeta "Ahora" (por qué + prioridad +
       // tip), pero sin los datos que solo tienen sentido para "lo próximo
@@ -1776,6 +1805,7 @@ function renderChecklist(){
         <button class="${s==='skipped'?'active':''}" title="Saltar" onclick="event.stopPropagation();cycleStatus('${a.id}','skipped')">⏭️</button>
         <button class="${s==='later'?'active':''}" title="Fila muy larga / volver después" onclick="event.stopPropagation();cycleStatus('${a.id}','later')">🕐</button>
         <button class="${s==='repeat'?'active':''}" title="Quiere repetir" onclick="event.stopPropagation();cycleStatus('${a.id}','repeat')">❤️</button>
+        <button class="${s==='closed'?'active':''}" title="Cerrada (tocar de nuevo para reabrir)" onclick="event.stopPropagation();cycleStatus('${a.id}','closed')">🚫</button>
       </div></div>`;
     });
     html+='</div>';
