@@ -1,4 +1,6 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ed7d24"><title>Story Land · Plan interactivo</title>
+<link rel="stylesheet" href="auth.css">
+<script src="auth.js"></script>
 <style>
 :root{--ink:#183247;--muted:#607887;--blue:#1579c5;--green:#2a915a;--orange:#ed7d24;--red:#d9432f;--pink:#d9427e;--yellow:#ffd85b;--bg:#f6f7f2;--card:#fff;--line:#dbe7ec;--shadow:0 10px 28px #17445c18}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
@@ -112,7 +114,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .bottom button.on{background:var(--orange);color:#fff}
 @media(max-width:360px){.factrow{grid-template-columns:1fr}.actionsgrid{grid-template-columns:1fr}}
 </style></head><body>
-<main class="app">
+<main class="app protected-content">
 <div class="top">
 <div class="row"><a class="back" href="index.html">← Itinerario</a><h1>🏰 Story Land</h1><span style="width:70px"></span></div>
 <div class="progress"><div class="stats"><span id="progTxt">0 de 18 · 0%</span><span id="mustTxt">🔥 0/7</span></div><div class="pbar"><i id="progBar" style="width:0%"></i></div></div>
@@ -124,8 +126,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 <section class="tabpane" id="tab-tips"></section>
 
 </main>
-<button class="fab" id="fabNext" onclick="goAhora()">⭐ ¿QUÉ SIGUE?</button>
-<div class="bottom">
+<button class="fab protected-content" id="fabNext" onclick="goAhora()">⭐ ¿QUÉ SIGUE?</button>
+<div class="bottom protected-content">
 <button id="navAhora" onclick="setTab('ahora')"><span class="bi">⭐</span>Ahora</button>
 <button id="navChecklist" onclick="setTab('checklist')"><span class="bi">☑️</span>Checklist</button>
 <button id="navFavoritas" onclick="setTab('favoritas')"><span class="bi">❤️</span>Favoritas</button>
