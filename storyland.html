@@ -273,6 +273,7 @@ function loadState(){
   if(!('lastCompletedId' in s))s.lastCompletedId=null;
   if(!s.deferred)s.deferred={};                       // id -> {atCount, zone} cuando se marca "fila muy larga"
   if(!('recommendationCount' in s))s.recommendationCount=0; // avanza con cada acción, usado para el cooldown
+  if(!s.skipped)s.skipped={};                          // id -> {atCount} cuando se toca "saltar por ahora"
   return s;
 }
 let state=loadState();
@@ -297,6 +298,8 @@ const CHILD_BONUS=12;      // atracción marcada como favorita probable del niñ
 const WATER_BONUS=20;      // agua + hace calor (bonus, no regla obligatoria)
 const WATER_BONUS_MOOLAGOON=10; // Moo Lagoon recibe la mitad: es opcional, no debe adelantarse
 const DEFERRED_PENALTY=90; // "fila muy larga": penalización temporal (cooldown)
+const SKIP_PENALTY=70;     // "saltar por ahora": penalización temporal, algo más leve que la fila larga
+const SKIP_COOLDOWN_STEPS=3; // nº de recomendaciones/acciones antes de que vuelva a ser candidata top
 
 function phase1Order(){
   return state.polarReaction==='no' ? ['polar','raptour','bamboo','flyingfish'] : ['polar','roar','bamboo','raptour','flyingfish'];
@@ -331,6 +334,19 @@ function isOnCooldown(id){
   let zoneChanged=state.currentZone&&d.zone&&state.currentZone!==d.zone;
   return recDelta<2&&!zoneChanged;
 }
+/* ----- cooldown para "saltar por ahora" -----
+   Igual mecánica que el cooldown de fila larga (por conteo de acciones, no
+   minutos), pero sin depender de la zona: saltar no dice nada de por qué,
+   así que simplemente deja de ser la recomendación top durante
+   SKIP_COOLDOWN_STEPS acciones y después vuelve a competir normal. Así el
+   botón "SALTAR POR AHORA" sí hace avanzar a la siguiente recomendación en
+   vez de repetir la misma atracción. */
+function skippedInfo(id){return state.skipped&&state.skipped[id]}
+function isOnSkipCooldown(id){
+  let d=skippedInfo(id);
+  if(!d)return false;
+  return state.recommendationCount-d.atCount<SKIP_COOLDOWN_STEPS;
+}
 function sameZoneBonus(a){return state.currentZone&&a.zone===state.currentZone?SAME_ZONE_BONUS:0}
 function proximityBonus(a){
   let lastId=state.lastCompletedId;
@@ -355,12 +371,13 @@ function computeScore(a){
   let tier=baseTier(a.id);
   let priorityScore=(5-tier)*TIER_W+phase1SeqBonus(a.id);
   let deferredPenalty=isOnCooldown(a.id)?DEFERRED_PENALTY:0;
+  let skipPenalty=isOnSkipCooldown(a.id)?SKIP_PENALTY:0;
   let favoriteBonus=0; // los ya marcados "repeat" no entran en este pool (van a la lista de repetir aparte)
-  return priorityScore+sameZoneBonus(a)+proximityBonus(a)+childBonus(a)+timeOfDayBonus(a)+favoriteBonus-deferredPenalty;
+  return priorityScore+sameZoneBonus(a)+proximityBonus(a)+childBonus(a)+timeOfDayBonus(a)+favoriteBonus-deferredPenalty-skipPenalty;
 }
 function candidateList(){
   return ALL.filter(a=>{let s=getStatus(a.id);return s!=='done'&&s!=='repeat'})
-    .map(a=>({...a,tier:baseTier(a.id),score:computeScore(a),deferred:isOnCooldown(a.id)}))
+    .map(a=>({...a,tier:baseTier(a.id),score:computeScore(a),deferred:isOnCooldown(a.id),skipCooldown:isOnSkipCooldown(a.id)}))
     .sort((a,b)=>b.score-a.score||a._i-b._i);
 }
 function getRecommendation(){
@@ -404,9 +421,10 @@ function tipFor(a){
   if(a.id==='huffpuff')return '💡 Ideal cuando estén cansados de caminar.';
   return null;
 }
-function prioLabel(tier,repeatFallback,deferred){
+function prioLabel(tier,repeatFallback,deferred,skipCooldown){
   if(repeatFallback)return {t:'🔁 REPETIR',c:'priorepeat'};
   if(deferred)return {t:'🕐 EN ESPERA (fila larga)',c:'priomed'};
+  if(skipCooldown)return {t:'⏭️ SALTADA HACE POCO (no queda otra mejor)',c:'priomed'};
   if(tier===0)return {t:'MUY ALTA',c:'priohigh'};
   if(tier===1)return {t:'ALTA',c:'priohigh'};
   if(tier===1.5)return {t:'ALTA (buen momento)',c:'priohigh'};
@@ -427,20 +445,28 @@ function actDone(id){
   state.currentZone=BY_ID[id].zone;
   state.lastCompletedId=id;
   if(state.deferred)delete state.deferred[id];
+  if(state.skipped)delete state.skipped[id];
   setStatus(id,'done');
 }
-function actSkip(id){tick();setStatus(id,'skipped')}
+function actSkip(id){
+  tick();
+  if(!state.skipped)state.skipped={};
+  state.skipped[id]={atCount:state.recommendationCount};
+  setStatus(id,'skipped');
+}
 function actRepeat(id){
   tick();
   state.currentZone=BY_ID[id].zone;
   state.lastCompletedId=id;
   if(state.deferred)delete state.deferred[id];
+  if(state.skipped)delete state.skipped[id];
   setStatus(id,'repeat');
 }
 function actLong(id){
   tick();
   if(!state.deferred)state.deferred={};
   state.deferred[id]={atCount:state.recommendationCount,zone:BY_ID[id].zone};
+  if(state.skipped)delete state.skipped[id];
   setStatus(id,'later');
 }
 function recheckLine(id){
@@ -512,7 +538,7 @@ function renderAhora(){
   if(!rec){
     html+=`<div class="donebig"><div class="emoji">🎉</div><h2>¡Completaron el plan de Story Land!</h2><p>Ya hicieron todo lo importante. Si quieren, repitan alguna favorita antes de irse.</p></div>`;
   }else{
-    let prio=prioLabel(rec.tier,rec.repeatFallback,rec.deferred);
+    let prio=prioLabel(rec.tier,rec.repeatFallback,rec.deferred,rec.skipCooldown);
     let tags=rec.tags.map(t=>`<span class="tag ${t.includes('IMPERDIBLE')||t.includes('INTENSA')?'hot':t.includes('RECOMENDADA')?'star':''}">${t}</span>`).join('');
     let tip=tipFor(rec);
     let reasons=reasonsFor(rec);
@@ -555,6 +581,10 @@ function extraSectionsHtml(){
   if(repeats.length){
     html+=`<div class="miniSectTitle">❤️ Repetir antes de irnos</div><div class="minilist">${repeats.map(a=>`<div class="miniitem"><span>${a.name}</span><span class="pill">❤️ favorita</span></div>`).join('')}</div>`;
   }
+  let recentlySkipped=ALL.filter(a=>getStatus(a.id)==='skipped'&&isOnSkipCooldown(a.id));
+  if(recentlySkipped.length){
+    html+=`<div class="miniSectTitle">⏭️ Saltadas por ahora</div><div class="minilist">${recentlySkipped.map(a=>`<div class="miniitem"><span>${a.name}<small>La volveremos a sugerir en un rato.</small></span><span class="pill">⏭️</span></div>`).join('')}</div>`;
+  }
   let laters=ALL.filter(a=>getStatus(a.id)==='later');
   let roarOpcional=BY_ID.roar&&state.polarReaction==='no'&&getStatus('roar')==='pending';
   if(laters.length||roarOpcional){
@@ -578,6 +608,7 @@ function toggleExpand(id){
 function cycleStatus(id,val){
   if(getStatus(id)===val){ // tocar de nuevo el mismo botón = volver a pendiente
     if(state.deferred)delete state.deferred[id];
+    if(state.skipped)delete state.skipped[id];
     setStatus(id,'pending');
     return;
   }
@@ -599,7 +630,7 @@ function renderChecklist(){
       // Mismo tipo de detalle que la tarjeta "Ahora" (por qué + prioridad +
       // tip), pero sin los datos que solo tienen sentido para "lo próximo
       // a hacer ahora mismo" (razones de zona/proximidad, botones de acción).
-      let prio=prioLabel(baseTier(a.id),false,isOnCooldown(a.id));
+      let prio=prioLabel(baseTier(a.id),false,isOnCooldown(a.id),isOnSkipCooldown(a.id));
       let tip=tipFor(a);
       html+=`<div class="item">
       <div class="top2" role="button" tabindex="0" aria-expanded="${open}" onclick="toggleExpand('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleExpand('${a.id}')}">
