@@ -161,9 +161,11 @@ body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .mapsheet-viewer{flex:1;position:relative;min-height:0;background:#eef2f4}
 .mapsheet-viewer iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .mapsheet-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#eef2f4;font-size:.82rem;font-weight:800;color:var(--muted)}
+.mapsheet-loading[hidden]{display:none}
 .mapsheet-loading .spinner{width:34px;height:34px;border-radius:99px;border:4px solid #cfe0e8;border-top-color:var(--blue);animation:mapspin .8s linear infinite}
 @keyframes mapspin{to{transform:rotate(360deg)}}
 .mapsheet-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;background:#fff}
+.mapsheet-fallback[hidden]{display:none}
 .mapsheet-fallback .emoji{font-size:2.4rem}
 .mapsheet-fallback p{margin:0;font-weight:800;color:var(--ink);max-width:280px}
 .mapsheet-fallback a{background:var(--blue);color:#fff;text-decoration:none;font-weight:900;padding:12px 18px;border-radius:13px}
@@ -242,16 +244,17 @@ body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}
      (confirmada al describir Farm Tractors/Crazy Barn). El resto son
      agrupaciones razonables por tema para planear la ruta, no coordenadas
      verificadas — no hacía falta GPS, solo evitar caminatas tontas.
-   - mapNumber: número visible en el Park Map oficial 2026 (fuente única:
-     PARK_MAP_URL, tal como la proporcionó el usuario en la tabla oficial
-     2026 — en su momento ese dominio estaba bloqueado en el entorno de
-     desarrollo y no pudimos abrir el PDF nosotros mismos, así que estos
-     números venían exclusivamente de esa tabla, no de una búsqueda ni de
-     una suposición. 2026-08: el visor interno (ver openParkMap más abajo)
-     embebe PARK_MAP_URL directamente en un <iframe> dentro de la app — el
-     bloqueo de red era propio del entorno de desarrollo, no del navegador
-     real de la familia; los números de esta lista no se re-verificaron
-     contra las páginas del PDF, siguen siendo los de la tabla). Corregidos 2026-08:
+   - mapNumber: número visible en el Park Map oficial 2026 (fuente: la tabla
+     oficial 2026 que proporcionó el usuario — en su momento el dominio de
+     PARK_MAP_URL estaba bloqueado en el entorno de desarrollo y no pudimos
+     abrir el PDF nosotros mismos, así que estos números venían
+     exclusivamente de esa tabla, no de una búsqueda ni de una suposición.
+     2026-08: el usuario adjuntó el PDF directamente; vive local en
+     assets/park-map/ y el visor interno (ver openParkMap más abajo) lo
+     embebe desde ahí — evita depender de que ese dominio externo esté
+     disponible. PARK_MAP_URL se conserva como referencia del sitio
+     oficial. Los números de esta lista no se re-verificaron contra las
+     páginas del PDF, siguen siendo los de la tabla). Corregidos 2026-08:
      varias atracciones tenían el número de una numeración anterior/errónea
      (ver commit para la lista antes→después). Turtle Twirl y Crazy Barn,
      que antes se dejaban en null porque no aparecían en el mapa que
@@ -269,7 +272,8 @@ body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}
      el mapa impreso, se puede corregir aquí. La UI debe funcionar
      perfectamente sin estos campos (ver mapOrientationHtml()).
 */
-const PARK_MAP_URL='https://hfe.widen.net/view/pdf/icf5sgszuz/STL26_General_ParkMap_Download.pdf?t.download=true&u=exbmhu';
+const PARK_MAP_URL='https://hfe.widen.net/view/pdf/icf5sgszuz/STL26_General_ParkMap_Download.pdf?t.download=true&u=exbmhu'; // referencia del sitio oficial — no se usa para el iframe
+const PARK_MAP_PDF='assets/park-map/STL26_General_ParkMap_Download.pdf'; // copia local del mismo PDF oficial — fuente real del visor embebido
 const ALL=[
 {id:'polar',name:'Polar Coaster',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:34,mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[35,36],nearbyAttractions:['roar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','👨‍👦 CON ADULTO'],why:'Es la montaña rusa principal del parque: conviene hacerla temprano, antes de que se formen filas, y sirve para probar cómo tolera una montaña rusa antes de Roar-O-Saurus.'},
 {id:'roar',name:'Roar-O-Saurus',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:36,mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[34,35],nearbyAttractions:['polar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','🦕 DINOSAURIOS','👨‍👦 CON ADULTO'],why:'La montaña rusa temática de dinosaurios: la gran favorita del día.'},
@@ -348,10 +352,13 @@ function mapOrientationHtml(a){
    recomendación actual, checklist, favoritas, alternativas y el bloque
    general de "Tips". openParkMap(attractionId) — con id abre mostrando la
    tarjeta de ayuda de esa atracción; sin id abre el mapa general, sin
-   inventar ninguna atracción "seleccionada". La única fuente del PDF es
-   PARK_MAP_URL (arriba) — no se duplica la URL en ningún otro sitio: el
-   iframe, el link de "pestaña nueva" del header, el de "Abrir mapa
-   completo" del pie y el del fallback apuntan todos al mismo valor. */
+   inventar ninguna atracción "seleccionada". La fuente del PDF es
+   PARK_MAP_PDF (copia local del mismo PDF oficial, arriba) — no se duplica
+   esa ruta en ningún otro sitio: el iframe, el link de "pestaña nueva" del
+   header, el de "Abrir mapa completo" del pie y el del fallback apuntan
+   todos al mismo valor. Se prefiere sobre PARK_MAP_URL (el dominio externo)
+   para no depender de la red del visitante ni de que ese dominio esté
+   disponible — más simple y más confiable dentro de la app. */
 let mapPrevFocus=null,mapPrevScrollY=0,mapLoadTimer=null;
 /* Nombre + número de las atracciones vecinas, ordenadas por número de mapa
    (no por el orden en que aparecen en nearbyAttractions) para que la frase
@@ -400,16 +407,16 @@ function openParkMap(attractionId){
     titleSub.textContent='';
     help.hidden=true;
   }
-  document.getElementById('mapSheetExternalTop').href=PARK_MAP_URL;
-  document.getElementById('mapSheetExternalBottom').href=PARK_MAP_URL;
-  document.getElementById('mapSheetFallbackLink').href=PARK_MAP_URL;
+  document.getElementById('mapSheetExternalTop').href=PARK_MAP_PDF;
+  document.getElementById('mapSheetExternalBottom').href=PARK_MAP_PDF;
+  document.getElementById('mapSheetFallbackLink').href=PARK_MAP_PDF;
   document.getElementById('mapSheetFallback').hidden=true;
   frame.hidden=false;
-  if(frame.src!==PARK_MAP_URL){
+  if(frame.src.indexOf(PARK_MAP_PDF)===-1){
     document.getElementById('mapSheetLoading').hidden=false;
     clearTimeout(mapLoadTimer);
     mapLoadTimer=setTimeout(showMapFallback,9000);
-    frame.src=PARK_MAP_URL; // única fuente — nunca se duplica esta URL en otro sitio
+    frame.src=PARK_MAP_PDF; // fuente real del visor — nunca se duplica esta ruta en otro sitio
   }else{
     document.getElementById('mapSheetLoading').hidden=true; // ya se cargó antes en esta sesión
   }
