@@ -1,0 +1,412 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ed7d24"><title>Story Land · Plan interactivo</title>
+<style>
+:root{--ink:#183247;--muted:#607887;--blue:#1579c5;--green:#2a915a;--orange:#ed7d24;--red:#d9432f;--pink:#d9427e;--yellow:#ffd85b;--bg:#f6f7f2;--card:#fff;--line:#dbe7ec;--shadow:0 10px 28px #17445c18}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+.app{max-width:560px;margin:auto;padding:0 max(12px,env(safe-area-inset-left)) calc(96px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-right))}
+.top{position:sticky;top:0;z-index:40;background:linear-gradient(135deg,#ed7d24,#d9601c);color:#fff;padding:12px 14px calc(12px + env(safe-area-inset-top));margin:0 -12px 12px;box-shadow:var(--shadow)}
+.top .row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.back{color:#fff;text-decoration:none;font-weight:900;font-size:.82rem;background:#ffffff30;padding:8px 11px;border-radius:12px;white-space:nowrap}
+.top h1{font-size:1.15rem;margin:0;text-align:center;flex:1}
+.progress{margin-top:10px}
+.pbar{height:10px;border-radius:99px;background:#ffffff35;overflow:hidden;margin-top:6px}
+.pbar i{display:block;height:100%;background:#fff;border-radius:99px;transition:width .3s}
+.progress .stats{display:flex;justify-content:space-between;font-size:.72rem;font-weight:800;opacity:.95}
+.mustbar{margin-top:8px;background:#ffffff22;border-radius:12px;padding:7px 10px;font-size:.78rem;font-weight:900;display:flex;justify-content:space-between}
+
+.tabpane{display:none}
+.tabpane.on{display:block}
+
+.banner{border-radius:18px;padding:12px 14px;margin-bottom:12px;font-size:.85rem;font-weight:700;box-shadow:var(--shadow)}
+.banner.lunch{background:#fff3dc;border:1px solid #f0d38a}
+.banner.water{background:#e4f5ff;border:1px solid #a9dcf5}
+.banner b{display:block;font-size:.95rem;margin-bottom:3px}
+.banner ul{margin:6px 0 0;padding-left:18px}
+.banner.calmnotice{background:#f1ecff;border:1px solid #cdbdf7;display:flex;align-items:center;justify-content:space-between;gap:10px}
+
+.nowcard{background:linear-gradient(160deg,#fff,#fff8ef);border:1px solid #f2ddb8;border-radius:26px;padding:18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.nowcard .kicker{display:inline-block;background:var(--orange);color:#fff;font-weight:950;font-size:.78rem;letter-spacing:.04em;padding:6px 12px;border-radius:999px}
+.nowcard h2{font-size:1.7rem;margin:12px 0 6px;line-height:1.08}
+.tagrow{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.tag{background:#eef4f6;border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:.72rem;font-weight:850;white-space:nowrap}
+.tag.hot{background:#ffe3d8;border-color:#f5b78e;color:#b8471a}
+.tag.star{background:#fff3c2;border-color:#eecf6a;color:#8a6a05}
+.whybox{background:#f4f8f4;border-radius:14px;padding:10px 12px;font-size:.86rem;margin-bottom:8px}
+.whybox b{color:var(--green)}
+.factrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.fact{background:#f6f7f2;border-radius:14px;padding:9px 10px;font-size:.78rem}
+.fact b{display:block;font-size:.9rem;margin-top:2px}
+.priohigh{color:#b8471a}.priomed{color:#8a6a05}.priolow{color:#3d6e57}.priorepeat{color:var(--pink)}
+.tipline{background:#fff9e0;border:1px dashed #eecf6a;border-radius:12px;padding:9px 11px;font-size:.82rem;margin-bottom:12px}
+.actionsgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:6px}
+.actbtn{min-height:58px;border:0;border-radius:16px;font-weight:950;font-size:.86rem;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;padding:6px}
+.actbtn.done{background:var(--green);color:#fff}
+.actbtn.skip{background:#edf2f4;color:var(--ink);border:1px solid var(--line)}
+.actbtn.repeat{background:#ffe1ee;color:#a41457;border:1px solid #f5b9d4}
+.actbtn.long{background:#fff0e0;color:#a4530a;border:1px solid #f0c896}
+
+.reactcard{background:#fff;border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--shadow);text-align:center}
+.reactcard h2{margin:6px 0 4px;font-size:1.25rem}
+.reactcard p{color:var(--muted);font-size:.86rem;margin:0 0 14px}
+.reactopts{display:grid;gap:9px}
+.reactopts button{min-height:56px;border-radius:16px;border:1px solid var(--line);background:#f6f7f2;font-weight:900;font-size:.92rem}
+
+.donebig{background:#eafaf0;border:1px solid #b8e6c8;border-radius:24px;padding:22px;text-align:center;box-shadow:var(--shadow)}
+.donebig .emoji{font-size:2.6rem}
+
+.calmtoggle{display:block;width:100%;margin-top:14px;min-height:52px;border-radius:16px;border:1px solid var(--line);background:#f1ecff;color:#5b3ea8;font-weight:900}
+.calmtoggle.active{background:#5b3ea8;color:#fff}
+
+.miniSectTitle{margin:18px 2px 8px;font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:#657d8a;font-weight:950}
+.minilist{display:grid;gap:8px}
+.miniitem{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px;font-size:.84rem;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.miniitem small{display:block;color:var(--muted);font-size:.72rem;margin-top:2px}
+.pill{font-size:.68rem;font-weight:900;background:#f4f6f7;padding:4px 8px;border-radius:999px;white-space:nowrap}
+
+.catblock{margin-bottom:18px}
+.catblock h3{font-size:.95rem;margin:0 0 9px;display:flex;align-items:center;gap:6px}
+.item{background:#fff;border:1px solid var(--line);border-radius:18px;padding:11px 12px;margin-bottom:8px}
+.item .top2{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.item h4{margin:0;font-size:.95rem}
+.statusChip{font-size:.68rem;font-weight:900;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.st-pending{background:#eef1f2;color:#657d8a}
+.st-done{background:#dff3e6;color:#1a7a44}
+.st-skipped{background:#f1eee6;color:#8a7548}
+.st-later{background:#ffe6d4;color:#a4530a}
+.st-repeat{background:#ffe1ee;color:#a41457}
+.item .tagrow{margin:7px 0}
+.itembtns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.itembtns button{min-height:42px;border-radius:11px;border:1px solid var(--line);background:#f8f9f7;font-size:1rem}
+.itembtns button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+.favempty{text-align:center;padding:40px 16px;color:var(--muted)}
+.favempty .emoji{font-size:2.4rem;display:block;margin-bottom:8px}
+
+.tipsList{display:grid;gap:9px}
+.tipitem{background:#fff;border:1px solid var(--line);border-radius:16px;padding:11px 13px;font-size:.86rem;display:flex;gap:10px;align-items:flex-start}
+.tipitem span.ic{font-size:1.2rem}
+.resetbtn{display:block;width:100%;margin-top:18px;min-height:52px;border-radius:16px;border:1px solid #f0b3a8;background:#fff2ef;color:#b8291a;font-weight:900}
+
+.fab{position:fixed;z-index:45;right:max(14px,env(safe-area-inset-right));bottom:calc(96px + env(safe-area-inset-bottom));background:var(--orange);color:#fff;border:0;border-radius:999px;padding:13px 18px;font-weight:950;box-shadow:0 8px 20px #ed7d2450;display:none}
+.fab.show{display:block}
+
+.bottom{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom));width:min(calc(100% - 20px),560px);display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:7px;background:#ffffffee;border:1px solid #d4e2e8;border-radius:18px;backdrop-filter:blur(12px);box-shadow:0 6px 24px #133f5828}
+.bottom button{min-height:56px;border:0;border-radius:12px;background:#fff;color:var(--ink);font-weight:900;font-size:.72rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.bottom button .bi{font-size:1.25rem}
+.bottom button.on{background:var(--orange);color:#fff}
+@media(max-width:360px){.factrow{grid-template-columns:1fr}.actionsgrid{grid-template-columns:1fr}}
+</style></head><body>
+<main class="app">
+<div class="top">
+<div class="row"><a class="back" href="index.html">← Itinerario</a><h1>🏰 Story Land</h1><span style="width:70px"></span></div>
+<div class="progress"><div class="stats"><span id="progTxt">0 de 18 · 0%</span><span id="mustTxt">🔥 0/7</span></div><div class="pbar"><i id="progBar" style="width:0%"></i></div></div>
+</div>
+
+<section class="tabpane" id="tab-ahora"></section>
+<section class="tabpane" id="tab-checklist"></section>
+<section class="tabpane" id="tab-favoritas"></section>
+<section class="tabpane" id="tab-tips"></section>
+
+</main>
+<button class="fab" id="fabNext" onclick="goAhora()">⭐ ¿QUÉ SIGUE?</button>
+<div class="bottom">
+<button id="navAhora" onclick="setTab('ahora')"><span class="bi">⭐</span>Ahora</button>
+<button id="navChecklist" onclick="setTab('checklist')"><span class="bi">☑️</span>Checklist</button>
+<button id="navFavoritas" onclick="setTab('favoritas')"><span class="bi">❤️</span>Favoritas</button>
+<button id="navTips" onclick="setTab('tips')"><span class="bi">ℹ️</span>Tips</button>
+</div>
+
+<script>
+/* ---------- Datos de atracciones ---------- */
+const ALL=[
+{id:'polar',name:'Polar Coaster',cat:'imperdible',adult:true,tags:['🔥 IMPERDIBLE','🎢 INTENSA','👨‍👦 CON ADULTO'],why:'Es la montaña rusa principal del parque: conviene hacerla temprano, antes de que se formen filas, y sirve para probar cómo tolera una montaña rusa antes de Roar-O-Saurus.'},
+{id:'roar',name:'Roar-O-Saurus',cat:'imperdible',adult:true,tags:['🔥 IMPERDIBLE','🎢 INTENSA','🦕 DINOSAURIOS','👨‍👦 CON ADULTO'],why:'La montaña rusa temática de dinosaurios: la gran favorita del día.'},
+{id:'bamboo',name:'Bamboo Chutes',cat:'imperdible',adult:true,tags:['🔥 IMPERDIBLE','💦 TE MOJAS UN POCO','🛟 SUAVE'],why:'Tobogán acuático suave: buen contraste de ritmo después de una montaña rusa.'},
+{id:'raptour',name:'Rap-Tour Safari',cat:'imperdible',adult:false,tags:['🔥 IMPERDIBLE','🦕 DINOSAURIOS','🎮 INTERACTIVA'],why:'Safari temático de dinosaurios: participativo y no muy intenso.'},
+{id:'flyingfish',name:'Flying Fish',cat:'imperdible',adult:false,tags:['🔥 IMPERDIBLE','🐟 SUAVE'],why:'Atracción suave, buena para subir la confianza entre atracciones más intensas.'},
+{id:'antiquecars',name:'Antique Cars',cat:'imperdible',adult:false,tags:['⭐ MUY RECOMENDADA PARA ÉL','🚗 VEHÍCULOS','😌 TRANQUILA'],why:'Autos a su ritmo: encaja perfecto con lo que más le gusta.'},
+{id:'farmtractors',name:'Farm Tractors',cat:'imperdible',adult:false,tags:['⭐ MUY RECOMENDADA PARA ÉL','🚜 VEHÍCULOS','😌 TRANQUILA'],why:'Tractores que maneja él mismo: alta probabilidad de que quiera repetir.'},
+{id:'drgeyser',name:"Dr. Geyser's Remarkable Raft Ride",cat:'agua',adult:true,tags:['💦 TE MOJAS','☀️ MEJOR CON CALOR','👨‍👦 CON ADULTO'],why:'Con el calor de ahora es buen momento para mojarse.'},
+{id:'splashbattle',name:'Splash Battle',cat:'agua',adult:false,tags:['💦 TE MOJAS','🎮 INTERACTIVA','👨‍👩‍👦 FAMILIAR'],why:'Batalla de agua interactiva: ideal para la parte más calurosa del día.'},
+{id:'pumpkincoach',name:"Cinderella's Pumpkin Coach",cat:'clasico',adult:false,tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Parada tranquila y bonita para fotos familiares.'},
+{id:'castle',name:"Cinderella's Castle",cat:'clasico',adult:false,tags:['📸 FOTO FAMILIAR','🏰 CLÁSICO'],why:'El castillo de Cenicienta: imprescindible para la foto familiar.'},
+{id:'swanboats',name:'Swan Boats',cat:'clasico',adult:false,tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Paseo lento en botes: buen respiro entre atracciones.'},
+{id:'carousel',name:'Antique German Carousel',cat:'clasico',adult:false,tags:['📸 FOTO FAMILIAR','🎠 CLÁSICO'],why:'Carrusel clásico, siempre un acierto.'},
+{id:'balloonchase',name:'Great Balloon Chase',cat:'clasico',adult:false,tags:['📸 FOTO FAMILIAR','🎈 SUAVE'],why:'Vueltas suaves en globo: buena para bajar el ritmo.'},
+{id:'huffpuff',name:'Huff Puff & Whistle Railroad',cat:'descanso',adult:false,tags:['😌 DESCANSO','👨‍👩‍👦 FAMILIAR','🚂 VEHÍCULOS'],why:'Tren panorámico para descansar los pies caminando. Ideal cuando estén cansados de caminar — no gastar la primera hora del parque aquí.'},
+{id:'loopylab',name:'Loopy Lab',cat:'descanso',adult:false,tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Laboratorio interactivo: ideal para después de comer.'},
+{id:'turtletwirl',name:'Turtle Twirl',cat:'descanso',adult:false,tags:['🎠 SUAVE','😌 TRANQUILA'],why:'Vueltas suaves, tranquila.'},
+{id:'crazybarn',name:'Crazy Barn',cat:'descanso',adult:false,tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Granero interactivo con sorpresas: le gustará explorar.'},
+];
+const BY_ID={};ALL.forEach((a,i)=>BY_ID[a.id]={...a,_i:i});
+const MUST=['polar','roar','bamboo','raptour','flyingfish','antiquecars','farmtractors'];
+const CALM_IDS=['huffpuff','swanboats','castle','pumpkincoach','loopylab','turtletwirl'];
+const CATS=[['imperdible','🔥 Imperdibles'],['agua','💦 Agua'],['clasico','🏰 Story Land clásico'],['descanso','😌 Descanso / flexibles']];
+
+/* ---------- Estado / localStorage ---------- */
+const KEY='storyland_state_v1';
+function loadState(){
+  let s;
+  try{s=JSON.parse(localStorage.getItem(KEY))}catch(e){s=null}
+  if(!s||typeof s!=='object')s={};
+  if(!s.status)s.status={};
+  if(!('polarReaction' in s))s.polarReaction=null;
+  if(!('calmMode' in s))s.calmMode=false;
+  if(!s.startTime)s.startTime=Date.now();
+  if(!s.tab)s.tab='ahora';
+  return s;
+}
+let state=loadState();
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function getStatus(id){return state.status[id]||'pending'}
+function setStatus(id,val){state.status[id]=val;save();renderAll()}
+
+/* ---------- Lógica de recomendación ---------- */
+function phase1Order(){
+  return state.polarReaction==='no' ? ['polar','raptour','bamboo','flyingfish'] : ['polar','roar','bamboo','raptour','flyingfish'];
+}
+function waterBoostActive(){
+  let hour=new Date().getHours();
+  let pendingMust=MUST.filter(id=>getStatus(id)==='pending'||getStatus(id)==='skipped').length;
+  return hour>=13 && pendingMust<=3;
+}
+function tierOf(id){
+  if(phase1Order().includes(id))return 0;
+  if(id==='antiquecars'||id==='farmtractors')return 1;
+  if(id==='drgeyser'||id==='splashbattle')return waterBoostActive()?1.5:2;
+  if(id==='roar'&&state.polarReaction==='no')return 2.4;
+  if(['pumpkincoach','castle','swanboats','carousel','balloonchase'].includes(id))return 2.6;
+  if(['loopylab','turtletwirl','crazybarn'].includes(id))return 3;
+  if(id==='huffpuff')return 3.2;
+  return 4;
+}
+function candidateList(){
+  return ALL.filter(a=>{let s=getStatus(a.id);return s!=='done'&&s!=='repeat'})
+    .map(a=>({...a,tier:getStatus(a.id)==='later'?9:tierOf(a.id)}))
+    .sort((a,b)=>a.tier-b.tier||a._i-b._i);
+}
+function getRecommendation(){
+  if(state.calmMode){
+    let calm=candidateList().filter(a=>CALM_IDS.includes(a.id));
+    if(calm.length)return calm[0];
+  }
+  let list=candidateList();
+  if(list.length)return list[0];
+  let repeats=ALL.filter(a=>getStatus(a.id)==='repeat');
+  if(repeats.length)return {...repeats[0],repeatFallback:true};
+  return null;
+}
+function whyNow(a){
+  if(a.id==='roar'){
+    if(state.polarReaction==='love')return '¡Le encantó Polar Coaster! Vamos directo a Roar-O-Saurus mientras dura el ánimo.';
+    if(state.polarReaction==='ok')return 'Estuvo bien en Polar Coaster. Roar-O-Saurus es un poco más intensa — pueden intentarlo.';
+  }
+  if(a.id==='raptour'&&state.polarReaction==='no')return 'Como no quiere otra montaña rusa por ahora, vamos a algo más tranquilo y con dinosaurios.';
+  return a.why;
+}
+function tipFor(a){
+  if(a.id==='polar')return '💡 Si le encanta, ir inmediatamente a Roar-O-Saurus.';
+  if(a.id==='roar'&&state.polarReaction==='ok')return '💡 Es normal parar aquí si después no quiere más coasters por un rato.';
+  if(a.id==='antiquecars'||a.id==='farmtractors')return '💡 Si le encanta, puede repetirla — toca ❤️ QUIERE REPETIR.';
+  if(a.id==='drgeyser'||a.id==='splashbattle')return '👕 Confirmen que traen muda de ropa antes de empezar.';
+  if(a.id==='huffpuff')return '💡 Ideal cuando estén cansados de caminar.';
+  return null;
+}
+function prioLabel(tier,repeatFallback){
+  if(repeatFallback)return {t:'🔁 REPETIR',c:'priorepeat'};
+  if(tier===0)return {t:'MUY ALTA',c:'priohigh'};
+  if(tier===1)return {t:'ALTA',c:'priohigh'};
+  if(tier===1.5)return {t:'ALTA (buen momento)',c:'priohigh'};
+  if(tier===2.4)return {t:'OPCIONAL PARA DESPUÉS',c:'priomed'};
+  if(tier===2||tier===2.6)return {t:'MEDIA',c:'priomed'};
+  return {t:'BAJA',c:'priolow'};
+}
+
+/* ---------- Acciones ---------- */
+function actDone(id){
+  setStatus(id,'done');
+}
+function actSkip(id){setStatus(id,'skipped')}
+function actRepeat(id){setStatus(id,'repeat')}
+function actLong(id){setStatus(id,'later')}
+function setPolarReaction(v){state.polarReaction=v;save();renderAll()}
+function toggleCalm(){state.calmMode=!state.calmMode;save();renderAll()}
+function resetDay(){
+  if(confirm('¿Borrar todo el progreso del día en Story Land? Esta acción no se puede deshacer.')){
+    localStorage.removeItem(KEY);
+    state=loadState();
+    renderAll();
+  }
+}
+
+/* ---------- Tabs ---------- */
+function setTab(t){
+  state.tab=t;save();
+  document.querySelectorAll('.tabpane').forEach(p=>p.classList.remove('on'));
+  document.getElementById('tab-'+t).classList.add('on');
+  ['ahora','checklist','favoritas','tips'].forEach(n=>document.getElementById('nav'+n[0].toUpperCase()+n.slice(1)).classList.toggle('on',n===t));
+  document.getElementById('fabNext').classList.toggle('show',t!=='ahora');
+  window.scrollTo(0,0);
+}
+function goAhora(){setTab('ahora')}
+
+/* ---------- Render: Ahora ---------- */
+function renderAhora(){
+  let el=document.getElementById('tab-ahora');
+  let html='';
+
+  // pregunta de reacción a Polar Coaster
+  if(getStatus('polar')==='done'&&state.polarReaction===null){
+    html+=`<div class="reactcard"><div style="font-size:2rem">🎢</div><h2>¿Cómo le fue en Polar Coaster?</h2><p>Esto nos ayuda a decidir el siguiente paso.</p><div class="reactopts">
+    <button onclick="setPolarReaction('love')">😍 Le encantó</button>
+    <button onclick="setPolarReaction('ok')">😐 Estuvo bien</button>
+    <button onclick="setPolarReaction('no')">😨 No quiere otra montaña rusa</button>
+    </div></div>`;
+    el.innerHTML=html+calmToggleHtml()+extraSectionsHtml();
+    return;
+  }
+
+  // banners contextuales
+  let mustHandled=MUST.filter(id=>getStatus(id)!=='pending').length;
+  let hour=new Date().getHours();
+  if(mustHandled>=3&&hour>=11&&hour<15){
+    html+=`<div class="banner lunch"><b>🍽️ Buen momento para una pausa</b>Recuerden: almuerzo, baño, agua y protector solar.<ul><li>Después de comer, Loopy Lab es una buena opción tranquila.</li></ul></div>`;
+  }
+  let waterPending=['drgeyser','splashbattle'].some(id=>{let s=getStatus(id);return s==='pending'||s==='skipped'||s==='later'});
+  if(waterBoostActive()&&waterPending){
+    html+=`<div class="banner water"><b>💦 Ahora conviene mojarse</b>Es buen momento para las atracciones de agua.<ul><li>👕 ¿Tenemos muda de ropa?</li></ul></div>`;
+  }
+  if(state.calmMode){
+    html+=`<div class="banner calmnotice"><span>😴 Modo tranquilo activado</span><button onclick="toggleCalm()" style="background:#5b3ea8;color:#fff;border:0;border-radius:10px;padding:8px 12px;font-weight:900">🔥 Volver al plan</button></div>`;
+  }
+
+  let rec=getRecommendation();
+  if(!rec){
+    html+=`<div class="donebig"><div class="emoji">🎉</div><h2>¡Completaron el plan de Story Land!</h2><p>Ya hicieron todo lo importante. Si quieren, repitan alguna favorita antes de irse.</p></div>`;
+  }else{
+    let prio=prioLabel(rec.tier,rec.repeatFallback);
+    let tags=rec.tags.map(t=>`<span class="tag ${t.includes('IMPERDIBLE')||t.includes('INTENSA')?'hot':t.includes('RECOMENDADA')?'star':''}">${t}</span>`).join('');
+    let tip=tipFor(rec);
+    html+=`<div class="nowcard">
+      <span class="kicker">⭐ AHORA</span>
+      <h2>${rec.name}</h2>
+      <div class="tagrow">${tags}</div>
+      <div class="whybox"><b>🎯 Por qué ahora:</b> ${whyNow(rec)}</div>
+      <div class="factrow">
+        <div class="fact">📏 Altura<b>✅ Puede subir</b></div>
+        <div class="fact">👨‍👦 Adulto<b>${rec.adult?'Requerido':'No requerido'}</b></div>
+        <div class="fact">🔥 Prioridad<b class="${prio.c}">${prio.t}</b></div>
+        <div class="fact">📂 Categoría<b>${catLabel(rec.cat)}</b></div>
+      </div>
+      ${tip?`<div class="tipline">${tip}</div>`:''}
+      <div class="actionsgrid">
+        <button class="actbtn done" onclick="actDone('${rec.id}')">✅ HECHO</button>
+        <button class="actbtn skip" onclick="actSkip('${rec.id}')">⏭️ SALTAR POR AHORA</button>
+        <button class="actbtn repeat" onclick="actRepeat('${rec.id}')">❤️ QUIERE REPETIR</button>
+        <button class="actbtn long" onclick="actLong('${rec.id}')">👥 FILA MUY LARGA</button>
+      </div>
+    </div>`;
+  }
+
+  html+=calmToggleHtml();
+  html+=extraSectionsHtml();
+  el.innerHTML=html;
+}
+function catLabel(c){return {imperdible:'🔥 Imperdible',agua:'💦 Agua',clasico:'🏰 Clásico',descanso:'😌 Descanso'}[c]||c}
+function calmToggleHtml(){
+  return `<button class="calmtoggle ${state.calmMode?'active':''}" onclick="toggleCalm()">${state.calmMode?'🔥 Volver al plan normal':'😴 Necesitamos algo tranquilo'}</button>`;
+}
+function extraSectionsHtml(){
+  let html='';
+  let repeats=ALL.filter(a=>getStatus(a.id)==='repeat');
+  if(repeats.length){
+    html+=`<div class="miniSectTitle">❤️ Repetir antes de irnos</div><div class="minilist">${repeats.map(a=>`<div class="miniitem"><span>${a.name}</span><span class="pill">❤️ favorita</span></div>`).join('')}</div>`;
+  }
+  let laters=ALL.filter(a=>getStatus(a.id)==='later');
+  let roarOpcional=BY_ID.roar&&state.polarReaction==='no'&&getStatus('roar')==='pending';
+  if(laters.length||roarOpcional){
+    html+=`<div class="miniSectTitle">🕐 Pendientes de volver / opcional</div><div class="minilist">`;
+    laters.forEach(a=>html+=`<div class="miniitem"><span>${a.name}<small>Fila muy larga — la volveremos a sugerir más tarde.</small></span><span class="pill">🕐</span></div>`);
+    if(roarOpcional)html+=`<div class="miniitem"><span>Roar-O-Saurus<small>Opcional para después — no insistimos por ahora.</small></span><span class="pill">Opcional</span></div>`;
+    html+='</div>';
+  }
+  return html;
+}
+
+/* ---------- Render: Checklist ---------- */
+function cycleStatus(id,val){
+  setStatus(id,getStatus(id)===val?'pending':val);
+}
+function renderChecklist(){
+  let el=document.getElementById('tab-checklist');
+  let html='<div class="miniSectTitle">☑️ Checklist por categoría</div>';
+  CATS.forEach(([cat,label])=>{
+    let items=ALL.filter(a=>a.cat===cat);
+    html+=`<div class="catblock"><h3>${label}</h3>`;
+    items.forEach(a=>{
+      let s=getStatus(a.id);
+      let stLabel={pending:'⬜ Pendiente',done:'✅ Hecho',skipped:'⏭️ Saltado',later:'🕐 Volver después',repeat:'❤️ Repetir'}[s];
+      html+=`<div class="item"><div class="top2"><h4>${a.name}</h4><span class="statusChip st-${s}">${stLabel}</span></div>
+      <div class="tagrow">${a.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      <div class="itembtns">
+        <button class="${s==='done'?'active':''}" title="Hecho" onclick="cycleStatus('${a.id}','done')">✅</button>
+        <button class="${s==='skipped'?'active':''}" title="Saltar" onclick="cycleStatus('${a.id}','skipped')">⏭️</button>
+        <button class="${s==='later'?'active':''}" title="Fila muy larga / volver después" onclick="cycleStatus('${a.id}','later')">🕐</button>
+        <button class="${s==='repeat'?'active':''}" title="Quiere repetir" onclick="cycleStatus('${a.id}','repeat')">❤️</button>
+      </div></div>`;
+    });
+    html+='</div>';
+  });
+  el.innerHTML=html;
+}
+
+/* ---------- Render: Favoritas ---------- */
+function renderFavoritas(){
+  let el=document.getElementById('tab-favoritas');
+  let repeats=ALL.filter(a=>getStatus(a.id)==='repeat');
+  if(!repeats.length){
+    el.innerHTML=`<div class="favempty"><span class="emoji">❤️</span>Aún no han marcado ninguna atracción para repetir.<br>Cuando algo le encante, toca <b>❤️ QUIERE REPETIR</b>.</div>`;
+    return;
+  }
+  el.innerHTML=`<div class="miniSectTitle">❤️ Quiere repetir</div><div class="minilist">${repeats.map(a=>`<div class="miniitem"><span>${a.name}<small>${catLabel(a.cat)}</small></span><span class="pill">❤️</span></div>`).join('')}</div>`;
+}
+
+/* ---------- Render: Tips ---------- */
+function renderTips(){
+  let el=document.getElementById('tab-tips');
+  const tips=[
+    ['👦','Altura: 115 cm / 45.3".'],
+    ['🎢','Puede hacer Roar-O-Saurus.'],
+    ['👨‍👦','Algunas atracciones requieren adulto por estar debajo de 48".'],
+    ['👕','Guardar una muda para las atracciones de agua.'],
+    ['🚂','No usar el tren durante la primera hora salvo necesidad.'],
+    ['📸','Cinderella / Castle son buenos para fotos familiares.'],
+    ['❤️','Marcar las atracciones que quiera repetir.'],
+    ['👥','Si una fila parece demasiado larga, usar "Volver después".'],
+  ];
+  el.innerHTML=`<div class="miniSectTitle">ℹ️ Tips rápidos</div><div class="tipsList">${tips.map(t=>`<div class="tipitem"><span class="ic">${t[0]}</span><span>${t[1]}</span></div>`).join('')}</div><button class="resetbtn" onclick="resetDay()">🔄 Resetear día</button>`;
+}
+
+/* ---------- Progreso ---------- */
+function renderProgress(){
+  let doneTotal=ALL.filter(a=>{let s=getStatus(a.id);return s==='done'||s==='repeat'}).length;
+  let pct=Math.round(doneTotal/ALL.length*100);
+  document.getElementById('progTxt').textContent=`${doneTotal} de ${ALL.length} realizadas · ${pct}%`;
+  document.getElementById('progBar').style.width=pct+'%';
+  let mustDone=MUST.filter(id=>{let s=getStatus(id);return s==='done'||s==='repeat'}).length;
+  document.getElementById('mustTxt').textContent=`🔥 Imperdibles: ${mustDone}/${MUST.length}`;
+}
+
+/* ---------- Render total ---------- */
+function renderAll(){
+  renderProgress();
+  renderAhora();
+  renderChecklist();
+  renderFavoritas();
+  renderTips();
+}
+
+setTab(state.tab||'ahora');
+renderAll();
+</script>
+</body></html>
