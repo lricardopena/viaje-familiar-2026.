@@ -143,32 +143,35 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
      agrupaciones razonables por tema para planear la ruta, no coordenadas
      verificadas — no hacía falta GPS, solo evitar caminatas tontas.
    - mapNumber: número visible en el Park Map oficial. No pudimos abrir el
-     Park Map oficial (bloqueado para fetch automático) para confirmar la
-     numeración actual de 2026, así que TODOS quedan en null a propósito.
-     Nunca se inventa un número — si algún día se verifica uno a mano
+     Park Map oficial nosotros mismos (fetch automático bloqueado en este
+     entorno), pero el usuario proporcionó la numeración 2026 ya extraída
+     del mapa oficial (fuente: el propio usuario, no una búsqueda nuestra)
+     y la usamos tal cual para las atracciones que cubre. Las que NO están
+     en esa tabla (Crazy Barn, Turtle Twirl) se quedan en null a propósito
+     — nunca se inventa un número; si algún día se verifica uno a mano
      mirando el mapa impreso, se puede rellenar aquí y la UI lo mostrará.
    - nearbyAttractions: otras atracciones de la misma zona lógica, usadas
      para el bonus de proximidad y para el aviso "hay otra cerca".
 */
 const PARK_MAP_URL='https://www.storylandnh.com/discover-the-park/park-map/';
 const ALL=[
-{id:'polar',name:'Polar Coaster',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:null,nearbyAttractions:['roar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','👨‍👦 CON ADULTO'],why:'Es la montaña rusa principal del parque: conviene hacerla temprano, antes de que se formen filas, y sirve para probar cómo tolera una montaña rusa antes de Roar-O-Saurus.'},
-{id:'roar',name:'Roar-O-Saurus',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:null,nearbyAttractions:['polar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','🦕 DINOSAURIOS','👨‍👦 CON ADULTO'],why:'La montaña rusa temática de dinosaurios: la gran favorita del día.'},
-{id:'bamboo',name:'Bamboo Chutes',cat:'imperdible',adult:true,zone:'💦 Zona Bambú',mapNumber:null,nearbyAttractions:['drgeyser'],tags:['🔥 IMPERDIBLE','💦 TE MOJAS UN POCO','🛟 SUAVE'],why:'Tobogán acuático suave: buen contraste de ritmo después de una montaña rusa.'},
-{id:'raptour',name:'Rap-Tour Safari',cat:'imperdible',adult:false,zone:'🦖 Zona Dinosaurios',mapNumber:null,nearbyAttractions:['polar','roar'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🦕 DINOSAURIOS','🎮 INTERACTIVA'],why:'Safari temático de dinosaurios: participativo y no muy intenso.'},
-{id:'flyingfish',name:'Flying Fish',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:null,nearbyAttractions:['farmtractors','crazybarn'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🐟 SUAVE'],why:'Atracción suave, buena para subir la confianza entre atracciones más intensas.'},
-{id:'antiquecars',name:'Antique Cars',cat:'imperdible',adult:false,zone:'🚗 Zona Autos Antiguos',mapNumber:null,nearbyAttractions:[],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚗 VEHÍCULOS','😌 TRANQUILA'],why:'Autos a su ritmo: encaja perfecto con lo que más le gusta.'},
-{id:'farmtractors',name:'Farm Tractors',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:null,nearbyAttractions:['crazybarn','flyingfish'],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚜 VEHÍCULOS','😌 TRANQUILA'],why:'Tractores que maneja él mismo: alta probabilidad de que quiera repetir.'},
-{id:'drgeyser',name:"Dr. Geyser's Remarkable Raft Ride",cat:'agua',adult:true,zone:'💦 Zona Acuática',mapNumber:null,nearbyAttractions:['splashbattle','moolagoon'],tags:['💦 TE MOJAS','☀️ MEJOR CON CALOR','👨‍👦 CON ADULTO'],why:'Con el calor de ahora es buen momento para mojarse.'},
-{id:'splashbattle',name:'Splash Battle',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:null,nearbyAttractions:['drgeyser','moolagoon'],tags:['💦 TE MOJAS','🎮 INTERACTIVA','👨‍👩‍👦 FAMILIAR'],why:'Batalla de agua interactiva: ideal para la parte más calurosa del día.'},
-{id:'moolagoon',name:'Moo Lagoon',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:null,nearbyAttractions:['drgeyser','splashbattle'],tags:['💦 OPCIONAL · PUEDE TOMAR BASTANTE TIEMPO','👨‍👩‍👦 FAMILIAR'],why:'Área de juegos de agua tipo splashpad: divertida pero puede llevarse mucho tiempo — no debe robarle turno a los imperdibles.'},
-{id:'pumpkincoach',name:"Cinderella's Pumpkin Coach",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:null,nearbyAttractions:['castle','swanboats','carousel','balloonchase'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Parada tranquila y bonita para fotos familiares.'},
-{id:'castle',name:"Cinderella's Castle",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:null,nearbyAttractions:['pumpkincoach','swanboats'],tags:['📸 FOTO FAMILIAR','🏰 CLÁSICO'],why:'El castillo de Cenicienta: imprescindible para la foto familiar.'},
-{id:'swanboats',name:'Swan Boats',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:null,nearbyAttractions:['castle','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Paseo lento en botes: buen respiro entre atracciones.'},
-{id:'carousel',name:'Antique German Carousel',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:null,nearbyAttractions:['swanboats','balloonchase'],tags:['📸 FOTO FAMILIAR','🎠 CLÁSICO'],why:'Carrusel clásico, siempre un acierto.'},
-{id:'balloonchase',name:'Great Balloon Chase',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:null,nearbyAttractions:['carousel','pumpkincoach'],tags:['📸 FOTO FAMILIAR','🎈 SUAVE'],why:'Vueltas suaves en globo: buena para bajar el ritmo.'},
-{id:'huffpuff',name:'Huff Puff & Whistle Railroad',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:null,nearbyAttractions:[],tags:['😌 DESCANSO','👨‍👩‍👦 FAMILIAR','🚂 VEHÍCULOS'],why:'Tren panorámico para descansar los pies caminando. Ideal cuando estén cansados de caminar — no gastar la primera hora del parque aquí.'},
-{id:'loopylab',name:'Loopy Lab',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:null,nearbyAttractions:['turtletwirl'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Laboratorio interactivo: ideal para después de comer.'},
+{id:'polar',name:'Polar Coaster',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:32,nearbyAttractions:['roar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','👨‍👦 CON ADULTO'],why:'Es la montaña rusa principal del parque: conviene hacerla temprano, antes de que se formen filas, y sirve para probar cómo tolera una montaña rusa antes de Roar-O-Saurus.'},
+{id:'roar',name:'Roar-O-Saurus',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:34,nearbyAttractions:['polar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','🦕 DINOSAURIOS','👨‍👦 CON ADULTO'],why:'La montaña rusa temática de dinosaurios: la gran favorita del día.'},
+{id:'bamboo',name:'Bamboo Chutes',cat:'imperdible',adult:true,zone:'💦 Zona Bambú',mapNumber:4,nearbyAttractions:['drgeyser'],tags:['🔥 IMPERDIBLE','💦 TE MOJAS UN POCO','🛟 SUAVE'],why:'Tobogán acuático suave: buen contraste de ritmo después de una montaña rusa.'},
+{id:'raptour',name:'Rap-Tour Safari',cat:'imperdible',adult:false,zone:'🦖 Zona Dinosaurios',mapNumber:33,nearbyAttractions:['polar','roar'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🦕 DINOSAURIOS','🎮 INTERACTIVA'],why:'Safari temático de dinosaurios: participativo y no muy intenso.'},
+{id:'flyingfish',name:'Flying Fish',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:18,nearbyAttractions:['farmtractors','crazybarn'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🐟 SUAVE'],why:'Atracción suave, buena para subir la confianza entre atracciones más intensas.'},
+{id:'antiquecars',name:'Antique Cars',cat:'imperdible',adult:false,zone:'🚗 Zona Autos Antiguos',mapNumber:2,nearbyAttractions:[],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚗 VEHÍCULOS','😌 TRANQUILA'],why:'Autos a su ritmo: encaja perfecto con lo que más le gusta.'},
+{id:'farmtractors',name:'Farm Tractors',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:16,nearbyAttractions:['crazybarn','flyingfish'],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚜 VEHÍCULOS','😌 TRANQUILA'],why:'Tractores que maneja él mismo: alta probabilidad de que quiera repetir.'},
+{id:'drgeyser',name:"Dr. Geyser's Remarkable Raft Ride",cat:'agua',adult:true,zone:'💦 Zona Acuática',mapNumber:13,nearbyAttractions:['splashbattle','moolagoon'],tags:['💦 TE MOJAS','☀️ MEJOR CON CALOR','👨‍👦 CON ADULTO'],why:'Con el calor de ahora es buen momento para mojarse.'},
+{id:'splashbattle',name:'Splash Battle',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:37,nearbyAttractions:['drgeyser','moolagoon'],tags:['💦 TE MOJAS','🎮 INTERACTIVA','👨‍👩‍👦 FAMILIAR'],why:'Batalla de agua interactiva: ideal para la parte más calurosa del día.'},
+{id:'moolagoon',name:'Moo Lagoon',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:31,nearbyAttractions:['drgeyser','splashbattle'],tags:['💦 OPCIONAL · PUEDE TOMAR BASTANTE TIEMPO','👨‍👩‍👦 FAMILIAR'],why:'Área de juegos de agua tipo splashpad: divertida pero puede llevarse mucho tiempo — no debe robarle turno a los imperdibles.'},
+{id:'pumpkincoach',name:"Cinderella's Pumpkin Coach",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:9,nearbyAttractions:['castle','swanboats','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Parada tranquila y bonita para fotos familiares.'},
+{id:'castle',name:"Cinderella's Castle",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:8,nearbyAttractions:['pumpkincoach','swanboats'],tags:['📸 FOTO FAMILIAR','🏰 CLÁSICO'],why:'El castillo de Cenicienta: imprescindible para la foto familiar.'},
+{id:'swanboats',name:'Swan Boats',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:39,nearbyAttractions:['castle','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Paseo lento en botes: buen respiro entre atracciones.'},
+{id:'carousel',name:'Antique German Carousel',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:3,nearbyAttractions:['swanboats','pumpkincoach'],tags:['📸 FOTO FAMILIAR','🎠 CLÁSICO'],why:'Carrusel clásico, siempre un acierto.'},
+{id:'balloonchase',name:'Great Balloon Chase',cat:'clasico',adult:false,zone:'🌳 Zona Central',mapNumber:22,nearbyAttractions:['huffpuff','loopylab'],tags:['📸 FOTO FAMILIAR','🎈 SUAVE'],why:'Vueltas suaves en globo: buena para bajar el ritmo.'},
+{id:'huffpuff',name:'Huff Puff & Whistle Railroad',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:24,nearbyAttractions:['loopylab','balloonchase'],tags:['😌 DESCANSO','👨‍👩‍👦 FAMILIAR','🚂 VEHÍCULOS'],why:'Tren panorámico para descansar los pies caminando. Ideal cuando estén cansados de caminar — no gastar la primera hora del parque aquí.'},
+{id:'loopylab',name:'Loopy Lab',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:27,nearbyAttractions:['turtletwirl','huffpuff','balloonchase'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Laboratorio interactivo: ideal para después de comer.'},
 {id:'turtletwirl',name:'Turtle Twirl',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:null,nearbyAttractions:['loopylab'],tags:['🎠 SUAVE','😌 TRANQUILA'],why:'Vueltas suaves, tranquila.'},
 {id:'crazybarn',name:'Crazy Barn',cat:'descanso',adult:false,zone:'🚜 Zona Granja',mapNumber:null,nearbyAttractions:['farmtractors','flyingfish'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Granero interactivo con sorpresas: le gustará explorar. Opcional — solo si sigue teniendo sentido geográfico y está abierta.'},
 ];
@@ -466,7 +469,7 @@ function renderAhora(){
         <button class="actbtn skip" onclick="actSkip('${rec.id}')">⏭️ SALTAR POR AHORA</button>
         <button class="actbtn repeat" onclick="actRepeat('${rec.id}')">❤️ QUIERE REPETIR</button>
         <button class="actbtn long" onclick="actLong('${rec.id}')">👥 FILA MUY LARGA</button>
-        <button class="actbtn map" onclick="openParkMap()">🗺️ VER PARK MAP</button>
+        <button class="actbtn map" onclick="openParkMap()">🗺️ VER PARK MAP OFICIAL</button>
       </div>
     </div>`;
   }
