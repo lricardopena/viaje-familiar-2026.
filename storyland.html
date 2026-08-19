@@ -78,6 +78,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .reasonchip{background:#f4f0ff;color:#5b3ea8;border:1px solid #d8caf5;border-radius:999px;padding:4px 10px;font-size:.72rem;font-weight:800}
 .banner.zonehint{background:#fff3dc;border:1px solid #f0d38a;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
 .banner.zonehint button{min-height:38px;border:0;border-radius:11px;background:#a4530a;color:#fff;font-weight:900;padding:6px 12px;font-size:.76rem;white-space:nowrap}
+.banner.zoneclose{background:#eef7f0;border:1px solid #bfe6cc}
+
+.miniSectTitle.alts{margin-top:22px}
+.altgrid{display:grid;gap:9px}
+.altcard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:11px 12px}
+.altname{font-weight:900;font-size:.9rem}
+.altmeta{font-size:.72rem;color:var(--muted);margin-top:2px}
+.altcard .reasonrow{margin:7px 0 0}
+.altbtns{display:flex;gap:8px;margin-top:8px}
+.altbtns button{flex:1;min-height:40px;border-radius:11px;border:1px solid var(--line);background:#f8f9f7;font-weight:800;font-size:.85rem}
 
 .catblock{margin-bottom:18px}
 .catblock h3{font-size:.95rem;margin:0 0 9px;display:flex;align-items:center;gap:6px}
@@ -282,35 +292,56 @@ function getStatus(id){return state.status[id]||'pending'}
 function setStatus(id,val){state.status[id]=val;save();renderAll()}
 
 /* ---------- Lógica de recomendación ----------
-   score = priorityScore + sameZoneBonus + proximityBonus + childAffinityBonus
-           + timeOfDayBonus + favoriteBonus - deferredPenalty - fatiguePenalty
-   La prioridad manda: cada nivel de "tier" vale TIER_W puntos, y la suma de
-   todos los bonus de contexto (zona/proximidad/niño/hora) nunca alcanza un
-   nivel completo. Así, un imperdible razonablemente cerca sigue ganando a
-   una atracción secundaria que está pegada a nosotros — la ubicación solo
-   desempata entre cosas de prioridad parecida y evita cruzar el parque sin
-   necesidad. Una fila muy larga sí resta bastante (deferredPenalty), pero
-   no tanto como para desaparecer si de verdad no queda nada mejor. */
+   NO es un itinerario: no hay una secuencia fija de atracciones guardada en
+   ningún sitio. Cada vez que se pide "¿Qué sigue?" se recalcula un score
+   para TODAS las atracciones todavía no completadas (incluidas las
+   marcadas "repeat"), y gana la de mayor score. Cualquier interacción
+   (hecho / saltar / fila larga / repetir / reacción a Polar / modo
+   tranquilo) cambia el contexto y por tanto puede cambiar quién gana la
+   próxima vez — ver renderAll() / setStatus(), que recalculan siempre.
+
+   score = priorityScore(tier) + sameZoneBonus + proximityBonus
+           + childAffinityBonus + timeOfDayBonus(agua) + earlyDinoBonus
+           + reactionBonus + restBonus - deferredPenalty - skipPenalty
+
+   La prioridad (tier) manda: cada nivel vale TIER_W puntos, y la suma de
+   los bonus de contexto normalmente no alcanza un nivel completo — así un
+   imperdible pendiente razonablemente cerca sigue ganando a una atracción
+   secundaria que está pegada a nosotros. La ubicación/contexto desempata
+   entre cosas de prioridad parecida y evita cruzar el parque sin
+   necesidad, pero no puede "inventar" prioridad donde no la hay.
+
+   Pesos ajustables aquí abajo — están comentados para que cambiarlos más
+   adelante (o durante el día, si algo no se siente bien) sea fácil. */
 const TIER_W=100;          // peso de cada nivel de prioridad (factor dominante)
 const SAME_ZONE_BONUS=35;  // seguimos en la misma zona que la última atracción
 const PROXIMITY_BONUS=15;  // está en la lista "nearbyAttractions" de lo último hecho
 const CHILD_BONUS=12;      // atracción marcada como favorita probable del niño
 const WATER_BONUS=20;      // agua + hace calor (bonus, no regla obligatoria)
 const WATER_BONUS_MOOLAGOON=10; // Moo Lagoon recibe la mitad: es opcional, no debe adelantarse
-const DEFERRED_PENALTY=90; // "fila muy larga": penalización temporal (cooldown)
-const SKIP_PENALTY=70;     // "saltar por ahora": penalización temporal, algo más leve que la fila larga
-const SKIP_COOLDOWN_STEPS=3; // nº de recomendaciones/acciones antes de que vuelva a ser candidata top
+const EARLY_DINO_BONUS=20; // bloque de dinosaurios tiene más peso en las primeras horas (item 4/3)
+const POLAR_FIRST_BONUS=20;// mientras no sepamos la reacción a Polar, probarlo primero tiene sentido
+                            // (es el que da la señal que reordena todo lo demás) — deja de aplicar
+                            // en cuanto se responde la pregunta de reacción, no es una secuencia fija
+const REACTION_LOVE_BOOST=45; // "le encantó Polar" empuja fuerte a Roar mientras dure el ánimo
+const AFTER_LUNCH_BONUS=18;   // boost temporal para descanso/tranquilas después del mediodía
+// Los cooldowns deben superar el mayor stack de bonus plausible (~115, ver
+// arriba) para garantizar que, justo después de saltar/diferir algo, otra
+// cosa gane la recomendación en vez de repetir lo mismo.
+const DEFERRED_PENALTY=130; // "fila muy larga": penalización temporal (cooldown)
+const SKIP_PENALTY=120;     // "saltar por ahora": penalización temporal (cooldown más corto)
+const SKIP_COOLDOWN_STEPS=3; // nº de acciones antes de que vuelva a competir con normalidad
 
-function phase1Order(){
-  return state.polarReaction==='no' ? ['polar','raptour','bamboo','flyingfish'] : ['polar','roar','bamboo','raptour','flyingfish'];
-}
-function waterBoostActive(){
-  let hour=new Date().getHours();
-  let pendingMust=MUST.filter(id=>getStatus(id)==='pending'||getStatus(id)==='skipped').length;
-  return hour>=13 && pendingMust<=3;
-}
+/* baseTier(id): prioridad "de catálogo" de una atracción, sin secuencia
+   fija — no hay ningún array que imponga un orden dentro de un mismo tier;
+   el orden dentro de un tier lo decide el score completo (zona, proximidad,
+   afinidad, hora, etc. — ver computeScore). La única dependencia de
+   contexto aquí es la reacción a Polar, que baja temporalmente a Roar (item
+   4 / escenario D) sin hacerlo desaparecer: sigue siendo candidata, solo
+   compite en un nivel más bajo hasta que gane por descarte o cambie el
+   contexto. */
 function baseTier(id){
-  if(phase1Order().includes(id))return 0;
+  if(['polar','roar','bamboo','raptour','flyingfish'].includes(id))return 0;
   if(id==='antiquecars'||id==='farmtractors')return 1;
   if(id==='drgeyser'||id==='splashbattle')return waterBoostActive()?1.5:2;
   if(id==='roar'&&state.polarReaction==='no')return 2.4;
@@ -319,6 +350,38 @@ function baseTier(id){
   if(['loopylab','turtletwirl','crazybarn'].includes(id))return 3;
   if(id==='huffpuff')return 3.2;
   return 4;
+}
+function waterBoostActive(){
+  let hour=new Date().getHours();
+  let pendingMust=MUST.filter(id=>getStatus(id)==='pending'||getStatus(id)==='skipped').length;
+  return hour>=13 && pendingMust<=3;
+}
+/* Cuántas atracciones ya se consideran "hechas" (done o repeat) — se usa
+   para saber si todavía estamos en las primeras horas del día (item 4). */
+function doneTotalCount(){return ALL.filter(a=>['done','repeat'].includes(getStatus(a.id))).length}
+/* item 14: después de que ya se resolvieron varios imperdibles y pasado el
+   mediodía, las opciones de descanso/tranquilas reciben un empujón
+   temporal — sin convertir el almuerzo en una hora fija. */
+function afterLunchWindowActive(){
+  let mustHandled=MUST.filter(id=>getStatus(id)!=='pending').length;
+  let hour=new Date().getHours();
+  return mustHandled>=3 && hour>=12;
+}
+/* item 9: los favoritos para repetir tienen prioridad baja mientras haya
+   mucho pendiente, pero ganan relevancia en la última parte del día. */
+function isLateDayForFavorites(){
+  let hour=new Date().getHours();
+  let mustDone=MUST.filter(id=>['done','repeat'].includes(getStatus(id))).length;
+  return hour>=15 || mustDone>=MUST.length-1;
+}
+/* Tier "efectivo" usado por el motor de recomendación: igual a baseTier()
+   salvo para las atracciones marcadas "repeat", que quedan en un nivel bajo
+   (para no forzar la repetición) pero pueden subir mucho al final del día
+   o si estamos justo en su zona (via sameZoneBonus/proximityBonus, que se
+   aplican igual sobre cualquier tier). */
+function effectiveTier(a){
+  if(getStatus(a.id)==='repeat')return isLateDayForFavorites()?1.4:3.4;
+  return baseTier(a.id);
 }
 /* ----- cooldown para "fila muy larga" (item 8) -----
    No calculamos minutos: contamos acciones. Mientras no hayan pasado al
@@ -358,58 +421,94 @@ function timeOfDayBonus(a){
   if(!waterBoostActive()||!WATER_IDS.includes(a.id))return 0;
   return a.id==='moolagoon'?WATER_BONUS_MOOLAGOON:WATER_BONUS;
 }
-function phase1SeqBonus(id){
-  // Dentro del bloque inicial (Polar→Roar/Raptour→Bamboo→Flying Fish) hay un
-  // orden narrativo explícito ligado a la reacción del niño en Polar Coaster
-  // (ver whyNow). Se sube como parte de priorityScore, con más peso que
-  // childAffinityBonus, para que esa secuencia no se desordene solo porque
-  // una de las opciones "le gusta más" — la reacción a Polar manda aquí.
-  let order=phase1Order(),idx=order.indexOf(id);
-  return idx<0?0:(order.length-idx)*20;
+/* item 3/4: el bloque de dinosaurios pesa más en las primeras horas, y
+   Polar específicamente mientras no sepamos su reacción (es el que decide
+   cómo seguir) — ninguno de los dos es una secuencia impuesta, son bonus de
+   contexto que compiten con todo lo demás como cualquier otro. */
+function earlyDinoBonus(a){
+  if(!DINO_IDS.includes(a.id))return 0;
+  let bonus=doneTotalCount()<3?EARLY_DINO_BONUS:0;
+  if(a.id==='polar'&&state.polarReaction===null)bonus+=POLAR_FIRST_BONUS;
+  return bonus;
+}
+function reactionBonus(a){
+  if(a.id==='roar'&&state.polarReaction==='love')return REACTION_LOVE_BOOST;
+  return 0;
+}
+function restBonus(a){
+  if(!afterLunchWindowActive())return 0;
+  return (a.cat==='descanso'||CALM_IDS.includes(a.id))?AFTER_LUNCH_BONUS:0;
 }
 function computeScore(a){
-  let tier=baseTier(a.id);
-  let priorityScore=(5-tier)*TIER_W+phase1SeqBonus(a.id);
+  let tier=effectiveTier(a);
+  let priorityScore=(5-tier)*TIER_W;
   let deferredPenalty=isOnCooldown(a.id)?DEFERRED_PENALTY:0;
   let skipPenalty=isOnSkipCooldown(a.id)?SKIP_PENALTY:0;
-  let favoriteBonus=0; // los ya marcados "repeat" no entran en este pool (van a la lista de repetir aparte)
-  return priorityScore+sameZoneBonus(a)+proximityBonus(a)+childBonus(a)+timeOfDayBonus(a)+favoriteBonus-deferredPenalty-skipPenalty;
+  return priorityScore+sameZoneBonus(a)+proximityBonus(a)+childBonus(a)+timeOfDayBonus(a)
+    +earlyDinoBonus(a)+reactionBonus(a)+restBonus(a)-deferredPenalty-skipPenalty;
 }
+/* candidateList(): TODO lo que no esté "done" — incluye "repeat", para que
+   los favoritos puedan volver a competir más adelante (item 9) en vez de
+   desaparecer del todo. Se recalcula por completo en cada llamada: no hay
+   itinerario guardado, solo el estado actual de cada atracción. */
 function candidateList(){
-  return ALL.filter(a=>{let s=getStatus(a.id);return s!=='done'&&s!=='repeat'})
-    .map(a=>({...a,tier:baseTier(a.id),score:computeScore(a),deferred:isOnCooldown(a.id),skipCooldown:isOnSkipCooldown(a.id)}))
+  return ALL.filter(a=>getStatus(a.id)!=='done')
+    .map(a=>({...a,tier:effectiveTier(a),score:computeScore(a),deferred:isOnCooldown(a.id),skipCooldown:isOnSkipCooldown(a.id)}))
     .sort((a,b)=>b.score-a.score||a._i-b._i);
 }
-function getRecommendation(){
-  if(state.calmMode){
-    let calm=candidateList().filter(a=>CALM_IDS.includes(a.id));
-    if(calm.length)return calm[0];
-  }
+/* candidatePool(): candidateList() ya filtrado por modo tranquilo si está
+   activo. Único punto que usan tanto getRecommendation() como
+   getAlternatives(), para que la recomendación principal y las alternativas
+   salgan siempre del mismo conjunto/orden. */
+function candidatePool(){
   let list=candidateList();
-  if(list.length)return list[0];
-  let repeats=ALL.filter(a=>getStatus(a.id)==='repeat');
-  if(repeats.length)return {...repeats[0],repeatFallback:true};
-  return null;
+  if(state.calmMode){
+    let calm=list.filter(a=>CALM_IDS.includes(a.id));
+    if(calm.length)return calm;
+  }
+  return list;
+}
+function getRecommendation(){
+  let list=candidatePool();
+  return list.length?list[0]:null;
+}
+/* item 10: como máximo dos alternativas, calculadas con el mismo motor de
+   scoring — nunca una lista larga. */
+function getAlternatives(rec){
+  if(!rec)return [];
+  return candidatePool().filter(a=>a.id!==rec.id).slice(0,2);
 }
 function whyNow(a){
+  let status=getStatus(a.id);
+  if(status==='repeat'){
+    return state.currentZone&&state.currentZone===a.zone
+      ? 'La habían marcado para repetir y están justo en esta zona — buen momento antes de seguir.'
+      : 'La habían marcado para repetir y ya casi terminan el plan — vale la pena volver antes de irse.';
+  }
   if(a.id==='roar'){
-    if(state.polarReaction==='love')return '¡Le encantó Polar Coaster! Vamos directo a Roar-O-Saurus mientras dura el ánimo.';
-    if(state.polarReaction==='ok')return 'Estuvo bien en Polar Coaster. Roar-O-Saurus es un poco más intensa — pueden intentarlo.';
+    if(state.polarReaction==='love')return '¡Le encantó Polar Coaster! Aprovechamos el ánimo con Roar-O-Saurus.';
+    if(state.polarReaction==='ok')return 'Estuvo bien en Polar Coaster. Roar-O-Saurus es un poco más intensa — pueden intentarlo cuando quieran.';
+    if(state.polarReaction==='no')return 'No quería otra montaña rusa hace un rato, pero ya no queda mucho mejor por aquí — pueden intentarlo si cambió de idea.';
   }
   if(a.id==='raptour'&&state.polarReaction==='no')return 'Como no quiere otra montaña rusa por ahora, vamos a algo más tranquilo y con dinosaurios.';
+  if(status==='later')return `Ya pasó un rato desde que la fila estaba muy larga — vale la pena volver a intentarlo. ${a.why}`;
   return a.why;
 }
 /* Razones cortas (máx. 2) que explican por qué se sugiere esto ahora mismo,
-   sin convertir la tarjeta en un párrafo largo (item 15). */
+   sin convertir la tarjeta en un párrafo largo ni mostrar puntajes (item
+   11). El orden de los "if" es la prioridad editorial: lo más específico al
+   contexto actual va primero, así slice(0,2) muestra lo más relevante. */
 function reasonsFor(a){
-  let r=[];
-  if(a.repeatFallback)r.push('❤️ La pidió repetir.');
-  if(a.tier<=1&&getStatus(a.id)==='pending')r.push('🔥 Sigue siendo un imperdible pendiente.');
+  let r=[],status=getStatus(a.id);
+  if(status==='repeat')r.push('❤️ La quería repetir.');
+  if(status==='later'&&!isOnCooldown(a.id))r.push('🕐 La fila larga anterior ya puede revisarse.');
+  if(a.tier<=1&&status==='pending')r.push('🔥 Sigue siendo un imperdible pendiente.');
   if(sameZoneBonus(a))r.push('📍 Ya estás en esta zona.');
   else if(proximityBonus(a))r.push('📍 Está cerca de lo que acabamos de hacer.');
   if(DINO_IDS.includes(a.id)&&DINO_IDS.some(id=>id!==a.id&&BY_ID[id].zone===a.zone&&['pending','later'].includes(getStatus(id))))r.push('🦖 Hay otra actividad de dinosaurios aquí mismo.');
   if(timeOfDayBonus(a))r.push('☀️ Buen momento para las atracciones de agua.');
-  if(childBonus(a))r.push('⭐ Tiene alta probabilidad de gustarle.');
+  if(childBonus(a)&&status==='pending')r.push('⭐ Tiene alta probabilidad de gustarle.');
+  if(restBonus(a))r.push('😌 Buena opción para descansar.');
   return r.slice(0,2);
 }
 function tipFor(a){
@@ -421,10 +520,14 @@ function tipFor(a){
   if(a.id==='huffpuff')return '💡 Ideal cuando estén cansados de caminar.';
   return null;
 }
-function prioLabel(tier,repeatFallback,deferred,skipCooldown){
-  if(repeatFallback)return {t:'🔁 REPETIR',c:'priorepeat'};
-  if(deferred)return {t:'🕐 EN ESPERA (fila larga)',c:'priomed'};
-  if(skipCooldown)return {t:'⏭️ SALTADA HACE POCO (no queda otra mejor)',c:'priomed'};
+/* prioLabel(a): recibe un candidato (id + tier + deferred/skipCooldown
+   opcionales, como los que produce candidateList()). El estado "repeat" se
+   revisa primero porque manda sobre el tier numérico. */
+function prioLabel(a){
+  if(getStatus(a.id)==='repeat')return {t:'🔁 REPETIR (favorita)',c:'priorepeat'};
+  if(a.deferred)return {t:'🕐 EN ESPERA (fila larga)',c:'priomed'};
+  if(a.skipCooldown)return {t:'⏭️ SALTADA HACE POCO',c:'priomed'};
+  let tier=a.tier;
   if(tier===0)return {t:'MUY ALTA',c:'priohigh'};
   if(tier===1)return {t:'ALTA',c:'priohigh'};
   if(tier===1.5)return {t:'ALTA (buen momento)',c:'priohigh'};
@@ -535,10 +638,18 @@ function renderAhora(){
       html+=`<div class="banner zonehint"><span>🦖 ${stuck.name} sigue pendiente en esta zona. ¿Revisamos la fila antes de movernos?</span><button onclick="recheckLine('${stuck.id}')">🔁 Revisar fila</button></div>`;
     }
   }
+  // "Cierre de zona" (item 8): si la recomendación nos manda a otra zona,
+  // avisar (sin bloquear) si queda algo importante aquí — imperdible
+  // pendiente, favorita del niño, o favorita para repetir. Las "later" ya
+  // las cubre el banner de arriba, así que no se duplican aquí.
+  let zoneClose=zoneCloseCandidate(rec);
+  if(zoneClose){
+    html+=`<div class="banner zoneclose"><b>📍 Antes de movernos</b>Todavía queda <b>${zoneClose.name}</b> en esta zona (${zoneClose.zone}).</div>`;
+  }
   if(!rec){
     html+=`<div class="donebig"><div class="emoji">🎉</div><h2>¡Completaron el plan de Story Land!</h2><p>Ya hicieron todo lo importante. Si quieren, repitan alguna favorita antes de irse.</p></div>`;
   }else{
-    let prio=prioLabel(rec.tier,rec.repeatFallback,rec.deferred,rec.skipCooldown);
+    let prio=prioLabel(rec);
     let tags=rec.tags.map(t=>`<span class="tag ${t.includes('IMPERDIBLE')||t.includes('INTENSA')?'hot':t.includes('RECOMENDADA')?'star':''}">${t}</span>`).join('');
     let tip=tipFor(rec);
     let reasons=reasonsFor(rec);
@@ -565,11 +676,45 @@ function renderAhora(){
         <button class="actbtn map" onclick="openParkMap()">🗺️ VER PARK MAP OFICIAL</button>
       </div>
     </div>`;
+    html+=alternativesHtml(rec);
   }
 
   html+=calmToggleHtml();
   html+=extraSectionsHtml();
   el.innerHTML=html;
+}
+/* item 8: qué queda "importante" en la zona actual antes de mandarnos a
+   otra. No bloquea nada — solo informa; la familia decide si lo ignora. */
+function zoneCloseCandidate(rec){
+  if(!state.currentZone)return null;
+  if(rec&&rec.zone===state.currentZone)return null; // ya nos quedamos en la zona, no hace falta avisar
+  return ALL.find(a=>{
+    if(a.zone!==state.currentZone)return false;
+    let s=getStatus(a.id);
+    if(s==='done'||s==='later')return false; // "later" ya lo cubre el banner de fila larga
+    if(s==='repeat')return true;
+    if(s!=='pending')return false;
+    return MUST.includes(a.id)||CHILD_FAVORITE_IDS.includes(a.id);
+  })||null;
+}
+/* item 10: máximo dos alternativas, mismo motor de scoring que la
+   recomendación principal, con acciones rápidas para no obligar a buscarlas
+   en el checklist. */
+function alternativesHtml(rec){
+  let alts=getAlternatives(rec);
+  if(!alts.length)return '';
+  return `<div class="miniSectTitle alts">Si prefieren otra cosa</div><div class="altgrid">${alts.map(alt=>{
+    let reasons=reasonsFor(alt);
+    return `<div class="altcard">
+      <div class="altname">${alt.name}</div>
+      <div class="altmeta">${zoneLine(alt)}</div>
+      ${reasons.length?`<div class="reasonrow">${reasons.map(r=>`<span class="reasonchip">${r}</span>`).join('')}</div>`:''}
+      <div class="altbtns">
+        <button onclick="actDone('${alt.id}')">✅ Hecho</button>
+        <button onclick="actSkip('${alt.id}')">⏭️ Saltar</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
 }
 function catLabel(c){return {imperdible:'🔥 Imperdible',agua:'💦 Agua',clasico:'🏰 Clásico',descanso:'😌 Descanso'}[c]||c}
 function calmToggleHtml(){
@@ -630,7 +775,7 @@ function renderChecklist(){
       // Mismo tipo de detalle que la tarjeta "Ahora" (por qué + prioridad +
       // tip), pero sin los datos que solo tienen sentido para "lo próximo
       // a hacer ahora mismo" (razones de zona/proximidad, botones de acción).
-      let prio=prioLabel(baseTier(a.id),false,isOnCooldown(a.id),isOnSkipCooldown(a.id));
+      let prio=prioLabel({id:a.id,tier:baseTier(a.id),deferred:isOnCooldown(a.id),skipCooldown:isOnSkipCooldown(a.id)});
       let tip=tipFor(a);
       html+=`<div class="item">
       <div class="top2" role="button" tabindex="0" aria-expanded="${open}" onclick="toggleExpand('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleExpand('${a.id}')}">
@@ -714,7 +859,8 @@ function renderProgress(){
   document.getElementById('progTxt').textContent=`${doneTotal} de ${ALL.length} realizadas · ${pct}%`;
   document.getElementById('progBar').style.width=pct+'%';
   let mustDone=MUST.filter(id=>{let s=getStatus(id);return s==='done'||s==='repeat'}).length;
-  document.getElementById('mustTxt').textContent=`🔥 Imperdibles: ${mustDone}/${MUST.length}`;
+  let repeatsPending=ALL.filter(a=>getStatus(a.id)==='repeat').length;
+  document.getElementById('mustTxt').textContent=`🔥 Imperdibles: ${mustDone}/${MUST.length}`+(repeatsPending?` · ❤️ ${repeatsPending}`:'');
 }
 
 /* ---------- Render total ---------- */
