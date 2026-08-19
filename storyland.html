@@ -220,6 +220,10 @@ body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .mapgeo-filters button.active{background:#e4f5ff;border-color:#a9dcf5;color:#0b5e8e}
 .mapgeo-banner{flex:0 0 auto;background:#fff3dc;border-top:1px solid #f0d38a;border-bottom:1px solid #f0d38a;color:#8a6a05;font-weight:850;font-size:.76rem;padding:7px 14px}
 .mapgeo-banner[hidden]{display:none}
+.mapgeo-gpsstatus{flex:0 0 auto;background:#f0f4ff;border-bottom:1px solid #c9d8f5;color:#2a3e7a;font-weight:800;font-size:.74rem;padding:6px 14px}
+.mapgeo-gpsstatus[hidden]{display:none}
+.mapgeo-gpsdistance{flex:0 0 auto;background:#eef8f1;border-bottom:1px solid #bfe3c9;color:#1a6b40;font-weight:850;font-size:.78rem;padding:6px 14px}
+.mapgeo-gpsdistance[hidden]{display:none}
 .mapgeo-mapwrap{position:relative;flex:0 0 auto;height:min(52vh,380px)}
 #mapGeoLeaflet{position:absolute;inset:0;background:#dfe6e2}
 .mapgeo-fallback{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:20px}
@@ -246,6 +250,13 @@ body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .geo-pin .pinic{background:#fff;font-size:1.1rem;padding:5px 6px;border-radius:999px;border:2px solid #1579c5;box-shadow:0 3px 8px #00000040}
 .geo-pin.selected .pinnum{background:#e0342c;font-size:.98rem;padding:6px 11px}
 .geo-pin.selected .pinic{border-color:#e0342c}
+.geo-me{display:inline-flex;flex-direction:column;align-items:center;transform:translate(-50%,-50%)}
+.geo-me-dot{width:20px;height:20px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 2px 6px #00000040,0 0 0 4px #1a73e84d;animation:gpspulse 1.8s ease-out infinite}
+@keyframes gpspulse{0%{box-shadow:0 2px 6px #00000040,0 0 0 4px #1a73e84d}70%{box-shadow:0 2px 6px #00000040,0 0 0 12px #1a73e800}100%{box-shadow:0 2px 6px #00000040,0 0 0 4px #1a73e84d}}
+.geo-me-label{margin-top:4px;background:#1a73e8;color:#fff;font-weight:900;font-size:.68rem;padding:3px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 6px #00000030}
+.mapgeo-gpsbtn{flex:0 0 auto;display:block;width:calc(100% - 20px);margin:8px 10px 0;min-height:48px;border-radius:13px;border:1px solid #a9dcf5;background:#e4f5ff;color:#0b5e8e;font-weight:900;font-size:.86rem}
+.mapgeo-gpsbtn.active{background:#1a73e8;color:#fff;border-color:#1a73e8}
+.mapgeo-gpsbtn.requesting{opacity:.7}
 .geopopup{font:inherit;min-width:180px}
 .geopopup b{display:block;font-size:.92rem;margin-bottom:4px}
 .geopopup .geopopup-badge{display:inline-block;background:#fff0ee;color:#a2281c;font-weight:850;font-size:.68rem;padding:3px 8px;border-radius:999px;margin-bottom:6px}
@@ -356,6 +367,9 @@ body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}
         <button type="button" data-filter="all" onclick="mapGeoSetAllFilter()">Todos</button>
       </div>
       <div class="mapgeo-banner" id="mapGeoBanner" hidden></div>
+      <button type="button" class="mapgeo-gpsbtn" id="mapGpsBtn" onclick="mapGpsButtonTap()">📍 Mi ubicación</button>
+      <div class="mapgeo-gpsstatus" id="mapGpsStatus" hidden></div>
+      <div class="mapgeo-gpsdistance" id="mapGpsDistance" hidden></div>
       <div class="mapgeo-mapwrap" id="mapGeoMapWrap">
         <div id="mapGeoLeaflet"></div>
         <div class="mapsheet-controls">
@@ -492,7 +506,7 @@ function haversineMeters(a,b){
    Si en una próxima visita se recopila el Plus Code físico de algún baño,
    se agrega geo acá con el mismo patrón que las atracciones. */
 const PARK_POIS=[
-{id:'world-pavilion-kitchen',type:'food',icon:'🍴',name:'World Pavilion Kitchen',zone:'🌳 Zona Central',plusCode:'4R89+CQH Bartlett, New Hampshire',geo:{lat:44.116062,lng:-71.180516,source:'onsite-plus-code',reference:'entrance'},amenities:null,nearbyText:null},
+{id:'world-pavilion-kitchen',type:'food',icon:'🍴',name:'World Pavilion Kitchen',mapNumber:59,zone:'🌳 Zona Central',plusCode:'4R89+CQH Bartlett, New Hampshire',geo:{lat:44.116062,lng:-71.180516,source:'onsite-plus-code',reference:'entrance'},amenities:null,nearbyText:null},
 {id:'restroom-granja',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🚜 Zona Granja',plusCode:null,geo:null,amenities:{accessible:null,babyChanging:null},nearbyText:'Cerca de Eggs-traordinary Farm Tractors #18',source:'official-map'},
 {id:'restroom-central',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🌳 Zona Central',plusCode:null,geo:null,amenities:{accessible:null,babyChanging:null},nearbyText:'Cerca de Dutch Village',source:'official-map'},
 {id:'restroom-clasicos',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🏰 Zona Cuentos Clásicos',plusCode:null,geo:null,amenities:{accessible:null,babyChanging:null},nearbyText:'Cerca de Party Patio',source:'official-map'},
@@ -505,7 +519,7 @@ const PARK_POIS=[
 function geoKnownPoints(){
   return [
     ...ALL.filter(a=>a.geo).map(a=>({id:a.id,type:'attraction',icon:null,name:a.name,mapNumber:a.mapNumber,zone:a.zone,geo:a.geo,plusCode:a.plusCode,nearbyText:null,attraction:a})),
-    ...PARK_POIS.filter(p=>p.geo).map(p=>({id:p.id,type:p.type,icon:p.icon,name:p.name,mapNumber:null,zone:p.zone,geo:p.geo,plusCode:p.plusCode,nearbyText:p.nearbyText,attraction:null})),
+    ...PARK_POIS.filter(p=>p.geo).map(p=>({id:p.id,type:p.type,icon:p.icon,name:p.name,mapNumber:p.mapNumber!=null?p.mapNumber:null,zone:p.zone,geo:p.geo,plusCode:p.plusCode,nearbyText:p.nearbyText,attraction:null})),
   ];
 }
 const CALM_IDS=['huffpuff','swanboats','castle','pumpkincoach','loopylab','turtletwirl'];
@@ -899,6 +913,7 @@ function closeParkMap(){
   sheet.setAttribute('aria-hidden','true');
   document.removeEventListener('keydown',onMapKeydown);
   window.removeEventListener('resize',onMapResize);
+  mapGpsStopWatch(); // no seguir consultando el GPS con la hoja cerrada — se reanuda solo (sin pedir permiso otra vez) al reabrir en la pestaña geográfica
   document.body.classList.remove('noscroll');
   document.body.style.top='';
   window.scrollTo(0,mapPrevScrollY);
@@ -932,8 +947,13 @@ function mapSetViewType(type){
   document.getElementById('mapTabGeo').classList.toggle('active',type==='geo');
   document.getElementById('mapSheetViewer').hidden=type!=='oficial';
   document.getElementById('mapSheetGeo').hidden=type!=='geo';
-  if(type==='oficial'){ ensureMapImage(()=>{ renderMapViewers(); }); }
-  else{ renderMapGeo(); }
+  if(type==='oficial'){
+    mapGpsStopWatch(); // el GPS solo tiene sentido con el mapa geográfico visible — no seguir consultándolo en la pestaña oficial
+    ensureMapImage(()=>{ renderMapViewers(); });
+  }else{
+    if(mapGpsState.status==='granted')mapGpsStart(); // reanuda el watch sin volver a pedir permiso (el navegador no vuelve a preguntar si ya se concedió)
+    renderMapGeo();
+  }
 }
 /* Crea el mapa Leaflet UNA sola vez por sesión (no se recrea cada vez que se
    abre/cierra el visor — reutiliza la instancia, solo se le pide
@@ -993,13 +1013,16 @@ function mapGeoPopupHtml(p){
   const others=geoKnownPoints().filter(x=>x.id!==p.id);
   const nearest=others.map(o=>({o,d:haversineMeters(p.geo,o.geo)})).filter(x=>x.d<=250).sort((a,b)=>a.d-b.d)[0];
   const distLine=nearest?`<div class="geopopup-near">~${Math.round(nearest.d)} m en línea recta de ${nearest.o.name}</div>`:'';
+  // Distancia desde el GPS del usuario (si dio permiso) — siempre línea recta,
+  // nunca "caminando": no tenemos una red de senderos internos verificada.
+  const gpsLine=mapGpsState.coords?`<div class="geopopup-near">📍 ~${Math.round(haversineMeters(mapGpsState.coords,p.geo))} m de tu ubicación (línea recta)</div>`:'';
   const mapNum=p.mapNumber!=null?`#${p.mapNumber} `:'';
   const officialBtn=(p.attraction&&p.attraction.mapMarker)?`<button onclick="mapGeoOpenOfficial('${p.id}')">🗺️ Ver mapa oficial</button>`:'';
   const gmapsUrl=`https://www.google.com/maps/search/?api=1&query=${p.geo.lat},${p.geo.lng}`;
   return `<div class="geopopup">
     <b>${mapNum}${p.name}</b>
     <span class="geopopup-badge">${badge}</span>
-    ${zoneLine}${nearLine}${distLine}
+    ${zoneLine}${nearLine}${distLine}${gpsLine}
     <div class="geopopup-btns">
       ${officialBtn}
       <a href="${gmapsUrl}" target="_blank" rel="noopener noreferrer">Abrir en Google Maps ↗</a>
@@ -1023,7 +1046,7 @@ function mapGeoRenderMarkers(){
     const selected=mapViewerState.selectedAttractionId===p.id;
     const html=p.type==='attraction'
       ?`<div class="geo-pin${selected?' selected':''}"><div class="pinnum">#${p.mapNumber} ${p.name.split(' ')[0]}</div></div>`
-      :`<div class="geo-pin${selected?' selected':''}"><div class="pinic">${p.icon}</div></div>`;
+      :`<div class="geo-pin${selected?' selected':''}"><div class="pinic">${p.icon}${p.mapNumber!=null?` #${p.mapNumber}`:''}</div></div>`;
     const icon=L.divIcon({className:'geo-divicon',html,iconSize:[0,0],iconAnchor:[0,0]});
     const marker=L.marker([p.geo.lat,p.geo.lng],{icon}).addTo(mapGeoMap);
     marker.bindPopup(mapGeoPopupHtml(p),{maxWidth:240});
@@ -1041,11 +1064,17 @@ function mapGeoRenderNoGeoList(){
 function mapGeoApplyZoom(){
   if(!mapGeoMap)return;
   const a=mapCurrentAttraction;
+  const gps=mapGpsState.coords;
   if(mapGeoZoomMode==='near'&&a&&a.geo){
-    mapGeoMap.setView([a.geo.lat,a.geo.lng],18);
+    // Con GPS: encuadra usuario + atracción a la vez ("yo estoy aquí → la
+    // atracción está allá"), pedido explícito. Sin GPS, el comportamiento
+    // anterior sigue exactamente igual (setView centrado en la atracción).
+    if(gps)mapGeoMap.fitBounds(L.latLngBounds([[a.geo.lat,a.geo.lng],[gps.lat,gps.lng]]),{padding:[50,50],maxZoom:18});
+    else mapGeoMap.setView([a.geo.lat,a.geo.lng],18);
   }else{
-    const pts=geoKnownPoints();
-    if(pts.length)mapGeoMap.fitBounds(L.latLngBounds(pts.map(p=>[p.geo.lat,p.geo.lng])),{padding:[30,30],maxZoom:18});
+    const pts=geoKnownPoints().map(p=>[p.geo.lat,p.geo.lng]);
+    if(gps)pts.push([gps.lat,gps.lng]);
+    if(pts.length)mapGeoMap.fitBounds(L.latLngBounds(pts),{padding:[30,30],maxZoom:18});
   }
   const zoomBtn=document.getElementById('mapGeoZoomBtn');
   zoomBtn.hidden=!(a&&a.geo);
@@ -1073,6 +1102,9 @@ function renderMapGeo(){
   });
   mapGeoRenderMarkers();
   mapGeoRenderNoGeoList();
+  mapGpsSyncButton();
+  mapGpsRenderMarker();
+  mapGpsUpdateDistanceLine();
   mapGeoApplyZoom();
   if(mapGeoMap)setTimeout(()=>mapGeoMap.invalidateSize(),50);
 }
@@ -1084,6 +1116,129 @@ function renderMapGeo(){
    "este es el más cercano" sin coordenadas para comprobarlo. */
 function openRestroomFinder(){ openParkMap(null,{forceView:'geo',geoFilterOnly:'restroom'}); }
 function openParkGeoMap(){ openParkMap(null,{forceView:'geo'}); }
+
+/* ---------- Geolocalización del usuario ("📍 Mi ubicación") ----------
+   100% client-side: la posición nunca se envía a ningún servidor, no se
+   guarda historial de movimientos (ni en localStorage — solo vive en esta
+   variable de módulo mientras dure la sesión), sin analytics de
+   coordenadas. El permiso se pide únicamente como consecuencia de un toque
+   explícito en "📍 Mi ubicación" (mapGpsButtonTap()) — nunca automático al
+   cargar la página ni al abrir el mapa. La Geolocation API exige un
+   "secure context" (HTTPS o localhost); GitHub Pages ya sirve por HTTPS,
+   así que no hace falta nada especial de nuestro lado — si el navegador no
+   soporta la API o el contexto no es seguro, navigator.geolocation
+   simplemente no existe y se cae al camino "unsupported" de abajo, la app
+   sigue funcionando igual sin GPS. */
+let mapGpsState={status:'idle',watchId:null,coords:null,marker:null,circle:null};
+
+function mapGpsButtonTap(){
+  if(!navigator.geolocation){
+    mapGpsState.status='unsupported';
+    mapGpsShowMessage('Este navegador no soporta ubicación GPS. El mapa sigue funcionando sin ella.');
+    mapGpsSyncButton();
+    return;
+  }
+  if(mapGpsState.status==='granted'&&mapGpsState.coords){
+    // Ya la tenemos: el botón sirve para volver a centrar el mapa en "mí".
+    if(mapGeoMap)mapGeoMap.setView([mapGpsState.coords.lat,mapGpsState.coords.lng],Math.max(mapGeoMap.getZoom(),17));
+    return;
+  }
+  mapGpsStart();
+}
+/* watchPosition (no getCurrentPosition): se actualiza sola mientras el
+   usuario camina, sin volver a pedir permiso. maximumAge/timeout evitan
+   forzar un fix nuevo en cada tick (batería) y evitan colgarse esperando
+   uno; enableHighAccuracy tiene sentido caminando dentro de un parque
+   chico, donde unos metros de más importan. */
+function mapGpsStart(){
+  if(!navigator.geolocation)return;
+  if(mapGpsState.watchId!=null)return; // ya hay un watch activo — no pedir de nuevo
+  mapGpsState.status='requesting';
+  mapGpsSyncButton();
+  mapGpsState.watchId=navigator.geolocation.watchPosition(mapGpsOnSuccess,mapGpsOnError,{
+    enableHighAccuracy:true,
+    maximumAge:5000,
+    timeout:12000,
+  });
+}
+function mapGpsStopWatch(){
+  if(mapGpsState.watchId!=null){
+    navigator.geolocation.clearWatch(mapGpsState.watchId);
+    mapGpsState.watchId=null;
+  }
+}
+function mapGpsOnSuccess(pos){
+  const firstFix=!mapGpsState.coords;
+  mapGpsState.status='granted';
+  mapGpsState.coords={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy};
+  mapGpsHideMessage();
+  mapGpsSyncButton();
+  mapGpsRenderMarker();
+  mapGpsUpdateDistanceLine();
+  // Solo se reencuadra el mapa en el primer fix — encuadra usuario (+
+  // atracción seleccionada si tiene geo). Actualizaciones siguientes de
+  // watchPosition NO vuelven a mover el mapa solas: el usuario está
+  // caminando y no queremos que el mapa "salte" cada pocos segundos.
+  if(firstFix)mapGeoApplyZoom();
+}
+function mapGpsOnError(err){
+  mapGpsStopWatch();
+  if(err&&err.code===1){ // PERMISSION_DENIED
+    mapGpsState.status='denied';
+    mapGpsShowMessage('Ubicación no disponible. Puedes seguir usando el mapa sin GPS.');
+  }else{ // POSITION_UNAVAILABLE (2) o TIMEOUT (3)
+    mapGpsState.status='error';
+    mapGpsShowMessage('No pudimos obtener tu ubicación por ahora. Puedes seguir usando el mapa sin GPS.');
+  }
+  mapGpsSyncButton();
+}
+function mapGpsShowMessage(text){
+  const el=document.getElementById('mapGpsStatus');
+  el.textContent=text; el.hidden=false;
+}
+function mapGpsHideMessage(){ document.getElementById('mapGpsStatus').hidden=true; }
+function mapGpsSyncButton(){
+  const btn=document.getElementById('mapGpsBtn');
+  if(!btn)return;
+  btn.classList.toggle('active',mapGpsState.status==='granted');
+  btn.classList.toggle('requesting',mapGpsState.status==='requesting');
+  btn.textContent=mapGpsState.status==='granted'?'📍 Mi ubicación ✓'
+    :mapGpsState.status==='requesting'?'📍 Buscando…'
+    :'📍 Mi ubicación';
+}
+/* Marcador "Estás aquí": un único marcador + un único círculo de precisión,
+   reutilizados (setLatLng/setRadius) en cada actualización de watchPosition
+   — nunca se reconstruyen junto con los demás marcadores del mapa (eso
+   cerraría un popup abierto y sería trabajo innecesario en cada tick de
+   GPS). Visualmente distinto de los pines de atracciones/POIs: punto azul
+   con halo pulsante, en vez de la píldora numerada o el emoji de un POI. */
+function mapGpsRenderMarker(){
+  if(!mapGeoMap||!mapGpsState.coords)return;
+  const {lat,lng,accuracy}=mapGpsState.coords;
+  if(!mapGpsState.marker){
+    const icon=L.divIcon({className:'geo-divicon',html:'<div class="geo-me"><div class="geo-me-dot"></div><div class="geo-me-label">📍 Estás aquí</div></div>',iconSize:[0,0],iconAnchor:[0,0]});
+    mapGpsState.marker=L.marker([lat,lng],{icon,zIndexOffset:1000}).addTo(mapGeoMap);
+    mapGpsState.circle=L.circle([lat,lng],{radius:accuracy||0,color:'#1a73e8',weight:1,fillColor:'#1a73e8',fillOpacity:.12}).addTo(mapGeoMap);
+  }else{
+    mapGpsState.marker.setLatLng([lat,lng]);
+    mapGpsState.circle.setLatLng([lat,lng]);
+    if(accuracy)mapGpsState.circle.setRadius(accuracy);
+  }
+}
+/* "Yo estoy aquí → la atracción está allá": distancia en línea recta
+   (Haversine) a la atracción seleccionada, si tiene geo — más la precisión
+   GPS reportada, para no transmitir una exactitud falsa. Nunca "caminando":
+   no hay una red de senderos internos de Story Land verificada contra
+   OpenStreetMap (ver "No implementado a propósito" en specs sección 21). */
+function mapGpsUpdateDistanceLine(){
+  const el=document.getElementById('mapGpsDistance');
+  const a=mapCurrentAttraction;
+  if(!mapGpsState.coords||!a||!a.geo){ el.hidden=true; return; }
+  const meters=haversineMeters(mapGpsState.coords,a.geo);
+  const acc=mapGpsState.coords.accuracy;
+  el.hidden=false;
+  el.textContent=`📍 Estás a ~${Math.round(meters)} m de ${a.name} en línea recta${acc?` · Precisión aprox. ±${Math.round(acc)} m`:''}`;
+}
 
 /* ---------- Estado / localStorage ----------
    Se mantiene la misma clave "storyland_state_v1" (en vez de crear una nueva
