@@ -73,8 +73,12 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .catblock{margin-bottom:18px}
 .catblock h3{font-size:.95rem;margin:0 0 9px;display:flex;align-items:center;gap:6px}
 .item{background:#fff;border:1px solid var(--line);border-radius:18px;padding:11px 12px;margin-bottom:8px}
-.item .top2{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.item h4{margin:0;font-size:.95rem}
+.item .top2{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;cursor:pointer;min-height:32px}
+.item h4{margin:0;font-size:.95rem;display:flex;align-items:center;gap:6px}
+.item h4 .expandicon{font-size:.7rem;color:var(--muted);transition:transform .15s}
+.item .expandbox{margin-top:8px;padding-top:9px;border-top:1px dashed var(--line)}
+.item .expandbox .whybox{margin-bottom:8px}
+.item .expandbox .factrow{margin:0}
 .statusChip{font-size:.68rem;font-weight:900;padding:4px 9px;border-radius:999px;white-space:nowrap}
 .st-pending{background:#eef1f2;color:#657d8a}
 .st-done{background:#dff3e6;color:#1a7a44}
@@ -499,7 +503,15 @@ function extraSectionsHtml(){
   return html;
 }
 
-/* ---------- Render: Checklist ---------- */
+/* ---------- Render: Checklist ----------
+   expandedItems: qué tarjetas del checklist están abiertas mostrando
+   detalle. Es solo estado de UI (no se guarda en localStorage) — se
+   reinicia si se recarga la página, igual que cualquier acordeón. */
+const expandedItems=new Set();
+function toggleExpand(id){
+  if(expandedItems.has(id))expandedItems.delete(id);else expandedItems.add(id);
+  renderChecklist();
+}
 function cycleStatus(id,val){
   if(getStatus(id)===val){ // tocar de nuevo el mismo botón = volver a pendiente
     if(state.deferred)delete state.deferred[id];
@@ -520,14 +532,32 @@ function renderChecklist(){
     items.forEach(a=>{
       let s=getStatus(a.id);
       let stLabel={pending:'⬜ Pendiente',done:'✅ Hecho',skipped:'⏭️ Saltado',later:'🕐 Volver después',repeat:'❤️ Repetir'}[s];
-      html+=`<div class="item"><div class="top2"><h4>${a.name}</h4><span class="statusChip st-${s}">${stLabel}</span></div>
+      let open=expandedItems.has(a.id);
+      // Mismo tipo de detalle que la tarjeta "Ahora" (por qué + prioridad +
+      // tip), pero sin los datos que solo tienen sentido para "lo próximo
+      // a hacer ahora mismo" (razones de zona/proximidad, botones de acción).
+      let prio=prioLabel(baseTier(a.id),false,isOnCooldown(a.id));
+      let tip=tipFor(a);
+      html+=`<div class="item">
+      <div class="top2" role="button" tabindex="0" aria-expanded="${open}" onclick="toggleExpand('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleExpand('${a.id}')}">
+        <h4><span class="expandicon">${open?'▾':'▸'}</span>${a.name}</h4>
+        <span class="statusChip st-${s}">${stLabel}</span>
+      </div>
       <div class="itemzone"><span>${zoneLine(a)}</span><button class="zonemapbtn" onclick="openParkMap()">🗺️ Ver mapa</button></div>
       <div class="tagrow">${a.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      ${open?`<div class="expandbox">
+        <div class="whybox"><b>🎯 Por qué:</b> ${a.why}</div>
+        <div class="factrow">
+          <div class="fact">👨‍👦 Adulto<b>${a.adult?'Requerido':'No requerido'}</b></div>
+          <div class="fact">🔥 Prioridad<b class="${prio.c}">${prio.t}</b></div>
+        </div>
+        ${tip?`<div class="tipline">${tip}</div>`:''}
+      </div>`:''}
       <div class="itembtns">
-        <button class="${s==='done'?'active':''}" title="Hecho" onclick="cycleStatus('${a.id}','done')">✅</button>
-        <button class="${s==='skipped'?'active':''}" title="Saltar" onclick="cycleStatus('${a.id}','skipped')">⏭️</button>
-        <button class="${s==='later'?'active':''}" title="Fila muy larga / volver después" onclick="cycleStatus('${a.id}','later')">🕐</button>
-        <button class="${s==='repeat'?'active':''}" title="Quiere repetir" onclick="cycleStatus('${a.id}','repeat')">❤️</button>
+        <button class="${s==='done'?'active':''}" title="Hecho" onclick="event.stopPropagation();cycleStatus('${a.id}','done')">✅</button>
+        <button class="${s==='skipped'?'active':''}" title="Saltar" onclick="event.stopPropagation();cycleStatus('${a.id}','skipped')">⏭️</button>
+        <button class="${s==='later'?'active':''}" title="Fila muy larga / volver después" onclick="event.stopPropagation();cycleStatus('${a.id}','later')">🕐</button>
+        <button class="${s==='repeat'?'active':''}" title="Quiere repetir" onclick="event.stopPropagation();cycleStatus('${a.id}','repeat')">❤️</button>
       </div></div>`;
     });
     html+='</div>';
