@@ -158,8 +158,35 @@ body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .mapsheet-help.collapsed .mapsheet-helpchevron{transform:rotate(-90deg)}
 .mapsheet-helpbody{padding:0 14px 12px;font-size:.82rem;color:#5a4207;display:flex;flex-direction:column;gap:4px}
 .mapsheet-help.collapsed .mapsheet-helpbody{display:none}
-.mapsheet-viewer{flex:1;position:relative;min-height:0;background:#eef2f4}
-.mapsheet-viewer iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.mapsheet-viewer{flex:1;position:relative;min-height:0;background:#dfe6e2;overflow:hidden}
+.mapviewport{position:relative;overflow:hidden}
+#mapMain{position:absolute;inset:0;touch-action:none}
+.maptransform{position:absolute;left:0;top:0;transform-origin:0 0}
+.maptransform.animated{transition:transform .28s cubic-bezier(.32,.72,0,1)}
+.maptransform img{display:block;width:100%;height:100%;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.mapmarker{position:absolute;left:calc(var(--mx)*1%);top:calc(var(--my)*1%);transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none}
+.mapmarker[hidden]{display:none}
+.mapmarker-halo{position:absolute;left:50%;top:50%;width:46px;height:46px;border-radius:50%;background:#fff;opacity:.6;transform:translate(-50%,-50%);box-shadow:0 0 0 5px #ffffffb0}
+.mapmarker-dot{position:relative;width:28px;height:28px;border-radius:50%;background:#e0342c8c;border:4px solid #d9261c;box-shadow:0 2px 8px #00000040}
+.mapmarker.pulse .mapmarker-dot{animation:markerpulse 1.3s ease-out 2}
+@keyframes markerpulse{0%{box-shadow:0 0 0 0 #e0342c73}70%{box-shadow:0 0 0 24px #e0342c00}100%{box-shadow:0 0 0 0 #e0342c00}}
+.mapmarker-label{margin-top:6px;background:#e0342c;color:#fff;font-weight:900;font-size:.7rem;padding:4px 9px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 6px #00000030}
+.mapthumb .mapmarker-halo{width:20px;height:20px;box-shadow:0 0 0 3px #ffffffb0}
+.mapthumb .mapmarker-dot{width:11px;height:11px;border-width:2px}
+.mapsheet-approx{flex:0 0 auto;background:#fff0ee;border-bottom:1px solid #f3c4bd;color:#a2281c;font-weight:850;font-size:.74rem;padding:6px 14px}
+.mapsheet-approx[hidden]{display:none}
+.mapmaincaption{position:absolute;left:10px;top:10px;z-index:2;background:#ffffffea;color:var(--ink);font-weight:900;font-size:.72rem;padding:6px 11px;border-radius:999px;box-shadow:0 4px 10px #17445c25}
+.mapmaincaption[hidden]{display:none}
+.mapthumb{position:absolute;right:10px;top:10px;z-index:2;width:100px;border:0;padding:0;background:none;display:flex;flex-direction:column;align-items:center;gap:4px}
+.mapthumb[hidden]{display:none}
+.mapthumb .mapviewport{width:100px;height:100px;border-radius:12px;border:2px solid #fff;box-shadow:0 4px 14px #17445c40;background:#dfe6e2}
+.mapthumb-label{background:#ffffffea;color:var(--ink);font-weight:850;font-size:.62rem;padding:3px 8px;border-radius:999px;box-shadow:0 2px 6px #17445c20;white-space:nowrap}
+.mapsheet-controls{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;z-index:2}
+.mapsheet-zoombtns{display:flex;flex-direction:column;gap:6px}
+.mapsheet-controls button{border:0;background:#ffffffee;box-shadow:0 4px 12px #17445c30;font-weight:950;color:var(--ink)}
+.mapsheet-zoombtns button{width:44px;height:44px;border-radius:12px;font-size:1.2rem}
+.mapsheet-actionbtns{display:flex;flex-direction:column;gap:6px}
+.mapsheet-actionbtns button{min-height:40px;border-radius:12px;padding:0 12px;font-size:.72rem;white-space:nowrap}
 .mapsheet-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#eef2f4;font-size:.82rem;font-weight:800;color:var(--muted)}
 .mapsheet-loading[hidden]{display:none}
 .mapsheet-loading .spinner{width:34px;height:34px;border-radius:99px;border:4px solid #cfe0e8;border-top-color:var(--blue);animation:mapspin .8s linear infinite}
@@ -219,17 +246,50 @@ body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}
       </button>
       <div class="mapsheet-helpbody" id="mapSheetHelpBody"></div>
     </div>
-    <div class="mapsheet-viewer">
-      <div class="mapsheet-loading" id="mapSheetLoading"><div class="spinner" aria-hidden="true"></div><span>Cargando el mapa…</span></div>
-      <iframe id="mapSheetFrame" title="Park Map oficial de Story Land" loading="lazy"></iframe>
+    <div class="mapsheet-approx" id="mapSheetApprox" hidden>🔴 La zona marcada es aproximada — no es una posición GPS exacta.</div>
+    <div class="mapsheet-viewer" id="mapSheetViewer">
+      <div class="mapviewport" id="mapMain">
+        <div class="maptransform">
+          <img alt="Mapa oficial de Story Land" draggable="false">
+          <div class="mapmarker" hidden style="--mx:50;--my:50">
+            <div class="mapmarker-halo"></div>
+            <div class="mapmarker-dot"></div>
+            <div class="mapmarker-label"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mapmaincaption" id="mapMainCaption" hidden></div>
+      <button type="button" class="mapthumb" id="mapThumb" hidden onclick="mapToggleMode()">
+        <div class="mapviewport" id="mapThumbViewport">
+          <div class="maptransform">
+            <img alt="" draggable="false">
+            <div class="mapmarker" hidden style="--mx:50;--my:50">
+              <div class="mapmarker-halo"></div>
+              <div class="mapmarker-dot"></div>
+            </div>
+          </div>
+        </div>
+        <span class="mapthumb-label" id="mapThumbLabel"></span>
+      </button>
+      <div class="mapsheet-loading" id="mapSheetLoading"><div class="spinner" aria-hidden="true"></div><span>Cargando mapa…</span></div>
       <div class="mapsheet-fallback" id="mapSheetFallback" hidden>
-        <span class="emoji" aria-hidden="true">🗺️</span>
-        <p>No pudimos mostrar el mapa dentro de la app.</p>
-        <a id="mapSheetFallbackLink" href="#" target="_blank" rel="noopener noreferrer">Abrir mapa oficial ↗</a>
+        <span class="emoji" aria-hidden="true">⚠️</span>
+        <p>No pudimos cargar el mapa interactivo.</p>
+        <a id="mapSheetFallbackLink" href="#" target="_blank" rel="noopener noreferrer">Abrir PDF oficial ↗</a>
+      </div>
+      <div class="mapsheet-controls" id="mapSheetControls" hidden>
+        <div class="mapsheet-zoombtns">
+          <button type="button" onclick="mapZoomStep(1)" aria-label="Acercar">+</button>
+          <button type="button" onclick="mapZoomStep(-1)" aria-label="Alejar">−</button>
+        </div>
+        <div class="mapsheet-actionbtns">
+          <button type="button" id="mapSheetLocateBtn" onclick="mapLocate()" hidden>🎯 Localizar</button>
+          <button type="button" id="mapSheetToggleBtn" onclick="mapToggleMode()" hidden>🗺️ Completo</button>
+        </div>
       </div>
     </div>
     <div class="mapsheet-footer">
-      <a id="mapSheetExternalBottom" href="#" target="_blank" rel="noopener noreferrer">Abrir mapa completo ↗</a>
+      <a id="mapSheetExternalBottom" href="#" target="_blank" rel="noopener noreferrer">Abrir PDF oficial ↗</a>
     </div>
   </div>
 </div>
@@ -249,51 +309,60 @@ body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}
      PARK_MAP_URL estaba bloqueado en el entorno de desarrollo y no pudimos
      abrir el PDF nosotros mismos, así que estos números venían
      exclusivamente de esa tabla, no de una búsqueda ni de una suposición.
-     2026-08: el usuario adjuntó el PDF directamente; vive local en
-     assets/park-map/ y el visor interno (ver openParkMap más abajo) lo
-     embebe desde ahí — evita depender de que ese dominio externo esté
-     disponible. PARK_MAP_URL se conserva como referencia del sitio
-     oficial. Los números de esta lista no se re-verificaron contra las
-     páginas del PDF, siguen siendo los de la tabla). Corregidos 2026-08:
-     varias atracciones tenían el número de una numeración anterior/errónea
-     (ver commit para la lista antes→después). Turtle Twirl y Crazy Barn,
-     que antes se dejaban en null porque no aparecían en el mapa que
-     teníamos, ya están en la tabla oficial (#42 y #11) y se rellenaron.
+     Los números de esta lista no se re-verificaron contra las páginas del
+     PDF, siguen siendo los de la tabla). Corregidos 2026-08: varias
+     atracciones tenían el número de una numeración anterior/errónea (ver
+     commit para la lista antes→después). Turtle Twirl y Crazy Barn, que
+     antes se dejaban en null porque no aparecían en el mapa que teníamos,
+     ya están en la tabla oficial (#42 y #11) y se rellenaron.
+   - mapMarker:{x,y} (2026-08, ver openParkMap más abajo): posición
+     aproximada del número oficial dentro de la imagen del mapa
+     (assets/storyland-map-2026.webp), como PORCENTAJE de la imagen
+     completa (x: 0=borde izq./100=borde der., y: 0=borde sup./100=borde
+     inf.) — nunca píxeles, para que sea válido sin importar la resolución
+     de pantalla. Calibrado visualmente contra la imagen ya renderizada:
+     para cada atracción se ubicó su número oficial (mapNumber) en el mapa
+     y se leyó su posición; NO se calculó a partir de zone/mapRegion ni de
+     ningún otro dato — ver "Calibración" en specs/SPECIFICATIONS.md.asc
+     sección 21 para el detalle de método (recorte en cuadrícula + lectura
+     de coordenadas) y la lista completa verificada. mapMarker es null si
+     no se pudo confirmar visualmente (no ocurre en las 19 atracciones
+     actuales, pero una atracción nueva sin marcador calibrado DEBE quedar
+     en null — la UI funciona sin él, solo no muestra círculo ni hace
+     zoom-in automático, ver mapHelpData()/openParkMap()).
    - nearbyAttractions: otras atracciones de la misma zona lógica, usadas
      para el bonus de proximidad y para el aviso "hay otra cerca".
    - mapRegion/visualLandmark/nearbyMapNumbers: referencia visual rápida
      para ubicarse en el Park Map oficial (celda de una cuadrícula 3×3
      "front/center/back" × "left/center/right", una frase de referencia,
-     y números de otras atracciones cercanas). No pudimos verificar la
-     disposición física real del PDF 2026 (mismo bloqueo de red de arriba),
-     así que estos campos NO se tocaron en la corrección de números — siguen
-     siendo agrupaciones razonables por tema, no coordenadas confirmadas
-     contra el mapa 2026. Si alguien confirma la disposición real mirando
-     el mapa impreso, se puede corregir aquí. La UI debe funcionar
-     perfectamente sin estos campos (ver mapOrientationHtml()).
+     y números de otras atracciones cercanas) — más aproximada que
+     mapMarker (no calibrada contra la imagen, agrupaciones razonables por
+     tema). Se conserva porque mapOrientationHtml() la sigue usando como
+     complemento textual dentro de la tarjeta de ayuda del visor. La UI
+     debe funcionar perfectamente sin estos campos.
 */
-const PARK_MAP_URL='https://hfe.widen.net/view/pdf/icf5sgszuz/STL26_General_ParkMap_Download.pdf?t.download=true&u=exbmhu'; // referencia del sitio oficial — no se usa para el iframe
-const PARK_MAP_PDF='assets/park-map/STL26_General_ParkMap_Download.pdf'; // copia local del mismo PDF oficial — fuente real del visor embebido
+const PARK_MAP_URL='https://hfe.widen.net/view/pdf/icf5sgszuz/STL26_General_ParkMap_Download.pdf?t.download=true&u=exbmhu'; // PDF oficial 2026 — fuente de verdad; enlace externo "Abrir PDF oficial" (fuera de la app, nunca embebido)
+const PARK_MAP_IMAGE='assets/storyland-map-2026.webp'; // imagen local de alta resolución generada a partir del PDF oficial de arriba (ver specs/SPECIFICATIONS.md.asc sección 21) — fuente real del visor interactivo embebido
 const ALL=[
-{id:'polar',name:'Polar Coaster',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:34,mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[35,36],nearbyAttractions:['roar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','👨‍👦 CON ADULTO'],why:'Es la montaña rusa principal del parque: conviene hacerla temprano, antes de que se formen filas, y sirve para probar cómo tolera una montaña rusa antes de Roar-O-Saurus.'},
-{id:'roar',name:'Roar-O-Saurus',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:36,mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[34,35],nearbyAttractions:['polar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','🦕 DINOSAURIOS','👨‍👦 CON ADULTO'],why:'La montaña rusa temática de dinosaurios: la gran favorita del día.'},
-{id:'bamboo',name:'Bamboo Chutes',cat:'imperdible',adult:true,zone:'💦 Zona Bambú',mapNumber:4,mapRegion:'front-center',visualLandmark:null,nearbyMapNumbers:[2],nearbyAttractions:['drgeyser'],tags:['🔥 IMPERDIBLE','💦 TE MOJAS UN POCO','🛟 SUAVE'],why:'Tobogán acuático suave: buen contraste de ritmo después de una montaña rusa.'},
-{id:'raptour',name:'Rap-Tour Safari',cat:'imperdible',adult:false,zone:'🦖 Zona Dinosaurios',mapNumber:35,mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[34,36],nearbyAttractions:['polar','roar'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🦕 DINOSAURIOS','🎮 INTERACTIVA'],why:'Safari temático de dinosaurios: participativo y no muy intenso.'},
-{id:'flyingfish',name:'Flying Fish',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:20,mapRegion:null,visualLandmark:'Zona de granja, parte interior del parque',nearbyMapNumbers:[18],nearbyAttractions:['farmtractors','crazybarn'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🐟 SUAVE'],why:'Atracción suave, buena para subir la confianza entre atracciones más intensas.'},
-{id:'antiquecars',name:'Antique Cars',cat:'imperdible',adult:false,zone:'🚗 Zona Autos Antiguos',mapNumber:2,mapRegion:'front-center',visualLandmark:null,nearbyMapNumbers:[4],nearbyAttractions:[],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚗 VEHÍCULOS','😌 TRANQUILA'],why:'Autos a su ritmo: encaja perfecto con lo que más le gusta.'},
-{id:'farmtractors',name:"Eggs-traordinary Farm Tractors",cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:18,mapRegion:null,visualLandmark:'Sección de granja del parque',nearbyMapNumbers:[20],nearbyAttractions:['crazybarn','flyingfish'],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚜 VEHÍCULOS','😌 TRANQUILA'],why:'Tractores que maneja él mismo: alta probabilidad de que quiera repetir.'},
-{id:'drgeyser',name:"Dr. Geyser's Remarkable Raft Ride",cat:'agua',adult:true,zone:'💦 Zona Acuática',mapNumber:15,mapRegion:null,visualLandmark:'Zona Geyser, junto a las Mini-Geysers',nearbyMapNumbers:[],nearbyAttractions:['splashbattle','moolagoon'],tags:['💦 TE MOJAS','☀️ MEJOR CON CALOR','👨‍👦 CON ADULTO'],why:'Con el calor de ahora es buen momento para mojarse.'},
-{id:'splashbattle',name:"Splash Battle: Pharaoh's Reign",cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:39,mapRegion:null,visualLandmark:'Zona posterior del mapa, después del bloque de dinosaurios',nearbyMapNumbers:[],nearbyAttractions:['drgeyser','moolagoon'],tags:['💦 TE MOJAS','🎮 INTERACTIVA','👨‍👩‍👦 FAMILIAR'],why:'Batalla de agua interactiva: ideal para la parte más calurosa del día.'},
-{id:'moolagoon',name:'Moo Lagoon',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:33,mapRegion:null,visualLandmark:'Justo antes del grupo de dinosaurios',nearbyMapNumbers:[34],nearbyAttractions:['drgeyser','splashbattle'],tags:['💦 OPCIONAL · PUEDE TOMAR BASTANTE TIEMPO','👨‍👩‍👦 FAMILIAR'],why:'Área de juegos de agua tipo splashpad: divertida pero puede llevarse mucho tiempo — no debe robarle turno a los imperdibles.'},
-{id:'pumpkincoach',name:"Cinderella's Pumpkin Coach",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:10,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[9],nearbyAttractions:['castle','swanboats','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Parada tranquila y bonita para fotos familiares.'},
-{id:'castle',name:"Cinderella's Castle",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:9,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[10],nearbyAttractions:['pumpkincoach','swanboats'],tags:['📸 FOTO FAMILIAR','🏰 CLÁSICO'],why:'El castillo de Cenicienta: imprescindible para la foto familiar.'},
-{id:'swanboats',name:'Swan Boats',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:40,mapRegion:null,visualLandmark:'Cerca del área de Cinderella, como referencia general',nearbyMapNumbers:[],nearbyAttractions:['castle','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Paseo lento en botes: buen respiro entre atracciones.'},
-{id:'carousel',name:'Antique German Carousel',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:3,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['swanboats','pumpkincoach'],tags:['📸 FOTO FAMILIAR','🎠 CLÁSICO'],why:'Carrusel clásico, siempre un acierto.'},
-{id:'balloonchase',name:'Great Balloon Chase',cat:'clasico',adult:false,zone:'🌳 Zona Central',mapNumber:24,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['huffpuff','loopylab'],tags:['📸 FOTO FAMILIAR','🎈 SUAVE'],why:'Vueltas suaves en globo: buena para bajar el ritmo.'},
-{id:'huffpuff',name:'Huff Puff & Whistle Railroad',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:26,mapRegion:null,visualLandmark:'Sigue el trazado del tren alrededor del parque',nearbyMapNumbers:[],nearbyAttractions:['loopylab','balloonchase'],tags:['😌 DESCANSO','👨‍👩‍👦 FAMILIAR','🚂 VEHÍCULOS'],why:'Tren panorámico para descansar los pies caminando. Ideal cuando estén cansados de caminar — no gastar la primera hora del parque aquí.'},
-{id:'loopylab',name:'Loopy Lab Play Area',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:31,mapRegion:null,visualLandmark:'Punto de juego interior/interactivo, zona media/trasera del parque',nearbyMapNumbers:[],nearbyAttractions:['turtletwirl','huffpuff','balloonchase'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Laboratorio interactivo: ideal para después de comer.'},
-{id:'turtletwirl',name:'Turtle Twirl',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:42,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['loopylab'],tags:['🎠 SUAVE','😌 TRANQUILA'],why:'Vueltas suaves, tranquila.'},
-{id:'crazybarn',name:'Crazy Barn',cat:'descanso',adult:false,zone:'🚜 Zona Granja',mapNumber:11,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['farmtractors','flyingfish'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Granero interactivo con sorpresas: le gustará explorar. Opcional — solo si sigue teniendo sentido geográfico y está abierta.'},
+{id:'polar',name:'Polar Coaster',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:34,mapMarker:{x:43.1,y:56.8},mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[35,36],nearbyAttractions:['roar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','👨‍👦 CON ADULTO'],why:'Es la montaña rusa principal del parque: conviene hacerla temprano, antes de que se formen filas, y sirve para probar cómo tolera una montaña rusa antes de Roar-O-Saurus.'},
+{id:'roar',name:'Roar-O-Saurus',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:36,mapMarker:{x:56.5,y:9.9},mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[34,35],nearbyAttractions:['polar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','🦕 DINOSAURIOS','👨‍👦 CON ADULTO'],why:'La montaña rusa temática de dinosaurios: la gran favorita del día.'},
+{id:'bamboo',name:'Bamboo Chutes',cat:'imperdible',adult:true,zone:'💦 Zona Bambú',mapNumber:4,mapMarker:{x:11.8,y:49.5},mapRegion:'front-center',visualLandmark:null,nearbyMapNumbers:[2],nearbyAttractions:['drgeyser'],tags:['🔥 IMPERDIBLE','💦 TE MOJAS UN POCO','🛟 SUAVE'],why:'Tobogán acuático suave: buen contraste de ritmo después de una montaña rusa.'},
+{id:'raptour',name:'Rap-Tour Safari',cat:'imperdible',adult:false,zone:'🦖 Zona Dinosaurios',mapNumber:35,mapMarker:{x:49.6,y:35.1},mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[34,36],nearbyAttractions:['polar','roar'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🦕 DINOSAURIOS','🎮 INTERACTIVA'],why:'Safari temático de dinosaurios: participativo y no muy intenso.'},
+{id:'flyingfish',name:'Flying Fish',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:20,mapMarker:{x:53.3,y:23.4},mapRegion:null,visualLandmark:'Zona de granja, parte interior del parque',nearbyMapNumbers:[18],nearbyAttractions:['farmtractors','crazybarn'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🐟 SUAVE'],why:'Atracción suave, buena para subir la confianza entre atracciones más intensas.'},
+{id:'antiquecars',name:'Antique Cars',cat:'imperdible',adult:false,zone:'🚗 Zona Autos Antiguos',mapNumber:2,mapMarker:{x:21.1,y:77.4},mapRegion:'front-center',visualLandmark:null,nearbyMapNumbers:[4],nearbyAttractions:[],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚗 VEHÍCULOS','😌 TRANQUILA'],why:'Autos a su ritmo: encaja perfecto con lo que más le gusta.'},
+{id:'farmtractors',name:"Eggs-traordinary Farm Tractors",cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:18,mapMarker:{x:33.2,y:7.4},mapRegion:null,visualLandmark:'Sección de granja del parque',nearbyMapNumbers:[20],nearbyAttractions:['crazybarn','flyingfish'],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚜 VEHÍCULOS','😌 TRANQUILA'],why:'Tractores que maneja él mismo: alta probabilidad de que quiera repetir.'},
+{id:'drgeyser',name:"Dr. Geyser's Remarkable Raft Ride",cat:'agua',adult:true,zone:'💦 Zona Acuática',mapNumber:15,mapMarker:{x:22.5,y:61.1},mapRegion:null,visualLandmark:'Zona Geyser, junto a las Mini-Geysers',nearbyMapNumbers:[],nearbyAttractions:['splashbattle','moolagoon'],tags:['💦 TE MOJAS','☀️ MEJOR CON CALOR','👨‍👦 CON ADULTO'],why:'Con el calor de ahora es buen momento para mojarse.'},
+{id:'splashbattle',name:"Splash Battle: Pharaoh's Reign",cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:39,mapMarker:{x:50.6,y:41.8},mapRegion:null,visualLandmark:'Zona posterior del mapa, después del bloque de dinosaurios',nearbyMapNumbers:[],nearbyAttractions:['drgeyser','moolagoon'],tags:['💦 TE MOJAS','🎮 INTERACTIVA','👨‍👩‍👦 FAMILIAR'],why:'Batalla de agua interactiva: ideal para la parte más calurosa del día.'},
+{id:'moolagoon',name:'Moo Lagoon',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:33,mapMarker:{x:41.6,y:22.5},mapRegion:null,visualLandmark:'Justo antes del grupo de dinosaurios',nearbyMapNumbers:[34],nearbyAttractions:['drgeyser','splashbattle'],tags:['💦 OPCIONAL · PUEDE TOMAR BASTANTE TIEMPO','👨‍👩‍👦 FAMILIAR'],why:'Área de juegos de agua tipo splashpad: divertida pero puede llevarse mucho tiempo — no debe robarle turno a los imperdibles.'},
+{id:'pumpkincoach',name:"Cinderella's Pumpkin Coach",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:10,mapMarker:{x:64.9,y:70.2},mapRegion:null,visualLandmark:null,nearbyMapNumbers:[9],nearbyAttractions:['castle','swanboats','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Parada tranquila y bonita para fotos familiares.'},
+{id:'castle',name:"Cinderella's Castle",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:9,mapMarker:{x:91.8,y:65.0},mapRegion:null,visualLandmark:null,nearbyMapNumbers:[10],nearbyAttractions:['pumpkincoach','swanboats'],tags:['📸 FOTO FAMILIAR','🏰 CLÁSICO'],why:'El castillo de Cenicienta: imprescindible para la foto familiar.'},
+{id:'swanboats',name:'Swan Boats',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:40,mapMarker:{x:71.6,y:70.7},mapRegion:null,visualLandmark:'Cerca del área de Cinderella, como referencia general',nearbyMapNumbers:[],nearbyAttractions:['castle','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Paseo lento en botes: buen respiro entre atracciones.'},
+{id:'carousel',name:'Antique German Carousel',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:3,mapMarker:{x:73.4,y:58.8},mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['swanboats','pumpkincoach'],tags:['📸 FOTO FAMILIAR','🎠 CLÁSICO'],why:'Carrusel clásico, siempre un acierto.'},
+{id:'balloonchase',name:'Great Balloon Chase',cat:'clasico',adult:false,zone:'🌳 Zona Central',mapNumber:24,mapMarker:{x:40.4,y:37.3},mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['huffpuff','loopylab'],tags:['📸 FOTO FAMILIAR','🎈 SUAVE'],why:'Vueltas suaves en globo: buena para bajar el ritmo.'},
+{id:'huffpuff',name:'Huff Puff & Whistle Railroad',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:26,mapMarker:{x:15.8,y:82.2},mapRegion:null,visualLandmark:'Sigue el trazado del tren alrededor del parque',nearbyMapNumbers:[],nearbyAttractions:['loopylab','balloonchase'],tags:['😌 DESCANSO','👨‍👩‍👦 FAMILIAR','🚂 VEHÍCULOS'],why:'Tren panorámico para descansar los pies caminando. Ideal cuando estén cansados de caminar — no gastar la primera hora del parque aquí.'},
+{id:'loopylab',name:'Loopy Lab Play Area',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:31,mapMarker:{x:29.7,y:37.3},mapRegion:null,visualLandmark:'Punto de juego interior/interactivo, zona media/trasera del parque',nearbyMapNumbers:[],nearbyAttractions:['turtletwirl','huffpuff','balloonchase'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Laboratorio interactivo: ideal para después de comer.'},
+{id:'turtletwirl',name:'Turtle Twirl',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:42,mapMarker:{x:31.5,y:26.5},mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['loopylab'],tags:['🎠 SUAVE','😌 TRANQUILA'],why:'Vueltas suaves, tranquila.'},
+{id:'crazybarn',name:'Crazy Barn',cat:'descanso',adult:false,zone:'🚜 Zona Granja',mapNumber:11,mapMarker:{x:38.2,y:2.0},mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['farmtractors','flyingfish'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Granero interactivo con sorpresas: le gustará explorar. Opcional — solo si sigue teniendo sentido geográfico y está abierta.'},
 ];
 const BY_ID={};ALL.forEach((a,i)=>BY_ID[a.id]={...a,_i:i});
 const MUST=['polar','roar','bamboo','raptour','flyingfish','antiquecars','farmtractors'];
@@ -352,14 +421,30 @@ function mapOrientationHtml(a){
    recomendación actual, checklist, favoritas, alternativas y el bloque
    general de "Tips". openParkMap(attractionId) — con id abre mostrando la
    tarjeta de ayuda de esa atracción; sin id abre el mapa general, sin
-   inventar ninguna atracción "seleccionada". La fuente del PDF es
-   PARK_MAP_PDF (copia local del mismo PDF oficial, arriba) — no se duplica
-   esa ruta en ningún otro sitio: el iframe, el link de "pestaña nueva" del
-   header, el de "Abrir mapa completo" del pie y el del fallback apuntan
-   todos al mismo valor. Se prefiere sobre PARK_MAP_URL (el dominio externo)
-   para no depender de la red del visitante ni de que ese dominio esté
-   disponible — más simple y más confiable dentro de la app. */
-let mapPrevFocus=null,mapPrevScrollY=0,mapLoadTimer=null;
+   inventar ninguna atracción "seleccionada".
+
+   Arquitectura: PDF oficial 2026 (PARK_MAP_URL, fuente de verdad, enlace
+   externo "Abrir PDF oficial") → imagen local de alta resolución
+   (PARK_MAP_IMAGE, generada del PDF — ver specs sección 21) → visor
+   interactivo propio (createMapViewport, pan/zoom con pointer events) →
+   marcadores de atracción (mapMarker, % sobre la imagen). No se usa
+   PDF.js ni un iframe con el PDF para la experiencia principal — un
+   iframe con PDF no es fiable en todos los navegadores móviles (Safari
+   /iOS y apps "home screen" con WKWebView en particular pueden no
+   renderizarlo), mientras que una imagen local funciona igual en todos.
+
+   Doble vista: cuando la atracción tiene mapMarker, se muestran dos
+   representaciones de la MISMA imagen + el MISMO mapMarker (nunca dos
+   ubicaciones distintas) — una vista "near" (zoom cercano, centrada en el
+   marcador) y una vista "full" (parque completo). mapViewerState.mode
+   ('near'|'full') decide cuál es la vista principal (grande, interactiva)
+   y cuál la miniatura flotante (pequeña, no interactiva salvo tocarla
+   para intercambiar). mapViewerState.selectedAttractionId es la única
+   fuente de qué atracción está activa — nunca se guardan dos posiciones. */
+let mapPrevFocus=null,mapPrevScrollY=0;
+let mapViewerState={selectedAttractionId:null,mode:'near'};
+let mapCurrentAttraction=null;
+const MAP_MIN_SCALE=1,MAP_MAX_SCALE=4,MAP_LOCATE_SCALE=2.4;
 /* Nombre + número de las atracciones vecinas, ordenadas por número de mapa
    (no por el orden en que aparecen en nearbyAttractions) para que la frase
    "Cerca de #X y #Y" salga en el mismo orden en que aparecerían los
@@ -375,23 +460,240 @@ function nearbyHelpLine(a){
   let joined=parts.length>1?parts.slice(0,-1).join(', ')+' y '+parts[parts.length-1]:parts[0];
   return `Cerca de ${joined}`;
 }
-/* Tarjeta de ayuda de la atracción: el elemento dominante es siempre
-   "🔎 BUSCA EL #N" (el dato que hace falta leer de un vistazo durante el
-   recorrido); el resto (zona, vecinas, orientación) usa exactamente los
+/* Tarjeta de ayuda de la atracción: el elemento dominante es "🔎 BUSCA EL
+   #N" cuando hay mapMarker calibrado (el visor va a poder centrar y
+   acercar el zoom automáticamente ahí); si no hay mapMarker se usa "📍
+   Busca el #N en el mapa" — no se finge una ubicación que no se pudo
+   confirmar. El resto (zona, vecinas, orientación) usa exactamente los
    mismos campos/función que ya usa el resto de la app (mapOrientationHtml),
    sin inventar coordenadas nuevas. */
 function mapHelpData(a){
   let icon=(catLabel(a.cat)||'📍').split(' ')[0];
-  let big=a.mapNumber!=null?`🔎 BUSCA EL #${a.mapNumber}`:'🔎 Búscala en el mapa oficial';
+  let hasMarker=!!a.mapMarker;
+  let big=hasMarker
+    ?(a.mapNumber!=null?`🔎 BUSCA EL #${a.mapNumber}`:'🔎 Búscala en el mapa oficial')
+    :(a.mapNumber!=null?`📍 Busca el #${a.mapNumber} en el mapa`:'📍 Búscala en el mapa oficial');
   let near=nearbyHelpLine(a);
   let body=`<div class="mapsheet-helpzone">${a.zone}</div>${near?`<div>${near}</div>`:''}${mapOrientationHtml(a)}`;
   return {icon,big,body};
 }
+
+/* ----- Motor de pan/zoom reutilizable -----
+   Una instancia por contenedor (#mapMain = vista principal, interactiva;
+   #mapThumbViewport = miniatura, solo lectura). "base" es el tamaño (sin
+   escalar) de la imagen ya encajada por completo dentro del contenedor
+   ("contain": ambos lados caben, con márgenes si la proporción no calza
+   exacto) — así scale=1 siempre muestra el mapa completo sin necesidad de
+   scroll, y escalar hacia arriba desde ahí da el acercamiento. El marcador
+   vive DENTRO del mismo elemento que se transforma (.maptransform), nunca
+   fuera, para que nunca se desalinee del mapa al hacer zoom o pan. */
+function createMapViewport(rootId,opts){
+  const root=document.getElementById(rootId);
+  const transform=root.querySelector('.maptransform');
+  const img=root.querySelector('img');
+  const marker=root.querySelector('.mapmarker');
+  const markerLabel=marker.querySelector('.mapmarker-label');
+  const interactive=!!(opts&&opts.interactive);
+  let base={w:0,h:0};
+  let view={scale:MAP_MIN_SCALE,tx:0,ty:0};
+  function clampAxis(t,scaled,vp){ if(scaled<=vp)return (vp-scaled)/2; return Math.min(0,Math.max(vp-scaled,t)); }
+  function clamp(v){
+    const vw=root.clientWidth||1,vh=root.clientHeight||1;
+    v.scale=Math.min(MAP_MAX_SCALE,Math.max(MAP_MIN_SCALE,v.scale));
+    v.tx=clampAxis(v.tx,base.w*v.scale,vw);
+    v.ty=clampAxis(v.ty,base.h*v.scale,vh);
+    return v;
+  }
+  function layout(){
+    if(!img.naturalWidth)return;
+    const vw=root.clientWidth||1,vh=root.clientHeight||1;
+    const contain=Math.min(vw/img.naturalWidth,vh/img.naturalHeight);
+    base.w=img.naturalWidth*contain; base.h=img.naturalHeight*contain;
+  }
+  function apply(){
+    transform.style.width=base.w+'px';
+    transform.style.height=base.h+'px';
+    transform.style.transform=`translate(${view.tx}px,${view.ty}px) scale(${view.scale})`;
+  }
+  function setView(v,animated){ view=v; transform.classList.toggle('animated',!!animated); apply(); }
+  function setFull(animated){
+    layout();
+    const vw=root.clientWidth||1,vh=root.clientHeight||1;
+    setView(clamp({scale:MAP_MIN_SCALE,tx:(vw-base.w)/2,ty:(vh-base.h)/2}),animated);
+  }
+  function setNear(mk,animated){
+    layout();
+    const vw=root.clientWidth||1,vh=root.clientHeight||1;
+    const cx=mk.x/100*base.w,cy=mk.y/100*base.h,s=MAP_LOCATE_SCALE;
+    setView(clamp({scale:s,tx:vw/2-cx*s,ty:vh/2-cy*s}),animated);
+  }
+  function setMarker(a){
+    if(a&&a.mapMarker){
+      marker.style.setProperty('--mx',a.mapMarker.x);
+      marker.style.setProperty('--my',a.mapMarker.y);
+      if(markerLabel)markerLabel.textContent=a.mapNumber!=null?`#${a.mapNumber} ${a.name}`:a.name;
+      marker.hidden=false;
+    }else{
+      marker.hidden=true;
+    }
+  }
+  function pulse(){ marker.classList.remove('pulse'); void marker.offsetWidth; marker.classList.add('pulse'); }
+  function zoomBy(factor){
+    const vw=root.clientWidth||1,vh=root.clientHeight||1;
+    const sx=vw/2,sy=vh/2;
+    const cx=(sx-view.tx)/view.scale,cy=(sy-view.ty)/view.scale;
+    const newScale=Math.min(MAP_MAX_SCALE,Math.max(MAP_MIN_SCALE,view.scale*factor));
+    setView(clamp({scale:newScale,tx:sx-cx*newScale,ty:sy-cy*newScale}),true);
+  }
+  function doubleTapZoom(sx,sy){
+    const target=view.scale<MAP_MAX_SCALE-.3?Math.min(MAP_MAX_SCALE,view.scale*1.8):MAP_MIN_SCALE;
+    const cx=(sx-view.tx)/view.scale,cy=(sy-view.ty)/view.scale;
+    setView(clamp({scale:target,tx:sx-cx*target,ty:sy-cy*target}),true);
+  }
+  if(interactive){
+    // Pointer Events unifica touch/mouse: 1 puntero = pan, 2 = pinch-zoom.
+    // touch-action:none (CSS) + preventDefault evita que el gesto mueva la
+    // página/el fondo detrás del visor en vez del mapa.
+    let pointers=new Map(),pinchStart=null,dragStart=null,lastTapAt=0,lastTapPos=null;
+    root.addEventListener('pointerdown',e=>{
+      e.preventDefault();
+      try{root.setPointerCapture(e.pointerId)}catch(err){}
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      transform.classList.remove('animated');
+      if(pointers.size===2){
+        const pts=[...pointers.values()];
+        const rect=root.getBoundingClientRect();
+        pinchStart={
+          dist:Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y),
+          scale:view.scale,
+          mid:{x:(pts[0].x+pts[1].x)/2-rect.left,y:(pts[0].y+pts[1].y)/2-rect.top},
+          tx:view.tx,ty:view.ty
+        };
+        dragStart=null;
+      }else if(pointers.size===1){
+        dragStart={x:e.clientX,y:e.clientY,tx:view.tx,ty:view.ty};
+      }
+    });
+    root.addEventListener('pointermove',e=>{
+      if(!pointers.has(e.pointerId))return;
+      e.preventDefault();
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pointers.size===2&&pinchStart){
+        const pts=[...pointers.values()];
+        const dist=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+        const factor=dist/(pinchStart.dist||1);
+        const newScale=Math.min(MAP_MAX_SCALE,Math.max(MAP_MIN_SCALE,pinchStart.scale*factor));
+        const cx=(pinchStart.mid.x-pinchStart.tx)/pinchStart.scale,cy=(pinchStart.mid.y-pinchStart.ty)/pinchStart.scale;
+        setView(clamp({scale:newScale,tx:pinchStart.mid.x-cx*newScale,ty:pinchStart.mid.y-cy*newScale}),false);
+      }else if(pointers.size===1&&dragStart){
+        setView(clamp({scale:view.scale,tx:dragStart.tx+(e.clientX-dragStart.x),ty:dragStart.ty+(e.clientY-dragStart.y)}),false);
+      }
+    });
+    function endPointer(e){
+      if(!pointers.has(e.pointerId))return;
+      pointers.delete(e.pointerId);
+      pinchStart=null;
+      if(pointers.size===1){
+        const p=[...pointers.values()][0];
+        dragStart={x:p.x,y:p.y,tx:view.tx,ty:view.ty};
+      }else if(pointers.size===0){
+        dragStart=null;
+        const now=Date.now(),pos={x:e.clientX,y:e.clientY};
+        if(lastTapPos&&now-lastTapAt<320&&Math.hypot(pos.x-lastTapPos.x,pos.y-lastTapPos.y)<24){
+          const rect=root.getBoundingClientRect();
+          doubleTapZoom(pos.x-rect.left,pos.y-rect.top);
+          lastTapAt=0; lastTapPos=null;
+        }else{ lastTapAt=now; lastTapPos=pos; }
+      }
+    }
+    root.addEventListener('pointerup',endPointer);
+    root.addEventListener('pointercancel',endPointer);
+  }
+  return {layout,setFull,setNear,setMarker,pulse,zoomBy};
+}
+const mainViewport=createMapViewport('mapMain',{interactive:true});
+const thumbViewport=createMapViewport('mapThumbViewport',{interactive:false});
+
+/* ----- Carga de la imagen (una sola vez por sesión, con caché) ----- */
+let mapImageStatus='idle',mapImagePending=[],mapLoadTimer=null;
+function flushMapImagePending(){ let p=mapImagePending; mapImagePending=[]; p.forEach(fn=>fn()); }
+function ensureMapImage(cb){
+  mapImagePending.push(cb);
+  if(mapImageStatus==='loaded'){ flushMapImagePending(); return; }
+  if(mapImageStatus==='loading')return;
+  mapImageStatus='loading';
+  document.getElementById('mapSheetLoading').hidden=false;
+  document.getElementById('mapSheetFallback').hidden=true;
+  clearTimeout(mapLoadTimer);
+  mapLoadTimer=setTimeout(onMapImageError,10000); // red caída/colgada: no depender solo de onerror
+  const loader=new Image();
+  loader.onload=()=>{
+    clearTimeout(mapLoadTimer);
+    mapImageStatus='loaded';
+    // src recién ahora, sobre elementos ya en el DOM: el navegador sirve
+    // esta segunda asignación desde caché — no se vuelve a descargar.
+    document.querySelectorAll('#mapMain img,#mapThumbViewport img').forEach(im=>{ im.src=PARK_MAP_IMAGE; });
+    document.getElementById('mapSheetLoading').hidden=true;
+    flushMapImagePending();
+  };
+  loader.onerror=onMapImageError;
+  loader.src=PARK_MAP_IMAGE; // no cache-busting: debe poder cachearse normalmente
+}
+function onMapImageError(){
+  clearTimeout(mapLoadTimer);
+  mapImageStatus='idle'; // no 'error' permanente: la próxima apertura reintenta la carga
+  mapImagePending=[];
+  document.getElementById('mapSheetLoading').hidden=true;
+  document.getElementById('mapSheetFallback').hidden=false;
+}
+
+/* ----- Render de las dos vistas según mapViewerState.mode ----- */
+function renderMapViewers(){
+  const a=mapCurrentAttraction;
+  const hasMarker=!!(a&&a.mapMarker);
+  const thumb=document.getElementById('mapThumb');
+  const locateBtn=document.getElementById('mapSheetLocateBtn');
+  const toggleBtn=document.getElementById('mapSheetToggleBtn');
+  const caption=document.getElementById('mapMainCaption');
+  mainViewport.setMarker(hasMarker?a:null);
+  if(!hasMarker){
+    thumb.hidden=true; locateBtn.hidden=true; toggleBtn.hidden=true; caption.hidden=true;
+    mainViewport.setFull(true);
+    return;
+  }
+  thumb.hidden=false; locateBtn.hidden=false; toggleBtn.hidden=false; caption.hidden=false;
+  thumbViewport.setMarker(a);
+  const thumbLabel=document.getElementById('mapThumbLabel');
+  if(mapViewerState.mode==='near'){
+    mainViewport.setNear(a.mapMarker,true);
+    mainViewport.pulse();
+    thumbViewport.setFull(true);
+    caption.textContent=`🔎 Cerca de #${a.mapNumber}`;
+    toggleBtn.textContent='🗺️ Completo';
+    thumbLabel.textContent='🗺️ Parque completo';
+  }else{
+    mainViewport.setFull(true);
+    thumbViewport.setNear(a.mapMarker,true);
+    caption.textContent='🗺️ Ubicación en el parque';
+    toggleBtn.textContent='🔎 Ver cerca';
+    thumbLabel.textContent='🔎 Ver cerca';
+  }
+}
+function mapToggleMode(){ mapViewerState.mode=mapViewerState.mode==='near'?'full':'near'; renderMapViewers(); }
+function mapLocate(){ mapViewerState.mode='near'; renderMapViewers(); }
+function mapZoomStep(dir){ mainViewport.zoomBy(dir>0?1.4:1/1.4); }
+function onMapResize(){ if(mapImageStatus==='loaded')renderMapViewers(); }
+
 function openParkMap(attractionId){
-  const sheet=document.getElementById('mapSheet'),frame=document.getElementById('mapSheetFrame'),
+  const sheet=document.getElementById('mapSheet'),
     help=document.getElementById('mapSheetHelp'),titleSub=document.getElementById('mapSheetTitleSub'),
     titleMain=document.getElementById('mapSheetTitleMain');
   const a=attractionId?BY_ID[attractionId]:null;
+  const isNewAttraction=mapViewerState.selectedAttractionId!==(attractionId||null);
+  mapCurrentAttraction=a;
+  mapViewerState.selectedAttractionId=attractionId||null;
+  if(isNewAttraction)mapViewerState.mode='near'; // nueva atracción siempre entra por la vista cercana
+  document.getElementById('mapSheetApprox').hidden=!(a&&a.mapMarker);
   if(a){
     titleMain.textContent=a.name;
     titleSub.textContent=a.mapNumber!=null?`Mapa #${a.mapNumber}`:'';
@@ -407,19 +709,10 @@ function openParkMap(attractionId){
     titleSub.textContent='';
     help.hidden=true;
   }
-  document.getElementById('mapSheetExternalTop').href=PARK_MAP_PDF;
-  document.getElementById('mapSheetExternalBottom').href=PARK_MAP_PDF;
-  document.getElementById('mapSheetFallbackLink').href=PARK_MAP_PDF;
-  document.getElementById('mapSheetFallback').hidden=true;
-  frame.hidden=false;
-  if(frame.src.indexOf(PARK_MAP_PDF)===-1){
-    document.getElementById('mapSheetLoading').hidden=false;
-    clearTimeout(mapLoadTimer);
-    mapLoadTimer=setTimeout(showMapFallback,9000);
-    frame.src=PARK_MAP_PDF; // fuente real del visor — nunca se duplica esta ruta en otro sitio
-  }else{
-    document.getElementById('mapSheetLoading').hidden=true; // ya se cargó antes en esta sesión
-  }
+  document.getElementById('mapSheetExternalTop').href=PARK_MAP_URL;
+  document.getElementById('mapSheetExternalBottom').href=PARK_MAP_URL;
+  document.getElementById('mapSheetFallbackLink').href=PARK_MAP_URL;
+  document.getElementById('mapSheetControls').hidden=false;
   mapPrevFocus=document.activeElement;
   mapPrevScrollY=window.scrollY;
   document.body.classList.add('noscroll');
@@ -427,6 +720,8 @@ function openParkMap(attractionId){
   sheet.setAttribute('aria-hidden','false');
   sheet.classList.add('show');
   document.addEventListener('keydown',onMapKeydown);
+  window.addEventListener('resize',onMapResize);
+  ensureMapImage(()=>{ renderMapViewers(); });
   requestAnimationFrame(()=>document.getElementById('mapSheetClose').focus());
 }
 function closeParkMap(){
@@ -435,6 +730,7 @@ function closeParkMap(){
   sheet.classList.remove('show');
   sheet.setAttribute('aria-hidden','true');
   document.removeEventListener('keydown',onMapKeydown);
+  window.removeEventListener('resize',onMapResize);
   document.body.classList.remove('noscroll');
   document.body.style.top='';
   window.scrollTo(0,mapPrevScrollY);
@@ -446,17 +742,6 @@ function toggleMapHelp(){
   let collapsed=help.classList.toggle('collapsed');
   document.getElementById('mapSheetHelpToggle').setAttribute('aria-expanded',String(!collapsed));
 }
-function hideMapLoading(){clearTimeout(mapLoadTimer);document.getElementById('mapSheetLoading').hidden=true}
-function showMapFallback(){
-  document.getElementById('mapSheetLoading').hidden=true;
-  document.getElementById('mapSheetFrame').hidden=true;
-  document.getElementById('mapSheetFallback').hidden=false;
-}
-/* addEventListener (no onload= inline) porque el iframe ya existe en el DOM
-   sin "src" antes de que este <script> corra: un onload= inline dispararía
-   sobre el about:blank inicial antes de que estas funciones existan. */
-document.getElementById('mapSheetFrame').addEventListener('load',hideMapLoading);
-document.getElementById('mapSheetFrame').addEventListener('error',showMapFallback);
 
 /* ---------- Estado / localStorage ----------
    Se mantiene la misma clave "storyland_state_v1" (en vez de crear una nueva
