@@ -65,6 +65,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .pill{font-size:.68rem;font-weight:900;background:#f4f6f7;padding:4px 8px;border-radius:999px;white-space:nowrap}
 
 .zonebadge{display:inline-flex;align-items:center;gap:5px;background:#eef7f0;color:#1a7a44;border:1px solid #bfe6cc;border-radius:999px;padding:5px 11px;font-size:.74rem;font-weight:850;margin-bottom:8px}
+.maporient{display:flex;align-items:center;gap:10px;background:#f4f8fb;border:1px solid #d7e6ee;border-radius:14px;padding:8px 10px;margin-bottom:10px}
+.mapgrid{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px}
+.mapgrid-box{width:44px;height:36px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);background:#e3edf3;border:1px solid #c3d8e2;border-radius:6px;padding:3px;gap:2px}
+.mapgrid-dot{width:100%;height:100%;border-radius:3px;background:var(--orange);align-self:center;justify-self:center;min-width:8px;min-height:8px}
+.mapgrid-entrance{font-size:.58rem;color:var(--muted);font-weight:800;white-space:nowrap}
+.maporienttext{font-size:.78rem;line-height:1.4}
+.maporienttext div{margin:1px 0}
 .reasonrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
 .reasonchip{background:#f4f0ff;color:#5b3ea8;border:1px solid #d8caf5;border-radius:999px;padding:4px 10px;font-size:.72rem;font-weight:800}
 .banner.zonehint{background:#fff3dc;border:1px solid #f0d38a;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
@@ -156,28 +163,36 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
      mirando el mapa impreso, se puede rellenar aquí y la UI lo mostrará.
    - nearbyAttractions: otras atracciones de la misma zona lógica, usadas
      para el bonus de proximidad y para el aviso "hay otra cerca".
+   - mapRegion/visualLandmark/nearbyMapNumbers: referencia visual rápida
+     para ubicarse en el Park Map oficial (celda de una cuadrícula 3×3
+     "front/center/back" × "left/center/right", una frase de referencia,
+     y números de otras atracciones cercanas). Igual regla que mapNumber:
+     solo se rellena donde el usuario dio el dato explícitamente (mismo
+     mensaje que trajo la numeración); donde no lo dio, queda en null/[]
+     a propósito — no se inventa una región ni una distancia. La UI debe
+     funcionar perfectamente sin estos campos (ver mapOrientationHtml()).
 */
 const PARK_MAP_URL='https://www.storylandnh.com/discover-the-park/park-map/';
 const ALL=[
-{id:'polar',name:'Polar Coaster',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:32,nearbyAttractions:['roar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','👨‍👦 CON ADULTO'],why:'Es la montaña rusa principal del parque: conviene hacerla temprano, antes de que se formen filas, y sirve para probar cómo tolera una montaña rusa antes de Roar-O-Saurus.'},
-{id:'roar',name:'Roar-O-Saurus',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:34,nearbyAttractions:['polar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','🦕 DINOSAURIOS','👨‍👦 CON ADULTO'],why:'La montaña rusa temática de dinosaurios: la gran favorita del día.'},
-{id:'bamboo',name:'Bamboo Chutes',cat:'imperdible',adult:true,zone:'💦 Zona Bambú',mapNumber:4,nearbyAttractions:['drgeyser'],tags:['🔥 IMPERDIBLE','💦 TE MOJAS UN POCO','🛟 SUAVE'],why:'Tobogán acuático suave: buen contraste de ritmo después de una montaña rusa.'},
-{id:'raptour',name:'Rap-Tour Safari',cat:'imperdible',adult:false,zone:'🦖 Zona Dinosaurios',mapNumber:33,nearbyAttractions:['polar','roar'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🦕 DINOSAURIOS','🎮 INTERACTIVA'],why:'Safari temático de dinosaurios: participativo y no muy intenso.'},
-{id:'flyingfish',name:'Flying Fish',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:18,nearbyAttractions:['farmtractors','crazybarn'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🐟 SUAVE'],why:'Atracción suave, buena para subir la confianza entre atracciones más intensas.'},
-{id:'antiquecars',name:'Antique Cars',cat:'imperdible',adult:false,zone:'🚗 Zona Autos Antiguos',mapNumber:2,nearbyAttractions:[],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚗 VEHÍCULOS','😌 TRANQUILA'],why:'Autos a su ritmo: encaja perfecto con lo que más le gusta.'},
-{id:'farmtractors',name:'Farm Tractors',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:16,nearbyAttractions:['crazybarn','flyingfish'],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚜 VEHÍCULOS','😌 TRANQUILA'],why:'Tractores que maneja él mismo: alta probabilidad de que quiera repetir.'},
-{id:'drgeyser',name:"Dr. Geyser's Remarkable Raft Ride",cat:'agua',adult:true,zone:'💦 Zona Acuática',mapNumber:13,nearbyAttractions:['splashbattle','moolagoon'],tags:['💦 TE MOJAS','☀️ MEJOR CON CALOR','👨‍👦 CON ADULTO'],why:'Con el calor de ahora es buen momento para mojarse.'},
-{id:'splashbattle',name:'Splash Battle',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:37,nearbyAttractions:['drgeyser','moolagoon'],tags:['💦 TE MOJAS','🎮 INTERACTIVA','👨‍👩‍👦 FAMILIAR'],why:'Batalla de agua interactiva: ideal para la parte más calurosa del día.'},
-{id:'moolagoon',name:'Moo Lagoon',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:31,nearbyAttractions:['drgeyser','splashbattle'],tags:['💦 OPCIONAL · PUEDE TOMAR BASTANTE TIEMPO','👨‍👩‍👦 FAMILIAR'],why:'Área de juegos de agua tipo splashpad: divertida pero puede llevarse mucho tiempo — no debe robarle turno a los imperdibles.'},
-{id:'pumpkincoach',name:"Cinderella's Pumpkin Coach",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:9,nearbyAttractions:['castle','swanboats','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Parada tranquila y bonita para fotos familiares.'},
-{id:'castle',name:"Cinderella's Castle",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:8,nearbyAttractions:['pumpkincoach','swanboats'],tags:['📸 FOTO FAMILIAR','🏰 CLÁSICO'],why:'El castillo de Cenicienta: imprescindible para la foto familiar.'},
-{id:'swanboats',name:'Swan Boats',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:39,nearbyAttractions:['castle','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Paseo lento en botes: buen respiro entre atracciones.'},
-{id:'carousel',name:'Antique German Carousel',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:3,nearbyAttractions:['swanboats','pumpkincoach'],tags:['📸 FOTO FAMILIAR','🎠 CLÁSICO'],why:'Carrusel clásico, siempre un acierto.'},
-{id:'balloonchase',name:'Great Balloon Chase',cat:'clasico',adult:false,zone:'🌳 Zona Central',mapNumber:22,nearbyAttractions:['huffpuff','loopylab'],tags:['📸 FOTO FAMILIAR','🎈 SUAVE'],why:'Vueltas suaves en globo: buena para bajar el ritmo.'},
-{id:'huffpuff',name:'Huff Puff & Whistle Railroad',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:24,nearbyAttractions:['loopylab','balloonchase'],tags:['😌 DESCANSO','👨‍👩‍👦 FAMILIAR','🚂 VEHÍCULOS'],why:'Tren panorámico para descansar los pies caminando. Ideal cuando estén cansados de caminar — no gastar la primera hora del parque aquí.'},
-{id:'loopylab',name:'Loopy Lab',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:27,nearbyAttractions:['turtletwirl','huffpuff','balloonchase'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Laboratorio interactivo: ideal para después de comer.'},
-{id:'turtletwirl',name:'Turtle Twirl',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:null,nearbyAttractions:['loopylab'],tags:['🎠 SUAVE','😌 TRANQUILA'],why:'Vueltas suaves, tranquila.'},
-{id:'crazybarn',name:'Crazy Barn',cat:'descanso',adult:false,zone:'🚜 Zona Granja',mapNumber:null,nearbyAttractions:['farmtractors','flyingfish'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Granero interactivo con sorpresas: le gustará explorar. Opcional — solo si sigue teniendo sentido geográfico y está abierta.'},
+{id:'polar',name:'Polar Coaster',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:32,mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[33,34],nearbyAttractions:['roar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','👨‍👦 CON ADULTO'],why:'Es la montaña rusa principal del parque: conviene hacerla temprano, antes de que se formen filas, y sirve para probar cómo tolera una montaña rusa antes de Roar-O-Saurus.'},
+{id:'roar',name:'Roar-O-Saurus',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:34,mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[32,33],nearbyAttractions:['polar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','🦕 DINOSAURIOS','👨‍👦 CON ADULTO'],why:'La montaña rusa temática de dinosaurios: la gran favorita del día.'},
+{id:'bamboo',name:'Bamboo Chutes',cat:'imperdible',adult:true,zone:'💦 Zona Bambú',mapNumber:4,mapRegion:'front-center',visualLandmark:null,nearbyMapNumbers:[2],nearbyAttractions:['drgeyser'],tags:['🔥 IMPERDIBLE','💦 TE MOJAS UN POCO','🛟 SUAVE'],why:'Tobogán acuático suave: buen contraste de ritmo después de una montaña rusa.'},
+{id:'raptour',name:'Rap-Tour Safari',cat:'imperdible',adult:false,zone:'🦖 Zona Dinosaurios',mapNumber:33,mapRegion:'back-right',visualLandmark:null,nearbyMapNumbers:[32,34],nearbyAttractions:['polar','roar'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🦕 DINOSAURIOS','🎮 INTERACTIVA'],why:'Safari temático de dinosaurios: participativo y no muy intenso.'},
+{id:'flyingfish',name:'Flying Fish',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:18,mapRegion:null,visualLandmark:'Zona de granja, parte interior del parque',nearbyMapNumbers:[16],nearbyAttractions:['farmtractors','crazybarn'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🐟 SUAVE'],why:'Atracción suave, buena para subir la confianza entre atracciones más intensas.'},
+{id:'antiquecars',name:'Antique Cars',cat:'imperdible',adult:false,zone:'🚗 Zona Autos Antiguos',mapNumber:2,mapRegion:'front-center',visualLandmark:null,nearbyMapNumbers:[4],nearbyAttractions:[],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚗 VEHÍCULOS','😌 TRANQUILA'],why:'Autos a su ritmo: encaja perfecto con lo que más le gusta.'},
+{id:'farmtractors',name:'Farm Tractors',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:16,mapRegion:null,visualLandmark:'Sección de granja del parque',nearbyMapNumbers:[18],nearbyAttractions:['crazybarn','flyingfish'],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚜 VEHÍCULOS','😌 TRANQUILA'],why:'Tractores que maneja él mismo: alta probabilidad de que quiera repetir.'},
+{id:'drgeyser',name:"Dr. Geyser's Remarkable Raft Ride",cat:'agua',adult:true,zone:'💦 Zona Acuática',mapNumber:13,mapRegion:null,visualLandmark:'Zona Geyser, junto a las Mini-Geysers',nearbyMapNumbers:[],nearbyAttractions:['splashbattle','moolagoon'],tags:['💦 TE MOJAS','☀️ MEJOR CON CALOR','👨‍👦 CON ADULTO'],why:'Con el calor de ahora es buen momento para mojarse.'},
+{id:'splashbattle',name:'Splash Battle',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:37,mapRegion:null,visualLandmark:'Zona posterior del mapa, después del bloque de dinosaurios',nearbyMapNumbers:[],nearbyAttractions:['drgeyser','moolagoon'],tags:['💦 TE MOJAS','🎮 INTERACTIVA','👨‍👩‍👦 FAMILIAR'],why:'Batalla de agua interactiva: ideal para la parte más calurosa del día.'},
+{id:'moolagoon',name:'Moo Lagoon',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:31,mapRegion:null,visualLandmark:'Justo antes del grupo de dinosaurios',nearbyMapNumbers:[32],nearbyAttractions:['drgeyser','splashbattle'],tags:['💦 OPCIONAL · PUEDE TOMAR BASTANTE TIEMPO','👨‍👩‍👦 FAMILIAR'],why:'Área de juegos de agua tipo splashpad: divertida pero puede llevarse mucho tiempo — no debe robarle turno a los imperdibles.'},
+{id:'pumpkincoach',name:"Cinderella's Pumpkin Coach",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:9,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[8],nearbyAttractions:['castle','swanboats','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Parada tranquila y bonita para fotos familiares.'},
+{id:'castle',name:"Cinderella's Castle",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:8,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[9],nearbyAttractions:['pumpkincoach','swanboats'],tags:['📸 FOTO FAMILIAR','🏰 CLÁSICO'],why:'El castillo de Cenicienta: imprescindible para la foto familiar.'},
+{id:'swanboats',name:'Swan Boats',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:39,mapRegion:null,visualLandmark:'Cerca del área de Cinderella, como referencia general',nearbyMapNumbers:[],nearbyAttractions:['castle','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Paseo lento en botes: buen respiro entre atracciones.'},
+{id:'carousel',name:'Antique German Carousel',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:3,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['swanboats','pumpkincoach'],tags:['📸 FOTO FAMILIAR','🎠 CLÁSICO'],why:'Carrusel clásico, siempre un acierto.'},
+{id:'balloonchase',name:'Great Balloon Chase',cat:'clasico',adult:false,zone:'🌳 Zona Central',mapNumber:22,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['huffpuff','loopylab'],tags:['📸 FOTO FAMILIAR','🎈 SUAVE'],why:'Vueltas suaves en globo: buena para bajar el ritmo.'},
+{id:'huffpuff',name:'Huff Puff & Whistle Railroad',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:24,mapRegion:null,visualLandmark:'Sigue el trazado del tren alrededor del parque',nearbyMapNumbers:[],nearbyAttractions:['loopylab','balloonchase'],tags:['😌 DESCANSO','👨‍👩‍👦 FAMILIAR','🚂 VEHÍCULOS'],why:'Tren panorámico para descansar los pies caminando. Ideal cuando estén cansados de caminar — no gastar la primera hora del parque aquí.'},
+{id:'loopylab',name:'Loopy Lab',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:27,mapRegion:null,visualLandmark:'Punto de juego interior/interactivo, zona media/trasera del parque',nearbyMapNumbers:[],nearbyAttractions:['turtletwirl','huffpuff','balloonchase'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Laboratorio interactivo: ideal para después de comer.'},
+{id:'turtletwirl',name:'Turtle Twirl',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:null,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['loopylab'],tags:['🎠 SUAVE','😌 TRANQUILA'],why:'Vueltas suaves, tranquila.'},
+{id:'crazybarn',name:'Crazy Barn',cat:'descanso',adult:false,zone:'🚜 Zona Granja',mapNumber:null,mapRegion:null,visualLandmark:null,nearbyMapNumbers:[],nearbyAttractions:['farmtractors','flyingfish'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Granero interactivo con sorpresas: le gustará explorar. Opcional — solo si sigue teniendo sentido geográfico y está abierta.'},
 ];
 const BY_ID={};ALL.forEach((a,i)=>BY_ID[a.id]={...a,_i:i});
 const MUST=['polar','roar','bamboo','raptour','flyingfish','antiquecars','farmtractors'];
@@ -190,6 +205,47 @@ const WATER_IDS=['drgeyser','splashbattle','moolagoon'];
 const DINO_IDS=['polar','roar','raptour'];
 function openParkMap(){window.open(PARK_MAP_URL,'_blank','noopener')}
 function zoneLine(a){return a.mapNumber!=null?`📍 ${a.zone} · #${a.mapNumber}`:`📍 ${a.zone}`}
+
+/* ---------- Referencia visual rápida para el Park Map (mapRegion) ----------
+   Ubicación aproximada dentro de una cuadrícula 3×3 (front/center/back ×
+   left/center/right), orientativa — nunca coordenadas ni distancias. Un
+   único componente reutilizable (mapOrientationHtml) para toda la app. */
+const MAP_REGION_LABEL={
+  'front-left':'Frente izquierda del parque, cerca de la entrada',
+  'front-center':'Entrada / parte frontal del parque',
+  'front-right':'Frente derecha del parque, cerca de la entrada',
+  'center-left':'Zona central izquierda',
+  'center':'Zona central',
+  'center-right':'Zona central derecha',
+  'back-left':'Parte trasera izquierda del parque',
+  'back-center':'Parte trasera del parque',
+  'back-right':'Parte trasera derecha del parque',
+};
+const MAP_REGION_CELL={ // [fila, columna] en la cuadrícula 3×3, fila1=trasera, fila3=entrada
+  'back-left':[1,1],'back-center':[1,2],'back-right':[1,3],
+  'center-left':[2,1],'center':[2,2],'center-right':[2,3],
+  'front-left':[3,1],'front-center':[3,2],'front-right':[3,3],
+};
+function mapGridHtml(region){
+  let cell=MAP_REGION_CELL[region];
+  if(!cell)return '';
+  let [r,c]=cell;
+  return `<div class="mapgrid" aria-hidden="true"><div class="mapgrid-box"><span class="mapgrid-dot" style="grid-row:${r};grid-column:${c}"></span></div><div class="mapgrid-entrance">🚪 Entrada</div></div>`;
+}
+function nearbyMapChips(a){
+  if(!a.nearbyMapNumbers||!a.nearbyMapNumbers.length)return [];
+  return a.nearbyMapNumbers.map(n=>ALL.find(x=>x.mapNumber===n)).filter(Boolean).slice(0,3).map(x=>`#${x.mapNumber} ${x.name}`);
+}
+function mapOrientationHtml(a){
+  let region=a.mapRegion&&MAP_REGION_LABEL[a.mapRegion]?a.mapRegion:null;
+  let chips=nearbyMapChips(a);
+  let orientLine=region?`🗺️ ${MAP_REGION_LABEL[region]}`:(a.visualLandmark?`🗺️ ${a.visualLandmark}`:null);
+  if(!orientLine&&!chips.length)return ''; // sin datos verificados: no mostrar nada, no inventar
+  return `<div class="maporient">${mapGridHtml(region)}<div class="maporienttext">
+    ${orientLine?`<div>${orientLine}</div>`:''}
+    ${chips.length?`<div>👀 Busca también: ${chips.join(' · ')}</div>`:''}
+  </div></div>`;
+}
 
 /* ---------- Estado / localStorage ----------
    Se mantiene la misma clave "storyland_state_v1" (en vez de crear una nueva
@@ -458,6 +514,7 @@ function renderAhora(){
       <span class="kicker">⭐ AHORA</span>
       <h2>${rec.name}</h2>
       <div class="zonebadge">${zoneLine(rec)}</div>
+      ${mapOrientationHtml(rec)}
       <div class="tagrow">${tags}</div>
       ${reasons.length?`<div class="reasonrow">${reasons.map(r=>`<span class="reasonchip">${r}</span>`).join('')}</div>`:''}
       <div class="whybox"><b>🎯 Por qué ahora:</b> ${whyNow(rec)}</div>
@@ -546,6 +603,7 @@ function renderChecklist(){
       <div class="itemzone"><span>${zoneLine(a)}</span><button class="zonemapbtn" onclick="openParkMap()">🗺️ Ver mapa</button></div>
       <div class="tagrow">${a.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
       ${open?`<div class="expandbox">
+        ${mapOrientationHtml(a)}
         <div class="whybox"><b>🎯 Por qué:</b> ${a.why}</div>
         <div class="factrow">
           <div class="fact">👨‍👦 Adulto<b>${a.adult?'Requerido':'No requerido'}</b></div>
