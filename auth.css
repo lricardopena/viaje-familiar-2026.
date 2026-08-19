@@ -1,0 +1,124 @@
+/* auth.css — pantalla de login temporal para el sitio del viaje familiar.
+ *
+ * Capa reversible: para retirarla después del viaje basta con
+ *   (a) poner AUTH_CONFIG.enabled=false en auth.js (no toca este archivo), o
+ *   (b) borrar el <link rel="stylesheet" href="auth.css"> y el
+ *       <script src="auth.js"></script> de cada página protegida.
+ * No depende de, ni es requerido por, el resto de la app (itinerario,
+ * Story Land, mapas, checklist).
+ */
+
+/* Antes de que auth.js decida si hay sesión válida, todo lo marcado como
+   "protected-content" permanece oculto — evita el flash del itinerario.
+   auth.js añade la clase "auth-ok" a <html> en cuanto confirma sesión
+   válida (o si AUTH_CONFIG.enabled es false). */
+html:not(.auth-ok) .protected-content { display: none !important; }
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  background: linear-gradient(180deg, #dff3ff 0%, #f6f7f2 100%);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+  background: #fff;
+  border: 1px solid #dbe7ec;
+  border-radius: 28px;
+  box-shadow: 0 10px 28px #17445c18;
+  padding: 30px 24px;
+  text-align: center;
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #183247;
+}
+
+.auth-lock { font-size: 2.4rem; margin-bottom: 4px; }
+.auth-card h1 { font-size: 1.3rem; margin: 4px 0 4px; }
+.auth-sub { color: #607887; font-size: .85rem; margin: 0 0 22px; }
+
+.auth-label {
+  display: block;
+  text-align: left;
+  font-weight: 800;
+  font-size: .76rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #607887;
+  margin: 14px 0 6px;
+}
+
+.auth-input {
+  width: 100%;
+  min-height: 50px;
+  padding: 10px 14px;
+  border: 1px solid #cadee8;
+  border-radius: 14px;
+  font-size: 1rem;
+  background: #f6f7f2;
+  color: #183247;
+}
+.auth-input:focus { outline: 2px solid #1579c5; outline-offset: 1px; }
+
+.auth-pwrow { display: flex; gap: 8px; }
+.auth-pwrow .auth-input { flex: 1; min-width: 0; }
+.auth-eye {
+  min-width: 50px;
+  min-height: 50px;
+  border: 1px solid #cadee8;
+  border-radius: 14px;
+  background: #f6f7f2;
+  font-size: 1.15rem;
+  flex: 0 0 auto;
+}
+
+.auth-submit {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 22px;
+  border: 0;
+  border-radius: 14px;
+  background: #1579c5;
+  color: #fff;
+  font-weight: 950;
+  letter-spacing: .04em;
+  font-size: 1rem;
+}
+.auth-submit:disabled { opacity: .65; }
+
+.auth-error {
+  min-height: 1.2em;
+  color: #c0392b;
+  font-weight: 700;
+  font-size: .85rem;
+  margin: 12px 0 0;
+}
+
+.auth-note {
+  margin: 16px 0 0;
+  color: #8798a0;
+  font-size: .72rem;
+}
+
+.auth-logout-btn {
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  z-index: 9998;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid #dbe7ec;
+  border-radius: 999px;
+  background: #ffffffee;
+  color: #607887;
+  font-weight: 800;
+  font-size: .7rem;
+  box-shadow: 0 4px 14px #17445c18;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
