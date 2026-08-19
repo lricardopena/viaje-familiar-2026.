@@ -44,6 +44,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .actbtn.skip{background:#edf2f4;color:var(--ink);border:1px solid var(--line)}
 .actbtn.repeat{background:#ffe1ee;color:#a41457;border:1px solid #f5b9d4}
 .actbtn.long{background:#fff0e0;color:#a4530a;border:1px solid #f0c896}
+.actbtn.map{background:#e4f5ff;color:#0b5e8e;border:1px solid #a9dcf5;grid-column:1/-1}
 
 .reactcard{background:#fff;border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--shadow);text-align:center}
 .reactcard h2{margin:6px 0 4px;font-size:1.25rem}
@@ -63,6 +64,12 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .miniitem small{display:block;color:var(--muted);font-size:.72rem;margin-top:2px}
 .pill{font-size:.68rem;font-weight:900;background:#f4f6f7;padding:4px 8px;border-radius:999px;white-space:nowrap}
 
+.zonebadge{display:inline-flex;align-items:center;gap:5px;background:#eef7f0;color:#1a7a44;border:1px solid #bfe6cc;border-radius:999px;padding:5px 11px;font-size:.74rem;font-weight:850;margin-bottom:8px}
+.reasonrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.reasonchip{background:#f4f0ff;color:#5b3ea8;border:1px solid #d8caf5;border-radius:999px;padding:4px 10px;font-size:.72rem;font-weight:800}
+.banner.zonehint{background:#fff3dc;border:1px solid #f0d38a;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.banner.zonehint button{min-height:38px;border:0;border-radius:11px;background:#a4530a;color:#fff;font-weight:900;padding:6px 12px;font-size:.76rem;white-space:nowrap}
+
 .catblock{margin-bottom:18px}
 .catblock h3{font-size:.95rem;margin:0 0 9px;display:flex;align-items:center;gap:6px}
 .item{background:#fff;border:1px solid var(--line);border-radius:18px;padding:11px 12px;margin-bottom:8px}
@@ -75,6 +82,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .st-later{background:#ffe6d4;color:#a4530a}
 .st-repeat{background:#ffe1ee;color:#a41457}
 .item .tagrow{margin:7px 0}
+.itemzone{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);margin:2px 0 4px}
+.itemzone .zonemapbtn{background:none;border:0;color:var(--blue);font-weight:850;font-size:.72rem;padding:2px 4px;white-space:nowrap}
 .itembtns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .itembtns button{min-height:42px;border-radius:11px;border:1px solid var(--line);background:#f8f9f7;font-size:1rem}
 .itembtns button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -86,6 +95,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .tipitem{background:#fff;border:1px solid var(--line);border-radius:16px;padding:11px 13px;font-size:.86rem;display:flex;gap:10px;align-items:flex-start}
 .tipitem span.ic{font-size:1.2rem}
 .resetbtn{display:block;width:100%;margin-top:18px;min-height:52px;border-radius:16px;border:1px solid #f0b3a8;background:#fff2ef;color:#b8291a;font-weight:900}
+
+.mapblock{background:#fff;border:1px solid var(--line);border-radius:20px;padding:14px;margin-bottom:18px;box-shadow:var(--shadow)}
+.mapbig{display:block;width:100%;min-height:58px;border-radius:16px;border:0;background:linear-gradient(135deg,#1579c5,#0b5e8e);color:#fff;font-weight:950;font-size:.92rem;margin-bottom:10px}
+.mapnote{font-size:.78rem;color:var(--muted);margin:0 0 10px}
+.zoneguide{background:#f6f7f2;border-radius:14px;padding:10px 12px;font-size:.82rem}
+.zoneguide b{display:block;margin-bottom:4px}
+.zoneguide ul{margin:4px 0 0;padding-left:18px}
 
 .fab{position:fixed;z-index:45;right:max(14px,env(safe-area-inset-right));bottom:calc(96px + env(safe-area-inset-bottom));background:var(--orange);color:#fff;border:0;border-radius:999px;padding:13px 18px;font-weight:950;box-shadow:0 8px 20px #ed7d2450;display:none}
 .fab.show{display:block}
@@ -117,33 +133,63 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 </div>
 
 <script>
-/* ---------- Datos de atracciones ---------- */
+/* ---------- Datos de atracciones ----------
+   Metadata geográfica (zone/mapNumber/nearbyAttractions):
+   - zone: agrupación lógica usada para "proximidad" (evitar cruzar el parque
+     de un lado a otro). "Dinosaurios" se apoya en la sección oficial
+     "Dinosaur Themed section" (confirmada por Story Land al describir
+     Roar-O-Saurus); "Granja" se apoya en la "barnyard-themed section"
+     (confirmada al describir Farm Tractors/Crazy Barn). El resto son
+     agrupaciones razonables por tema para planear la ruta, no coordenadas
+     verificadas — no hacía falta GPS, solo evitar caminatas tontas.
+   - mapNumber: número visible en el Park Map oficial. No pudimos abrir el
+     Park Map oficial (bloqueado para fetch automático) para confirmar la
+     numeración actual de 2026, así que TODOS quedan en null a propósito.
+     Nunca se inventa un número — si algún día se verifica uno a mano
+     mirando el mapa impreso, se puede rellenar aquí y la UI lo mostrará.
+   - nearbyAttractions: otras atracciones de la misma zona lógica, usadas
+     para el bonus de proximidad y para el aviso "hay otra cerca".
+*/
+const PARK_MAP_URL='https://www.storylandnh.com/discover-the-park/park-map/';
 const ALL=[
-{id:'polar',name:'Polar Coaster',cat:'imperdible',adult:true,tags:['🔥 IMPERDIBLE','🎢 INTENSA','👨‍👦 CON ADULTO'],why:'Es la montaña rusa principal del parque: conviene hacerla temprano, antes de que se formen filas, y sirve para probar cómo tolera una montaña rusa antes de Roar-O-Saurus.'},
-{id:'roar',name:'Roar-O-Saurus',cat:'imperdible',adult:true,tags:['🔥 IMPERDIBLE','🎢 INTENSA','🦕 DINOSAURIOS','👨‍👦 CON ADULTO'],why:'La montaña rusa temática de dinosaurios: la gran favorita del día.'},
-{id:'bamboo',name:'Bamboo Chutes',cat:'imperdible',adult:true,tags:['🔥 IMPERDIBLE','💦 TE MOJAS UN POCO','🛟 SUAVE'],why:'Tobogán acuático suave: buen contraste de ritmo después de una montaña rusa.'},
-{id:'raptour',name:'Rap-Tour Safari',cat:'imperdible',adult:false,tags:['🔥 IMPERDIBLE','🦕 DINOSAURIOS','🎮 INTERACTIVA'],why:'Safari temático de dinosaurios: participativo y no muy intenso.'},
-{id:'flyingfish',name:'Flying Fish',cat:'imperdible',adult:false,tags:['🔥 IMPERDIBLE','🐟 SUAVE'],why:'Atracción suave, buena para subir la confianza entre atracciones más intensas.'},
-{id:'antiquecars',name:'Antique Cars',cat:'imperdible',adult:false,tags:['⭐ MUY RECOMENDADA PARA ÉL','🚗 VEHÍCULOS','😌 TRANQUILA'],why:'Autos a su ritmo: encaja perfecto con lo que más le gusta.'},
-{id:'farmtractors',name:'Farm Tractors',cat:'imperdible',adult:false,tags:['⭐ MUY RECOMENDADA PARA ÉL','🚜 VEHÍCULOS','😌 TRANQUILA'],why:'Tractores que maneja él mismo: alta probabilidad de que quiera repetir.'},
-{id:'drgeyser',name:"Dr. Geyser's Remarkable Raft Ride",cat:'agua',adult:true,tags:['💦 TE MOJAS','☀️ MEJOR CON CALOR','👨‍👦 CON ADULTO'],why:'Con el calor de ahora es buen momento para mojarse.'},
-{id:'splashbattle',name:'Splash Battle',cat:'agua',adult:false,tags:['💦 TE MOJAS','🎮 INTERACTIVA','👨‍👩‍👦 FAMILIAR'],why:'Batalla de agua interactiva: ideal para la parte más calurosa del día.'},
-{id:'pumpkincoach',name:"Cinderella's Pumpkin Coach",cat:'clasico',adult:false,tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Parada tranquila y bonita para fotos familiares.'},
-{id:'castle',name:"Cinderella's Castle",cat:'clasico',adult:false,tags:['📸 FOTO FAMILIAR','🏰 CLÁSICO'],why:'El castillo de Cenicienta: imprescindible para la foto familiar.'},
-{id:'swanboats',name:'Swan Boats',cat:'clasico',adult:false,tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Paseo lento en botes: buen respiro entre atracciones.'},
-{id:'carousel',name:'Antique German Carousel',cat:'clasico',adult:false,tags:['📸 FOTO FAMILIAR','🎠 CLÁSICO'],why:'Carrusel clásico, siempre un acierto.'},
-{id:'balloonchase',name:'Great Balloon Chase',cat:'clasico',adult:false,tags:['📸 FOTO FAMILIAR','🎈 SUAVE'],why:'Vueltas suaves en globo: buena para bajar el ritmo.'},
-{id:'huffpuff',name:'Huff Puff & Whistle Railroad',cat:'descanso',adult:false,tags:['😌 DESCANSO','👨‍👩‍👦 FAMILIAR','🚂 VEHÍCULOS'],why:'Tren panorámico para descansar los pies caminando. Ideal cuando estén cansados de caminar — no gastar la primera hora del parque aquí.'},
-{id:'loopylab',name:'Loopy Lab',cat:'descanso',adult:false,tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Laboratorio interactivo: ideal para después de comer.'},
-{id:'turtletwirl',name:'Turtle Twirl',cat:'descanso',adult:false,tags:['🎠 SUAVE','😌 TRANQUILA'],why:'Vueltas suaves, tranquila.'},
-{id:'crazybarn',name:'Crazy Barn',cat:'descanso',adult:false,tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Granero interactivo con sorpresas: le gustará explorar.'},
+{id:'polar',name:'Polar Coaster',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:null,nearbyAttractions:['roar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','👨‍👦 CON ADULTO'],why:'Es la montaña rusa principal del parque: conviene hacerla temprano, antes de que se formen filas, y sirve para probar cómo tolera una montaña rusa antes de Roar-O-Saurus.'},
+{id:'roar',name:'Roar-O-Saurus',cat:'imperdible',adult:true,zone:'🦖 Zona Dinosaurios',mapNumber:null,nearbyAttractions:['polar','raptour'],tags:['🔥 IMPERDIBLE','🎢 INTENSA','🦕 DINOSAURIOS','👨‍👦 CON ADULTO'],why:'La montaña rusa temática de dinosaurios: la gran favorita del día.'},
+{id:'bamboo',name:'Bamboo Chutes',cat:'imperdible',adult:true,zone:'💦 Zona Bambú',mapNumber:null,nearbyAttractions:['drgeyser'],tags:['🔥 IMPERDIBLE','💦 TE MOJAS UN POCO','🛟 SUAVE'],why:'Tobogán acuático suave: buen contraste de ritmo después de una montaña rusa.'},
+{id:'raptour',name:'Rap-Tour Safari',cat:'imperdible',adult:false,zone:'🦖 Zona Dinosaurios',mapNumber:null,nearbyAttractions:['polar','roar'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🦕 DINOSAURIOS','🎮 INTERACTIVA'],why:'Safari temático de dinosaurios: participativo y no muy intenso.'},
+{id:'flyingfish',name:'Flying Fish',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:null,nearbyAttractions:['farmtractors','crazybarn'],tags:['🔥 IMPERDIBLE','⭐ MUY RECOMENDADA PARA ÉL','🐟 SUAVE'],why:'Atracción suave, buena para subir la confianza entre atracciones más intensas.'},
+{id:'antiquecars',name:'Antique Cars',cat:'imperdible',adult:false,zone:'🚗 Zona Autos Antiguos',mapNumber:null,nearbyAttractions:[],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚗 VEHÍCULOS','😌 TRANQUILA'],why:'Autos a su ritmo: encaja perfecto con lo que más le gusta.'},
+{id:'farmtractors',name:'Farm Tractors',cat:'imperdible',adult:false,zone:'🚜 Zona Granja',mapNumber:null,nearbyAttractions:['crazybarn','flyingfish'],tags:['⭐ MUY RECOMENDADA PARA ÉL','🚜 VEHÍCULOS','😌 TRANQUILA'],why:'Tractores que maneja él mismo: alta probabilidad de que quiera repetir.'},
+{id:'drgeyser',name:"Dr. Geyser's Remarkable Raft Ride",cat:'agua',adult:true,zone:'💦 Zona Acuática',mapNumber:null,nearbyAttractions:['splashbattle','moolagoon'],tags:['💦 TE MOJAS','☀️ MEJOR CON CALOR','👨‍👦 CON ADULTO'],why:'Con el calor de ahora es buen momento para mojarse.'},
+{id:'splashbattle',name:'Splash Battle',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:null,nearbyAttractions:['drgeyser','moolagoon'],tags:['💦 TE MOJAS','🎮 INTERACTIVA','👨‍👩‍👦 FAMILIAR'],why:'Batalla de agua interactiva: ideal para la parte más calurosa del día.'},
+{id:'moolagoon',name:'Moo Lagoon',cat:'agua',adult:false,zone:'💦 Zona Acuática',mapNumber:null,nearbyAttractions:['drgeyser','splashbattle'],tags:['💦 OPCIONAL · PUEDE TOMAR BASTANTE TIEMPO','👨‍👩‍👦 FAMILIAR'],why:'Área de juegos de agua tipo splashpad: divertida pero puede llevarse mucho tiempo — no debe robarle turno a los imperdibles.'},
+{id:'pumpkincoach',name:"Cinderella's Pumpkin Coach",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:null,nearbyAttractions:['castle','swanboats','carousel','balloonchase'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Parada tranquila y bonita para fotos familiares.'},
+{id:'castle',name:"Cinderella's Castle",cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:null,nearbyAttractions:['pumpkincoach','swanboats'],tags:['📸 FOTO FAMILIAR','🏰 CLÁSICO'],why:'El castillo de Cenicienta: imprescindible para la foto familiar.'},
+{id:'swanboats',name:'Swan Boats',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:null,nearbyAttractions:['castle','carousel'],tags:['📸 FOTO FAMILIAR','😌 TRANQUILA'],why:'Paseo lento en botes: buen respiro entre atracciones.'},
+{id:'carousel',name:'Antique German Carousel',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:null,nearbyAttractions:['swanboats','balloonchase'],tags:['📸 FOTO FAMILIAR','🎠 CLÁSICO'],why:'Carrusel clásico, siempre un acierto.'},
+{id:'balloonchase',name:'Great Balloon Chase',cat:'clasico',adult:false,zone:'🏰 Zona Cuentos Clásicos',mapNumber:null,nearbyAttractions:['carousel','pumpkincoach'],tags:['📸 FOTO FAMILIAR','🎈 SUAVE'],why:'Vueltas suaves en globo: buena para bajar el ritmo.'},
+{id:'huffpuff',name:'Huff Puff & Whistle Railroad',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:null,nearbyAttractions:[],tags:['😌 DESCANSO','👨‍👩‍👦 FAMILIAR','🚂 VEHÍCULOS'],why:'Tren panorámico para descansar los pies caminando. Ideal cuando estén cansados de caminar — no gastar la primera hora del parque aquí.'},
+{id:'loopylab',name:'Loopy Lab',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:null,nearbyAttractions:['turtletwirl'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Laboratorio interactivo: ideal para después de comer.'},
+{id:'turtletwirl',name:'Turtle Twirl',cat:'descanso',adult:false,zone:'🌳 Zona Central',mapNumber:null,nearbyAttractions:['loopylab'],tags:['🎠 SUAVE','😌 TRANQUILA'],why:'Vueltas suaves, tranquila.'},
+{id:'crazybarn',name:'Crazy Barn',cat:'descanso',adult:false,zone:'🚜 Zona Granja',mapNumber:null,nearbyAttractions:['farmtractors','flyingfish'],tags:['🎮 INTERACTIVA','😌 TRANQUILA'],why:'Granero interactivo con sorpresas: le gustará explorar. Opcional — solo si sigue teniendo sentido geográfico y está abierta.'},
 ];
 const BY_ID={};ALL.forEach((a,i)=>BY_ID[a.id]={...a,_i:i});
 const MUST=['polar','roar','bamboo','raptour','flyingfish','antiquecars','farmtractors'];
 const CALM_IDS=['huffpuff','swanboats','castle','pumpkincoach','loopylab','turtletwirl'];
 const CATS=[['imperdible','🔥 Imperdibles'],['agua','💦 Agua'],['clasico','🏰 Story Land clásico'],['descanso','😌 Descanso / flexibles']];
+/* Grupos usados por el scoring: afinidad del niño, bloque de agua y el bloque
+   de dinosaurios (para el mensaje "hay otra actividad de dinosaurios aquí"). */
+const CHILD_FAVORITE_IDS=['farmtractors','antiquecars','raptour','flyingfish'];
+const WATER_IDS=['drgeyser','splashbattle','moolagoon'];
+const DINO_IDS=['polar','roar','raptour'];
+function openParkMap(){window.open(PARK_MAP_URL,'_blank','noopener')}
+function zoneLine(a){return a.mapNumber!=null?`📍 ${a.zone} · #${a.mapNumber}`:`📍 ${a.zone}`}
 
-/* ---------- Estado / localStorage ---------- */
+/* ---------- Estado / localStorage ----------
+   Se mantiene la misma clave "storyland_state_v1" (en vez de crear una nueva
+   "viaje2026_storyland_state") porque el viaje ya está en curso y cambiar de
+   clave perdería el progreso guardado en el teléfono de la familia a mitad
+   del día. Todo lo nuevo (currentZone/deferred/recommendationCount) vive
+   dentro de este mismo objeto — sin claves de localStorage adicionales. */
 const KEY='storyland_state_v1';
 function loadState(){
   let s;
@@ -154,6 +200,10 @@ function loadState(){
   if(!('calmMode' in s))s.calmMode=false;
   if(!s.startTime)s.startTime=Date.now();
   if(!s.tab)s.tab='ahora';
+  if(!('currentZone' in s))s.currentZone=null;       // zona de la última atracción completada/repetida
+  if(!('lastCompletedId' in s))s.lastCompletedId=null;
+  if(!s.deferred)s.deferred={};                       // id -> {atCount, zone} cuando se marca "fila muy larga"
+  if(!('recommendationCount' in s))s.recommendationCount=0; // avanza con cada acción, usado para el cooldown
   return s;
 }
 let state=loadState();
@@ -161,7 +211,24 @@ function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 function getStatus(id){return state.status[id]||'pending'}
 function setStatus(id,val){state.status[id]=val;save();renderAll()}
 
-/* ---------- Lógica de recomendación ---------- */
+/* ---------- Lógica de recomendación ----------
+   score = priorityScore + sameZoneBonus + proximityBonus + childAffinityBonus
+           + timeOfDayBonus + favoriteBonus - deferredPenalty - fatiguePenalty
+   La prioridad manda: cada nivel de "tier" vale TIER_W puntos, y la suma de
+   todos los bonus de contexto (zona/proximidad/niño/hora) nunca alcanza un
+   nivel completo. Así, un imperdible razonablemente cerca sigue ganando a
+   una atracción secundaria que está pegada a nosotros — la ubicación solo
+   desempata entre cosas de prioridad parecida y evita cruzar el parque sin
+   necesidad. Una fila muy larga sí resta bastante (deferredPenalty), pero
+   no tanto como para desaparecer si de verdad no queda nada mejor. */
+const TIER_W=100;          // peso de cada nivel de prioridad (factor dominante)
+const SAME_ZONE_BONUS=35;  // seguimos en la misma zona que la última atracción
+const PROXIMITY_BONUS=15;  // está en la lista "nearbyAttractions" de lo último hecho
+const CHILD_BONUS=12;      // atracción marcada como favorita probable del niño
+const WATER_BONUS=20;      // agua + hace calor (bonus, no regla obligatoria)
+const WATER_BONUS_MOOLAGOON=10; // Moo Lagoon recibe la mitad: es opcional, no debe adelantarse
+const DEFERRED_PENALTY=90; // "fila muy larga": penalización temporal (cooldown)
+
 function phase1Order(){
   return state.polarReaction==='no' ? ['polar','raptour','bamboo','flyingfish'] : ['polar','roar','bamboo','raptour','flyingfish'];
 }
@@ -170,20 +237,62 @@ function waterBoostActive(){
   let pendingMust=MUST.filter(id=>getStatus(id)==='pending'||getStatus(id)==='skipped').length;
   return hour>=13 && pendingMust<=3;
 }
-function tierOf(id){
+function baseTier(id){
   if(phase1Order().includes(id))return 0;
   if(id==='antiquecars'||id==='farmtractors')return 1;
   if(id==='drgeyser'||id==='splashbattle')return waterBoostActive()?1.5:2;
   if(id==='roar'&&state.polarReaction==='no')return 2.4;
   if(['pumpkincoach','castle','swanboats','carousel','balloonchase'].includes(id))return 2.6;
+  if(id==='moolagoon')return 2.8; // opcional: nunca compite con los imperdibles, aunque haga calor
   if(['loopylab','turtletwirl','crazybarn'].includes(id))return 3;
   if(id==='huffpuff')return 3.2;
   return 4;
 }
+/* ----- cooldown para "fila muy larga" (item 8) -----
+   No calculamos minutos: contamos acciones. Mientras no hayan pasado al
+   menos 2 acciones desde que se difirió Y sigamos en la misma zona, la
+   atracción recibe DEFERRED_PENALTY y deja de ser la recomendación
+   automática — pero sigue en la lista (no desaparece) y se puede
+   "revisar la fila" a mano en cualquier momento. */
+function deferredInfo(id){return state.deferred&&state.deferred[id]}
+function isOnCooldown(id){
+  let d=deferredInfo(id);
+  if(!d)return false;
+  let recDelta=state.recommendationCount-d.atCount;
+  let zoneChanged=state.currentZone&&d.zone&&state.currentZone!==d.zone;
+  return recDelta<2&&!zoneChanged;
+}
+function sameZoneBonus(a){return state.currentZone&&a.zone===state.currentZone?SAME_ZONE_BONUS:0}
+function proximityBonus(a){
+  let lastId=state.lastCompletedId;
+  if(!lastId||!BY_ID[lastId])return 0;
+  return BY_ID[lastId].nearbyAttractions.includes(a.id)?PROXIMITY_BONUS:0;
+}
+function childBonus(a){return CHILD_FAVORITE_IDS.includes(a.id)?CHILD_BONUS:0}
+function timeOfDayBonus(a){
+  if(!waterBoostActive()||!WATER_IDS.includes(a.id))return 0;
+  return a.id==='moolagoon'?WATER_BONUS_MOOLAGOON:WATER_BONUS;
+}
+function phase1SeqBonus(id){
+  // Dentro del bloque inicial (Polar→Roar/Raptour→Bamboo→Flying Fish) hay un
+  // orden narrativo explícito ligado a la reacción del niño en Polar Coaster
+  // (ver whyNow). Se sube como parte de priorityScore, con más peso que
+  // childAffinityBonus, para que esa secuencia no se desordene solo porque
+  // una de las opciones "le gusta más" — la reacción a Polar manda aquí.
+  let order=phase1Order(),idx=order.indexOf(id);
+  return idx<0?0:(order.length-idx)*20;
+}
+function computeScore(a){
+  let tier=baseTier(a.id);
+  let priorityScore=(5-tier)*TIER_W+phase1SeqBonus(a.id);
+  let deferredPenalty=isOnCooldown(a.id)?DEFERRED_PENALTY:0;
+  let favoriteBonus=0; // los ya marcados "repeat" no entran en este pool (van a la lista de repetir aparte)
+  return priorityScore+sameZoneBonus(a)+proximityBonus(a)+childBonus(a)+timeOfDayBonus(a)+favoriteBonus-deferredPenalty;
+}
 function candidateList(){
   return ALL.filter(a=>{let s=getStatus(a.id);return s!=='done'&&s!=='repeat'})
-    .map(a=>({...a,tier:getStatus(a.id)==='later'?9:tierOf(a.id)}))
-    .sort((a,b)=>a.tier-b.tier||a._i-b._i);
+    .map(a=>({...a,tier:baseTier(a.id),score:computeScore(a),deferred:isOnCooldown(a.id)}))
+    .sort((a,b)=>b.score-a.score||a._i-b._i);
 }
 function getRecommendation(){
   if(state.calmMode){
@@ -204,31 +313,71 @@ function whyNow(a){
   if(a.id==='raptour'&&state.polarReaction==='no')return 'Como no quiere otra montaña rusa por ahora, vamos a algo más tranquilo y con dinosaurios.';
   return a.why;
 }
+/* Razones cortas (máx. 2) que explican por qué se sugiere esto ahora mismo,
+   sin convertir la tarjeta en un párrafo largo (item 15). */
+function reasonsFor(a){
+  let r=[];
+  if(a.repeatFallback)r.push('❤️ La pidió repetir.');
+  if(a.tier<=1&&getStatus(a.id)==='pending')r.push('🔥 Sigue siendo un imperdible pendiente.');
+  if(sameZoneBonus(a))r.push('📍 Ya estás en esta zona.');
+  else if(proximityBonus(a))r.push('📍 Está cerca de lo que acabamos de hacer.');
+  if(DINO_IDS.includes(a.id)&&DINO_IDS.some(id=>id!==a.id&&BY_ID[id].zone===a.zone&&['pending','later'].includes(getStatus(id))))r.push('🦖 Hay otra actividad de dinosaurios aquí mismo.');
+  if(timeOfDayBonus(a))r.push('☀️ Buen momento para las atracciones de agua.');
+  if(childBonus(a))r.push('⭐ Tiene alta probabilidad de gustarle.');
+  return r.slice(0,2);
+}
 function tipFor(a){
   if(a.id==='polar')return '💡 Si le encanta, ir inmediatamente a Roar-O-Saurus.';
   if(a.id==='roar'&&state.polarReaction==='ok')return '💡 Es normal parar aquí si después no quiere más coasters por un rato.';
   if(a.id==='antiquecars'||a.id==='farmtractors')return '💡 Si le encanta, puede repetirla — toca ❤️ QUIERE REPETIR.';
   if(a.id==='drgeyser'||a.id==='splashbattle')return '👕 Confirmen que traen muda de ropa antes de empezar.';
+  if(a.id==='moolagoon')return '💡 Puede llevarse bastante tiempo — bien como cierre, no como prioridad.';
   if(a.id==='huffpuff')return '💡 Ideal cuando estén cansados de caminar.';
   return null;
 }
-function prioLabel(tier,repeatFallback){
+function prioLabel(tier,repeatFallback,deferred){
   if(repeatFallback)return {t:'🔁 REPETIR',c:'priorepeat'};
+  if(deferred)return {t:'🕐 EN ESPERA (fila larga)',c:'priomed'};
   if(tier===0)return {t:'MUY ALTA',c:'priohigh'};
   if(tier===1)return {t:'ALTA',c:'priohigh'};
   if(tier===1.5)return {t:'ALTA (buen momento)',c:'priohigh'};
   if(tier===2.4)return {t:'OPCIONAL PARA DESPUÉS',c:'priomed'};
   if(tier===2||tier===2.6)return {t:'MEDIA',c:'priomed'};
+  if(tier===2.8)return {t:'OPCIONAL',c:'priolow'};
   return {t:'BAJA',c:'priolow'};
 }
 
-/* ---------- Acciones ---------- */
+/* ---------- Acciones ----------
+   tick() avanza el contador que usa el cooldown de "fila muy larga".
+   currentZone solo se actualiza con hecho/repetir: son las dos acciones que
+   significan "de verdad estuvimos ahí". Saltar o marcar fila larga no mueve
+   la zona porque no llegamos a montarnos. */
+function tick(){state.recommendationCount=(state.recommendationCount||0)+1}
 function actDone(id){
+  tick();
+  state.currentZone=BY_ID[id].zone;
+  state.lastCompletedId=id;
+  if(state.deferred)delete state.deferred[id];
   setStatus(id,'done');
 }
-function actSkip(id){setStatus(id,'skipped')}
-function actRepeat(id){setStatus(id,'repeat')}
-function actLong(id){setStatus(id,'later')}
+function actSkip(id){tick();setStatus(id,'skipped')}
+function actRepeat(id){
+  tick();
+  state.currentZone=BY_ID[id].zone;
+  state.lastCompletedId=id;
+  if(state.deferred)delete state.deferred[id];
+  setStatus(id,'repeat');
+}
+function actLong(id){
+  tick();
+  if(!state.deferred)state.deferred={};
+  state.deferred[id]={atCount:state.recommendationCount,zone:BY_ID[id].zone};
+  setStatus(id,'later');
+}
+function recheckLine(id){
+  if(state.deferred)delete state.deferred[id];
+  setStatus(id,'pending');
+}
 function setPolarReaction(v){state.polarReaction=v;save();renderAll()}
 function toggleCalm(){state.calmMode=!state.calmMode;save();renderAll()}
 function resetDay(){
@@ -281,16 +430,29 @@ function renderAhora(){
   }
 
   let rec=getRecommendation();
+  // Aviso de "no abandonar la zona": si lo que se sugiere ahora NO es la
+  // atracción diferida por fila larga, pero esa atracción sigue en la misma
+  // zona en la que estamos, ofrecemos revisarla en vez de recomendarla en
+  // bucle automáticamente (item 7 / caso de prueba 3).
+  if(state.currentZone&&state.deferred){
+    let stuck=Object.keys(state.deferred).map(id=>BY_ID[id]).find(a=>a&&a.zone===state.currentZone&&getStatus(a.id)==='later'&&(!rec||rec.id!==a.id));
+    if(stuck){
+      html+=`<div class="banner zonehint"><span>🦖 ${stuck.name} sigue pendiente en esta zona. ¿Revisamos la fila antes de movernos?</span><button onclick="recheckLine('${stuck.id}')">🔁 Revisar fila</button></div>`;
+    }
+  }
   if(!rec){
     html+=`<div class="donebig"><div class="emoji">🎉</div><h2>¡Completaron el plan de Story Land!</h2><p>Ya hicieron todo lo importante. Si quieren, repitan alguna favorita antes de irse.</p></div>`;
   }else{
-    let prio=prioLabel(rec.tier,rec.repeatFallback);
+    let prio=prioLabel(rec.tier,rec.repeatFallback,rec.deferred);
     let tags=rec.tags.map(t=>`<span class="tag ${t.includes('IMPERDIBLE')||t.includes('INTENSA')?'hot':t.includes('RECOMENDADA')?'star':''}">${t}</span>`).join('');
     let tip=tipFor(rec);
+    let reasons=reasonsFor(rec);
     html+=`<div class="nowcard">
       <span class="kicker">⭐ AHORA</span>
       <h2>${rec.name}</h2>
+      <div class="zonebadge">${zoneLine(rec)}</div>
       <div class="tagrow">${tags}</div>
+      ${reasons.length?`<div class="reasonrow">${reasons.map(r=>`<span class="reasonchip">${r}</span>`).join('')}</div>`:''}
       <div class="whybox"><b>🎯 Por qué ahora:</b> ${whyNow(rec)}</div>
       <div class="factrow">
         <div class="fact">📏 Altura<b>✅ Puede subir</b></div>
@@ -304,6 +466,7 @@ function renderAhora(){
         <button class="actbtn skip" onclick="actSkip('${rec.id}')">⏭️ SALTAR POR AHORA</button>
         <button class="actbtn repeat" onclick="actRepeat('${rec.id}')">❤️ QUIERE REPETIR</button>
         <button class="actbtn long" onclick="actLong('${rec.id}')">👥 FILA MUY LARGA</button>
+        <button class="actbtn map" onclick="openParkMap()">🗺️ VER PARK MAP</button>
       </div>
     </div>`;
   }
@@ -335,7 +498,15 @@ function extraSectionsHtml(){
 
 /* ---------- Render: Checklist ---------- */
 function cycleStatus(id,val){
-  setStatus(id,getStatus(id)===val?'pending':val);
+  if(getStatus(id)===val){ // tocar de nuevo el mismo botón = volver a pendiente
+    if(state.deferred)delete state.deferred[id];
+    setStatus(id,'pending');
+    return;
+  }
+  if(val==='done')actDone(id);
+  else if(val==='later')actLong(id);
+  else if(val==='repeat')actRepeat(id);
+  else if(val==='skipped')actSkip(id);
 }
 function renderChecklist(){
   let el=document.getElementById('tab-checklist');
@@ -347,6 +518,7 @@ function renderChecklist(){
       let s=getStatus(a.id);
       let stLabel={pending:'⬜ Pendiente',done:'✅ Hecho',skipped:'⏭️ Saltado',later:'🕐 Volver después',repeat:'❤️ Repetir'}[s];
       html+=`<div class="item"><div class="top2"><h4>${a.name}</h4><span class="statusChip st-${s}">${stLabel}</span></div>
+      <div class="itemzone"><span>${zoneLine(a)}</span><button class="zonemapbtn" onclick="openParkMap()">🗺️ Ver mapa</button></div>
       <div class="tagrow">${a.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
       <div class="itembtns">
         <button class="${s==='done'?'active':''}" title="Hecho" onclick="cycleStatus('${a.id}','done')">✅</button>
@@ -371,7 +543,28 @@ function renderFavoritas(){
   el.innerHTML=`<div class="miniSectTitle">❤️ Quiere repetir</div><div class="minilist">${repeats.map(a=>`<div class="miniitem"><span>${a.name}<small>${catLabel(a.cat)}</small></span><span class="pill">❤️</span></div>`).join('')}</div>`;
 }
 
-/* ---------- Render: Tips ---------- */
+/* ---------- Render: Tips + Mapa ---------- */
+function mapBlockHtml(){
+  // Zona a mostrar: la última completada; si todavía no hay nada hecho,
+  // usamos la zona de la recomendación actual como referencia inicial.
+  let rec=getRecommendation();
+  let zone=state.currentZone||(rec&&rec.zone)||null;
+  let guide='';
+  if(zone){
+    let pending=ALL.filter(a=>a.zone===zone&&!['done','repeat'].includes(getStatus(a.id)));
+    guide=`<div class="zoneguide"><b>${state.currentZone?'Zona actual':'Próxima zona sugerida'}</b>${zone}
+      ${pending.length?`<div style="margin-top:6px">Pendientes aquí:</div><ul>${pending.map(a=>`<li>${a.name}${getStatus(a.id)==='later'?' · 🕐 fila larga':''}</li>`).join('')}</ul>`:'<div style="margin-top:6px">No queda nada pendiente en esta zona 🎉</div>'}
+    </div>`;
+  }else{
+    guide=`<div class="zoneguide">Todavía no han completado ninguna atracción — el mapa oficial les ayuda a ubicar la primera zona.</div>`;
+  }
+  return `<div class="mapblock">
+    <div class="miniSectTitle" style="margin-top:0">🗺️ Park Map</div>
+    <button class="mapbig" onclick="openParkMap()">🗺️ ABRIR PARK MAP OFICIAL</button>
+    <p class="mapnote">El mapa oficial de Story Land nos ayuda a ubicarnos físicamente (zona / número). Nuestra app sigue decidiendo qué conviene hacer ahora.</p>
+    ${guide}
+  </div>`;
+}
 function renderTips(){
   let el=document.getElementById('tab-tips');
   const tips=[
@@ -384,7 +577,7 @@ function renderTips(){
     ['❤️','Marcar las atracciones que quiera repetir.'],
     ['👥','Si una fila parece demasiado larga, usar "Volver después".'],
   ];
-  el.innerHTML=`<div class="miniSectTitle">ℹ️ Tips rápidos</div><div class="tipsList">${tips.map(t=>`<div class="tipitem"><span class="ic">${t[0]}</span><span>${t[1]}</span></div>`).join('')}</div><button class="resetbtn" onclick="resetDay()">🔄 Resetear día</button>`;
+  el.innerHTML=mapBlockHtml()+`<div class="miniSectTitle">ℹ️ Tips rápidos</div><div class="tipsList">${tips.map(t=>`<div class="tipitem"><span class="ic">${t[0]}</span><span>${t[1]}</span></div>`).join('')}</div><button class="resetbtn" onclick="resetDay()">🔄 Resetear día</button>`;
 }
 
 /* ---------- Progreso ---------- */
