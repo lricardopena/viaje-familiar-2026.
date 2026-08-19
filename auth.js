@@ -39,8 +39,8 @@
   const AUTH_CONFIG = {
     enabled: true, // kill switch: false = sitio abierto de inmediato, sin login
     iterations: 400000, // PBKDF2-SHA256
-    salt: 'REEMPLAZA_CON_SALT_BASE64_DE_LA_HERRAMIENTA',
-    verifier: 'REEMPLAZA_CON_VERIFIER_BASE64_DE_LA_HERRAMIENTA',
+    salt: 'S6abWjko3kZmeb73gv+LMQ==',
+    verifier: '1RZmSKmhE8rqtK0GneQBMAO53rK7d6A9BjcWkoCeEJE=',
     sessionDurationHours: 24,
     storageKey: 'viaje2026_auth_session'
   };
