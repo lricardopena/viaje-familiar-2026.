@@ -139,11 +139,57 @@ footer{margin-top:26px;color:var(--muted);font-size:.75rem}
       '<button type="button" id="copyBtn">📋 Copiar</button>' +
       '<p class="warn">Ahora pulsa "Borrar todo" antes de cerrar o compartir esta pantalla — el usuario y la contraseña siguen en los campos de arriba.</p>';
     $('snippetBox').textContent = snippet;
-    $('copyBtn').onclick = () => {
-      navigator.clipboard.writeText(snippet).catch(() => {});
-      $('copyBtn').textContent = '✅ Copiado';
+    $('copyBtn').onclick = async () => {
+      const success = await copyToClipboard(snippet);
+      if (success) {
+        $('copyBtn').textContent = '✅ Copiado';
+      } else {
+        // Sin API de portapapeles disponible (típico al abrir el archivo con
+        // file://, que no es un "contexto seguro"): selecciona el texto para
+        // que el usuario pueda copiarlo manualmente (Ctrl/Cmd+C).
+        $('copyBtn').textContent = '⚠️ Selecciona y copia manualmente';
+        selectText($('snippetBox'));
+      }
     };
   };
+
+  // navigator.clipboard solo existe en contextos seguros (https, o
+  // http://localhost) — al abrir este archivo con doble clic (file://) no
+  // está disponible, así que hace falta un respaldo con execCommand('copy').
+  async function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (e) {
+        // sigue al respaldo de abajo
+      }
+    }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      ta.style.left = '-1000px';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function selectText(node) {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
 
   $('clearBtn').onclick = () => {
     $('user').value = '';
