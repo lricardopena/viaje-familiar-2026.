@@ -14,7 +14,7 @@
 <script src="data.js"></script>
 <script>
 const IMG=(name,w=1100)=>`https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(name)}?width=${w}`;
-const go=q=>{let a=Array.isArray(q)?q:[q],d=a[a.length-1],wp=a.length>1?'&waypoints='+encodeURIComponent(a.slice(0,-1).join('|')):'';return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(d)+wp+'&travelmode=driving'};
+const go=q=>{let a=Array.isArray(q)?q:[q];if(a.length>1)return 'https://www.google.com/maps/dir/'+a.map(encodeURIComponent).join('/');return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(a[0])+'&travelmode=driving'};
 const see=q=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(Array.isArray(q)?q[q.length-1]:q);
 function dayRoute(x){let list=[],push=addr=>{if(list[list.length-1]!==addr)list.push(addr)};x.maps.forEach(m=>(Array.isArray(m)?m:[m]).forEach(push));let hotel=hotelDests[x.d];(Array.isArray(hotel)?hotel:hotel?[hotel]:[]).forEach(addr=>{if(!list.includes(addr))push(addr)});return list}
 function mustSeeRoute(x){let list=[],push=addr=>{if(list[list.length-1]!==addr)list.push(addr)};x.acts.forEach((a,idx)=>{if(a[4]!=='star')return;let dest=(activityDests[x.d]||[])[idx]||x.maps[idx]||x.maps[0];(Array.isArray(dest)?dest:[dest]).forEach(push)});let hotel=hotelDests[x.d];(Array.isArray(hotel)?hotel:hotel?[hotel]:[]).forEach(addr=>{if(!list.includes(addr))push(addr)});return list}
