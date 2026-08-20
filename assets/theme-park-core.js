@@ -16,7 +16,9 @@
      id, name, emoji, theme:{accent,accentDark,themeColor}
      copy:{backHref,backLabel,headerTitle,mapOfficialTitle,mapAltText,mapNote,
            doneTitle,doneBody,resetConfirm}
-     map:{url,image,center:[lat,lng]}
+     map:{url,image,center:[lat,lng],
+          geoCalibration:{ax,bx,cx,ay,by,cy,controlPointIds,fittedOn,
+                          medianResidualPct,maxResidualPct,excludedIds} | undefined}
      storageKey
      attractions: [...]   (antes "ALL")
      pois: [...]           (antes "PARK_POIS" — restaurantes/baños/servicios)
@@ -34,7 +36,8 @@
      visualLandmark,nearbyMapNumbers,nearbyAttractions,tags,why,tip,
      priorityTier,waterBoostTier,geo:{lat,lng,source,reference},plusCode,
      restrictions:{minHeightIn,maxHeightIn,adultAccompaniedMinHeightIn,
-                   adultRequiredBelowIn,minAgeUnaccompanied,
+                   adultRequiredBelowIn,adultRequiredBelowInAndAge:{heightIn,ageYears},
+                   minAge,maxAge,minAgeUnaccompanied,soloOnly,
                    source,lastVerified,confidence}
    ============================================================================ */
 const PARK=window.PARK;
@@ -109,6 +112,17 @@ function eligibilityForChild(a,child){
   }
   if(r.maxHeightIn!=null&&h>r.maxHeightIn){
     return {status:'cannot-ride',label:'🚫 Excede altura máx.',reason:`Excede la altura máxima permitida (${r.maxHeightIn}").`};
+  }
+  /* minAge/maxAge: umbral de edad independiente de la altura (ej. The Dragon
+     en LEGOLAND New York exige 42"/4 años como mínimo — dos condiciones
+     separadas, no una combinada como adultRequiredBelowInAndAge). Sin
+     `ageYears` registrado no se puede evaluar: no se asume que cumple. */
+  if(r.minAge!=null){
+    if(child.ageYears==null)return {status:'unknown',label:'❓ Edad no registrada',reason:'No se registró la edad de este niño.'};
+    if(child.ageYears<r.minAge)return {status:'cannot-ride',label:'🚫 No cumple edad mínima',reason:`Edad mínima para esta atracción: ${r.minAge} años.`};
+  }
+  if(r.maxAge!=null&&child.ageYears!=null&&child.ageYears>r.maxAge){
+    return {status:'cannot-ride',label:'🚫 Excede edad máx.',reason:`Edad máxima para esta atracción: ${r.maxAge} años.`};
   }
   if(r.adultRequiredBelowIn!=null&&h<r.adultRequiredBelowIn){
     return {status:'with-adult',label:'👨‍👦 Con adulto',reason:`Debe ir acompañado por un adulto (requerido debajo de ${r.adultRequiredBelowIn}").`};
@@ -669,14 +683,34 @@ function mapGeoListItemHtml(p){
   const gmapsUrl=`https://www.google.com/maps/search/?api=1&query=${p.geo.lat},${p.geo.lng}`;
   return `<div class="mapgeo-item"><span class="ic">${p.icon||'📍'}</span><div class="txt"><b>${label}</b><small>Ubicación registrada</small></div><a href="${gmapsUrl}" target="_blank" rel="noopener noreferrer">Abrir en Maps ↗</a></div>`;
 }
-/* Contenido de la tarjeta al tocar un marcador: badge según geo.source,
-   zona, "cerca de" (nearbyAttractions vía nearbyHelpLine si es una
-   atracción, o nearbyText si es un POI), distancia en línea recta al punto
-   conocido más cercano (Haversine, nunca "caminando" — ver haversineMeters()
-   arriba), y los tres botones pedidos: Ver mapa oficial / Abrir en Google
-   Maps / Cerrar. */
+/* Badge del punto según procedencia de `geo` (genérico, cualquier parque —
+   ver jerarquía de fuentes en specs/SPECIFICATIONS.md.asc y en el handoff
+   de investigación de LEGOLAND New York):
+     - 'onsite-plus-code' (Story Land): medido en sitio con Plus Code —
+       texto histórico preservado tal cual para no cambiar la UI existente.
+     - 'user-measured' o reference 'queue-entrance'/'service-entrance':
+       punto físicamente medido en el parque (entrada de fila/servicio) —
+       el más confiable, aunque no venga de Story Land.
+     - fuentes de mapa/terceros (OpenStreetMap, Google Places, otro mapa de
+       terceros) o reference 'ride-poi'/'service-poi': centroide aproximado
+       de la atracción/servicio, NUNCA la entrada de fila real.
+     - cualquier otra cosa (ej. 'official-map'): referencia general según
+       el mapa oficial del parque. */
+function geoSourceBadge(geo){
+  const src=geo.source||'',ref=geo.reference||'';
+  if(src==='onsite-plus-code')return '📍 Ubicación registrada en sitio';
+  if(src==='user-measured'||ref==='queue-entrance'||ref==='service-entrance')return '📍 Entrada medida en el parque';
+  if(src==='openstreetmap-poi'||src==='third-party-ride-poi'||src==='google-maps-poi'||ref==='ride-poi'||ref==='service-poi')return '📍 Ubicación aproximada de la atracción (no es la entrada de fila)';
+  return '🗺️ Ubicación según mapa oficial';
+}
+/* Contenido de la tarjeta al tocar un marcador: badge según geo.source/
+   geo.reference (ver geoSourceBadge arriba), zona, "cerca de"
+   (nearbyAttractions vía nearbyHelpLine si es una atracción, o nearbyText
+   si es un POI), distancia en línea recta al punto conocido más cercano
+   (Haversine, nunca "caminando" — ver haversineMeters() arriba), y los tres
+   botones pedidos: Ver mapa oficial / Abrir en Google Maps / Cerrar. */
 function mapGeoPopupHtml(p){
-  const badge=p.geo.source==='onsite-plus-code'?'📍 Ubicación registrada en sitio':'📍 Ubicación según mapa oficial';
+  const badge=geoSourceBadge(p.geo);
   const zoneLine=p.zone?`<div class="geopopup-zone">${p.zone}</div>`:'';
   let nearLine='';
   if(p.attraction){
@@ -930,27 +964,43 @@ function mapGpsUpdateDistanceLine(){
    El mapa ilustrado no tiene coordenadas propias (es un dibujo, no un
    mapa a escala) — no hay forma de ubicar el GPS ahí de forma exacta. Lo
    que sí podemos hacer es ESTIMAR la posición cruzando los dos sistemas
-   de coordenadas que ya conocemos: para las 6 atracciones que tienen
-   tanto geo (Plus Code medido en sitio) como mapMarker (posición en la
-   imagen, calibrada a mano — ver "Calibración" en specs sección 21),
-   tenemos un par (lat/lng) ↔ (x%,y%). Con esos 6 pares se ajustó UNA vez,
-   offline, una transformación afín por mínimos cuadrados (numpy.lstsq —
-   ver el script en el commit) que convierte cualquier lat/lng en una
-   posición (x%,y%) estimada sobre la imagen. Es una ESTIMACIÓN, nunca una
-   medición: el ajuste tiene hasta ~5 puntos porcentuales de error en los
-   propios puntos de calibración (el mapa ilustrado no está dibujado a
-   escala/proyección real), así que el marcador se etiqueta siempre
-   "(estimado)" y nunca se presenta como una posición GPS exacta — mismo
-   principio que "La zona marcada es aproximada" para mapMarker. */
-const MAP_GEO_TO_IMG={ax:-24598.225084,bx:5992.442921,cx:1511778.056777,ay:-951.387361,by:-13334.325079,cy:-907130.644129};
+   de coordenadas que ya conocemos: para las atracciones que tienen tanto
+   geo (coordenada real) como mapMarker (posición en la imagen, calibrada a
+   mano), tenemos pares (lat/lng) ↔ (x%,y%). Con esos pares se puede ajustar
+   offline, una única vez, una transformación afín por mínimos cuadrados
+   (numpy.lstsq) que convierte cualquier lat/lng en una posición (x%,y%)
+   estimada sobre la imagen.
+
+   GENÉRICO POR DISEÑO (no específico de ningún parque): el ajuste vive en
+   `PARK.map.geoCalibration` (ver contrato arriba), no acá. Cada parque trae
+   su propio mapa ilustrado y por tanto su propia transformación — jamás la
+   de otro parque. Un parque sin `geoCalibration` (ej. LEGOLAND New York
+   hoy: no hubo visita previa para calibrar mapMarker, y los puntos
+   geográficos disponibles no están bien distribuidos — ver comentario en
+   parks/legoland-new-york.js) simplemente no proyecta el GPS sobre el mapa
+   ilustrado (geoToImagePercent devuelve null, "Tu ubicación (estimada)"
+   nunca se activa) — el resto de la app (mapa geográfico, checklist,
+   elegibilidad) sigue funcionando igual sin eso.
+
+   Story Land es la única instancia con `geoCalibration` hoy (ver
+   parks/story-land.js): 6 pares control point, ajuste conservado tal cual
+   se calculó originalmente (mismo resultado numérico que antes de mover la
+   constante a datos de parque). Es una ESTIMACIÓN, nunca una medición: el
+   ajuste tiene hasta ~5 puntos porcentuales de error en los propios puntos
+   de calibración (el mapa ilustrado no está dibujado a escala/proyección
+   real), así que el marcador se etiqueta siempre "(estimada)" y nunca se
+   presenta como una posición GPS exacta — mismo principio que "La zona
+   marcada es aproximada" para mapMarker. */
 function geoToImagePercent(lat,lng){
-  let x=MAP_GEO_TO_IMG.ax*lat+MAP_GEO_TO_IMG.bx*lng+MAP_GEO_TO_IMG.cx;
-  let y=MAP_GEO_TO_IMG.ay*lat+MAP_GEO_TO_IMG.by*lng+MAP_GEO_TO_IMG.cy;
+  const cal=PARK.map&&PARK.map.geoCalibration;
+  if(!cal)return null; // parque sin calibración ajustada: no inventar una posición
+  let x=cal.ax*lat+cal.bx*lng+cal.cx;
+  let y=cal.ay*lat+cal.by*lng+cal.cy;
   return {x:Math.max(0,Math.min(100,x)),y:Math.max(0,Math.min(100,y))};
 }
 function updateIllustratedGpsMarker(){
   if(!mapGpsState.coords){ mainViewport.setMe(null); thumbViewport.setMe(null); return; }
-  const pos=geoToImagePercent(mapGpsState.coords.lat,mapGpsState.coords.lng);
+  const pos=geoToImagePercent(mapGpsState.coords.lat,mapGpsState.coords.lng); // null si el parque no tiene geoCalibration
   mainViewport.setMe(pos);
   thumbViewport.setMe(pos);
 }
