@@ -59,7 +59,74 @@
    campo `ev` del día "23" en data.js).
    ANTES DEL VIAJE: revisar el calendario oficial cuando se acerque la
    fecha (para el horario) y la app oficial el día de la visita (shows/
-   meet&greets/tiempos de espera en vivo). */
+   meet&greets/tiempos de espera en vivo).
+
+   Cuarta pasada (2026-08-20): geolocalización, a partir de
+   `legoland-offline-research-geolocation-handoff.md` (adjuntado por el
+   usuario, investigación externa ya hecha con fuentes/URL/fecha por
+   hallazgo, sin necesidad de red en este entorno):
+     - `geo` agregado a 4 atracciones (dragonsapprentice, fireacademy,
+       legofactory, ninjagoride) — todas centroides de OpenStreetMap/
+       terceros (source:'openstreetmap-poi'/'third-party-ride-poi',
+       reference:'ride-poi', SIN confidence:'verified-official' — nunca la
+       entrada de fila real, solo una ubicación aproximada de la
+       atracción). `gravityforce` (Jay's Gravity Force Trainer) recibió su
+       Plus Code (9MJP+7F) con `geo:null` a propósito — no se decodificó a
+       lat/lng offline, y el handoff pide explícitamente no inventar la
+       coordenada.
+     - Jerarquía de procedencia aplicada (igual que documenta el handoff):
+       entrada medida en sitio > coordenada oficial > POI de mapa/terceros
+       > geo:null. Ningún punto de esta pasada alcanza el primer nivel —
+       todos son de mapa/terceros o quedan sin coordenada.
+     - `PARK.map.geoCalibration` (transformación GPS→mapa ilustrado)
+       queda SIN definir a propósito: los 4 puntos con `geo` no están bien
+       distribuidos (todos Bricktopia/NINJAGO/LEGO City, ninguno en LEGO
+       Pirates/entrada/Miniland) y ninguna atracción tiene `mapMarker`
+       calibrado todavía — ver comentario largo en `map:{}` más abajo con
+       el orden de captura sugerido para la visita del 23-ago-2026.
+     - Restricciones: se agregó soporte genérico de `minAge`/`maxAge` al
+       motor (antes `minAge` era un campo muerto — The Dragon y Jay's
+       Gravity Force Trainer ya lo declaraban pero nunca se evaluaba).
+       Driving School ahora declara `maxAge:13` explícito. Junior Driving
+       School se resolvió a favor de la página oficial vigente de la
+       atracción (3–6 años, confidence:'verified-official') sobre el
+       rótulo más genérico del mapa ilustrado ("3-5"), siguiendo la regla
+       de prioridad de fuentes del handoff — ver el campo `source` de esa
+       atracción para el detalle.
+     - Guardrail de privacidad "Home": auditado — este archivo y el resto
+       del repo ya usan la etiqueta lógica de Google Maps en vez de
+       ciudad/dirección residencial (ver CLAUDE.md y el commit que aplicó
+       esto antes de esta pasada); no se encontraron referencias nuevas
+       que corregir.
+
+   Quinta pasada (2026-08-24): `mapMarker` (posición en % sobre
+   `assets/legoland-map-2026.webp`, imagen local ya vendorizada) leído
+   visualmente por el agente directamente de la imagen — recortes de la
+   imagen a resolución original (5100×3300) para ubicar el pin numerado de
+   cada atracción, sin necesidad de visita previa al parque. Agregado a
+   dragon(#45)/dragonsapprentice(#42)/fireacademy(#71)/legofactory(#22)/
+   ninjagoride(#32) — las mismas 5 que ya tenían `geo` — más a
+   entrance-main(#1, Ticket Windows) que ya tenía `geo`, y a
+   anchorsaway(#83)/splashbattle(#87)/miniland(#98, Miniland Hub) SIN
+   `geo` todavía (mapMarker no depende de `geo`; sirve para mostrar el pin
+   sobre el mapa ilustrado incluso sin coordenada real — ver "Fallback de
+   mapa" en specs). Con esto, esas 8 atracciones/POIs ya aparecen
+   marcadas sobre el mapa oficial ilustrado (vista "🔎 Búscala en el
+   mapa oficial"), independientemente de GPS.
+
+   `PARK.map.geoCalibration` SIGUE sin activarse: con los 6 pares
+   (geo,mapMarker) disponibles hoy (5 atracciones + entrance-main) se
+   probó offline un ajuste afín diagnóstico (mismo método que Story
+   Land) — residual mediano ~4.6 puntos porcentuales, máximo ~5.7pp
+   (comparable al ~5pp de Story Land), pero la distribución sigue sin
+   cubrir LEGO Pirates (todo el lado este del parque, x%≈70-90, queda
+   fuera del casco convexo de los puntos actuales, x%≈22-59) — proyectar
+   GPS ahí extrapolaría fuera de rango, con error no acotado. anchorsaway
+   y splashbattle ya tienen `mapMarker` listo (#83/#87, Pirates) para el
+   día que se les agregue `geo` (Plus Code buscado en Maps o medido en el
+   parque) — con eso, la calibración quedaría lista para reevaluarse. Ver
+   specs/SPECIFICATIONS.md.asc sección 21bis para el detalle completo
+   (coeficientes, residual por punto, criterio de activación). */
 window.PARK={
   id:'legoland-new-york',
   name:'LEGOLAND New York Resort',
@@ -91,6 +158,27 @@ window.PARK={
     // un mapa nuevo, hay que reemplazar este archivo a mano — no hay sincronización automática.
     image:'assets/legoland-map-2026.webp',
     center:[41.37806,-74.31333], // LEGOLAND New York Resort, Goshen NY — coordenada pública del predio (Wikipedia/registros públicos), NO una dirección residencial.
+    // SIN geoCalibration a propósito (motor genérico — ver assets/theme-park-core.js /
+    // geoToImagePercent): 4 atracciones ya tienen `geo` (ver abajo, todas centroides de
+    // OpenStreetMap/terceros, confidence:'approximate'), pero están concentradas en
+    // Bricktopia/NINJAGO/LEGO City — mismo problema de distribución que señala el handoff de
+    // investigación (2026-08-19, sección 11): "no tratar 6 puntos disponibles como suficientes
+    // solo por la cantidad". Sin puntos de LEGO Pirates, entrada principal ni Miniland, un ajuste
+    // afín hoy tendría un residual sin validar. Falta además `mapMarker` calibrado (ninguna
+    // atracción lo tiene — no hubo visita previa al parque), que es el otro lado del par
+    // necesario para ajustar la transformación. Plan para calibrar durante la visita del
+    // 23-ago-2026 (orden de prioridad de captura, con "queue-entrance" — entrada de fila
+    // medida en sitio, no el centroide):
+    //   1. The Dragon (queue-entrance) — 2. Anchors Away o Splash Battle (Pirates) —
+    //   3. Entrada principal del parque — 4. Punto de referencia principal de Miniland —
+    //   5. LEGO Factory Adventure Ride (mejora el centroide OSM ya cargado) —
+    //   6. NINJAGO The Ride — 7. Fire Academy — 8. Driving School —
+    //   9. Dragon's Apprentice — 10. Jay's Gravity Force Trainer.
+    // Con ~8-12 puntos bien distribuidos (Brick Street/entrada, Bricktopia, NINJAGO, Castle,
+    // LEGO City, Pirates, Miniland) medidos en sitio, agregar mapMarker a esas atracciones y
+    // recién ahí ajustar+validar (numpy.lstsq, documentar residual mediano/máximo y outliers
+    // excluidos) un `geoCalibration` propio de este parque — mismo mecanismo genérico que ya usa
+    // Story Land (parks/story-land.js), nunca reutilizando su transformación.
   },
   storageKey:'legoland_ny_state_v1',
   mustIds:['dragon','dragonsapprentice','fireacademy','legofactory','ninjagoride','miniland'],
@@ -121,21 +209,35 @@ window.PARK={
   shows:[], // Confirmado oficialmente (Help Center) que los 3 shows 4D y los meet&greets no tienen horario fijo publicado — "check the app" — así que se mantienen como POIs informativos (ver pois) en vez de con `times` fabricados; si algún día se confirma un horario fijo, ahí sí vale poblar `times` para activar el banner "🎭 empieza pronto" del core.
   closingTime:null, // horario de cierre oficial del 23-ago-2026 sin confirmar: el calendario oficial (operating-calendar) no expuso esa fecha durante la investigación (2026-08-19), y no hay una política publicada de "se publica con N semanas de antelación" — revisar de nuevo más cerca de la fecha.
   attractions:[
-{id:'dragon',name:'The Dragon',cat:'rides',priorityTier:1,zone:'🏰 LEGO Castle',mapNumber:45,adult:true,
+{id:'dragon',name:'The Dragon',cat:'rides',priorityTier:1,zone:'🏰 LEGO Castle',mapNumber:45,mapMarker:{x:21.96,y:13.48},adult:true,
   restrictions:{minHeightIn:42,minAge:4,adultRequiredBelowInAndAge:{heightIn:48,ageYears:6},source:'2026 Accessibility Guide V6 (05.29.2026) + Height Restrictions Help Center — https://www.legoland.com/new-york/media/o0uhthqm/llny-accessibility-guide-v6-52926.pdf',lastVerified:'2026-08-19',confidence:'verified-official'},
+  // geo: Plus Code que el usuario buscó en Google Maps antes de la visita (no medido parado en el
+  // parque) — decodificado offline con el algoritmo Open Location Code (recoverNearest, referencia
+  // = centro público del parque) a partir de "9MMM+2X Goshen, New York" → código completo
+  // 87H79MMM+2X. Mismo nivel de procedencia que las otras 4 coordenadas de este archivo: POI de
+  // mapa/terceros, NO la entrada de fila medida en sitio — reference:'ride-poi', nunca
+  // 'queue-entrance' sin medición física real durante la visita.
+  plusCode:'87H79MMM+2X',geo:{lat:41.382563,lng:-74.315063,source:'google-maps-poi',reference:'ride-poi'},
   tags:['🔥 IMPERDIBLE','🎢 COASTER FAMILIAR','🐉 CASTLE'],
   why:'El coaster principal de LEGO Castle: familiar pero con emoción real — conviene temprano antes de que se formen filas.',
   tip:'Nuestro niño de 6 años puede calificar para ir sin adulto (verificar en el parque si "6 años" cuenta como "menor de 6" o no); las dos niñas de 5 necesitan acompañante por la regla combinada edad+altura.'},
-{id:'dragonsapprentice',name:"Dragon's Apprentice",cat:'rides',priorityTier:0,zone:'🏰 LEGO Castle',mapNumber:42,adult:false,
+{id:'dragonsapprentice',name:"Dragon's Apprentice",cat:'rides',priorityTier:0,zone:'🏰 LEGO Castle',mapNumber:42,mapMarker:{x:34.51,y:22.27},adult:false,
   restrictions:{minHeightIn:36,adultRequiredBelowIn:42,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center (mínimo 36"; acompañante requerido debajo de 42").',lastVerified:'2026-08-19',confidence:'verified-official'},
+  // geo: coordenada de coasterpedia.net (base de datos independiente de coasters), NO oficial de
+  // LEGOLAND — centroide/ubicación del coaster, no la entrada de fila medida en sitio. Ver
+  // jerarquía de procedencia geográfica en specs/SPECIFICATIONS.md.asc sección 21bis.
+  geo:{lat:41.38205,lng:-74.31466,source:'third-party-ride-poi',reference:'ride-poi'},
   tags:['🔥 IMPERDIBLE','🎢 COASTER SUAVE','⭐ PUEDE IR SOLO'],
   why:'Coaster pequeño para entrenar "dragones bebé" — a ~47" los tres niños califican para subir solos, buena primera montaña rusa del día.'},
 {id:'merlin',name:"Merlin's Flying Machines",cat:'rides',priorityTier:2,zone:'🏰 LEGO Castle',mapNumber:40,adult:true,
   restrictions:{minHeightIn:36,adultRequiredBelowIn:48,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center.',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🎠 GIRO SUAVE','👨‍👦 CON ADULTO'],
   why:'Vueltas suaves en el aire, temática de dragones — buen contraste de ritmo cerca de The Dragon.'},
-{id:'fireacademy',name:'Fire Academy',cat:'lego',priorityTier:0,zone:'🌆 LEGO City',mapNumber:71,adult:true,
+{id:'fireacademy',name:'Fire Academy',cat:'lego',priorityTier:0,zone:'🌆 LEGO City',mapNumber:71,mapMarker:{x:58.82,y:26.82},adult:true,
   restrictions:{minHeightIn:34,adultRequiredBelowInAndAge:{heightIn:52,ageYears:12},source:'2026 Accessibility Guide V6 + Height Restrictions Help Center (mínimo 34"; acompañante para menores de 52" Y de 12 años — condición combinada, no altura sola).',lastVerified:'2026-08-19',confidence:'verified-official'},
+  // geo: centroide derivado de OpenStreetMap (mapcarta.com/N9758190678), NO oficial de LEGOLAND —
+  // ubicación aproximada de la atracción, no la entrada de fila medida en sitio.
+  geo:{lat:41.38117,lng:-74.31250,source:'openstreetmap-poi',reference:'ride-poi'},
   tags:['🔥 IMPERDIBLE','🚒 INTERACTIVA','👨‍👦 CON ADULTO'],
   why:'Manejan un camión de bomberos y "apagan" un incendio con agua — de las experiencias interactivas favoritas de los niños en LEGO City.'},
 {id:'coastguard',name:'Coast Guard Academy',cat:'lego',priorityTier:1,zone:'🌆 LEGO City',mapNumber:63,adult:true,
@@ -143,24 +245,28 @@ window.PARK={
   tags:['🚤 INTERACTIVA','👨‍👦 CON ADULTO'],
   why:'Manejan botes patrulla en un canal de agua — similar en espíritu a Fire Academy, buena alternativa si hay fila ahí.'},
 {id:'drivingschool',name:'Driving School',cat:'lego',priorityTier:1,zone:'🌆 LEGO City',mapNumber:58,adult:false,
-  restrictions:{minAgeUnaccompanied:6,soloOnly:true,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center: sin altura mínima, edades 6–13, autos que se manejan solos (no admite ir "con adulto" en el mismo auto).',lastVerified:'2026-08-19',confidence:'verified-official'},
+  restrictions:{minAgeUnaccompanied:6,maxAge:13,soloOnly:true,source:'Página oficial de la atracción + 2026 Accessibility Guide V6 + Height Restrictions Help Center: sin altura mínima, edades 6–13, autos que se manejan solos (no admite ir "con adulto" en el mismo auto) — https://www.legoland.com/new-york/things-to-do/theme-park/rides-attractions/driving-school/',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🚗 MANEJAN SOLOS','6-13 AÑOS'],
   why:'Autos eléctricos con carril propio — solo para quien ya cumple la edad mínima; los demás pueden hacer Junior Driving School.'},
 {id:'juniordriving',name:'Junior Driving School',cat:'lego',priorityTier:1,zone:'🌆 LEGO City',mapNumber:56,adult:false,
-  restrictions:{minAgeUnaccompanied:3,source:'Discrepancia entre fuentes oficiales: el mapa oficial 2026 (#56) rotula la atracción "AGES 3-5", mientras que el 2026 Accessibility Guide V6 + Height Restrictions Help Center dan el rango 3–6. Se usa minAgeUnaccompanied:3 (piso compartido por ambas fuentes) — verificar el límite superior real en el parque antes de asumir que la niña de 6 años califica.',lastVerified:'2026-08-19',confidence:'approximate'},
-  tags:['🚗 MANEJAN SOLOS','3-5 O 3-6 AÑOS (verificar)'],
-  why:'Versión para más pequeños de Driving School — pensada para nuestro rango de edad (5 y 6 años); el límite superior exacto (5 o 6 años) no coincide entre dos fuentes oficiales, verificar en el parque para la niña que cumple 6.'},
-{id:'anchorsaway',name:'Anchors Away',cat:'rides',priorityTier:2,zone:'🏴‍☠️ LEGO Pirates',mapNumber:83,adult:false,
+  restrictions:{minAgeUnaccompanied:3,maxAge:6,source:'Página oficial vigente de la atracción (edades 3–6) — https://www.legoland.com/new-york/things-to-do/theme-park/rides-attractions/junior-driving-school/ — en acuerdo con 2026 Accessibility Guide V6 + Height Restrictions Help Center. El mapa ilustrado oficial 2026 (#56) rotula la atracción "AGES 3-5" (texto más antiguo/genérico); por regla de prioridad de fuentes se prefiere la página específica y vigente de la atracción sobre el rótulo del mapa esquemático — de todos modos, confirmar en el parque para la niña que ya cumple 6.',lastVerified:'2026-08-19',confidence:'verified-official'},
+  tags:['🚗 MANEJAN SOLOS','3-6 AÑOS'],
+  why:'Versión para más pequeños de Driving School — pensada para nuestro rango de edad (5 y 6 años); el mapa ilustrado dice "3-5" pero la página oficial vigente de la atracción confirma 3–6, así que la niña de 6 años sí califica — verificar en el parque de todos modos.'},
+{id:'anchorsaway',name:'Anchors Away',cat:'rides',priorityTier:2,zone:'🏴‍☠️ LEGO Pirates',mapNumber:83,mapMarker:{x:70.6,y:30.9},adult:false,
   restrictions:{minHeightIn:34,adultRequiredBelowIn:42,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center (34" confirmado — contenido más antiguo indexado decía 36", usar el valor 2026 vigente).',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🏴‍☠️ PIRATAS','⭐ PUEDE IR SOLO'],
   why:'Vueltas en barco pirata — a ~47" los tres niños ya califican para ir sin adulto.'},
-{id:'splashbattle',name:'Splash Battle',cat:'agua',priorityTier:2,waterBoostTier:1.5,zone:'🏴‍☠️ LEGO Pirates',mapNumber:87,adult:false,
+{id:'splashbattle',name:'Splash Battle',cat:'agua',priorityTier:2,waterBoostTier:1.5,zone:'🏴‍☠️ LEGO Pirates',mapNumber:87,mapMarker:{x:79.02,y:33.64},adult:false,
   restrictions:{adultRequiredBelowInAndAge:{heightIn:52,ageYears:8},source:'2026 Accessibility Guide V6 + Height Restrictions Help Center: sin altura mínima, acompañante requerido para menores de 8 años Y de 52" (condición combinada).',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['💦 TE MOJAS','🎮 INTERACTIVA','👨‍👩‍👦 FAMILIAR'],
   tip:'👕 Confirmen que traen muda de ropa antes de empezar.',
   why:'Batalla de agua interactiva temática pirata — buena para la parte más calurosa del día.'},
-{id:'legofactory',name:'LEGO Factory Adventure Ride',cat:'lego',priorityTier:0,zone:'🎡 Bricktopia',mapNumber:22,adult:true,
+{id:'legofactory',name:'LEGO Factory Adventure Ride',cat:'lego',priorityTier:0,zone:'🎡 Bricktopia',mapNumber:22,mapMarker:{x:46.37,y:43.33},adult:true,
   restrictions:{adultRequiredBelowIn:48,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center: sin altura mínima para subir, acompañante requerido para menores de 48" (contenido más antiguo indexado decía 52" — usar 48" vigente).',lastVerified:'2026-08-19',confidence:'verified-official'},
+  // geo: centroide derivado de OpenStreetMap (mapcarta.com/W993708873), NO oficial de LEGOLAND —
+  // huella del edificio/atracción, no la entrada de fila medida en sitio. Buen candidato de
+  // calibración futura, pero debe reemplazarse por la entrada real medida en sitio.
+  geo:{lat:41.38009,lng:-74.31435,source:'openstreetmap-poi',reference:'ride-poi'},
   tags:['🔥 IMPERDIBLE','🏭 DARK RIDE','👨‍👦 CON ADULTO'],
   why:'Recorrido tranquilo tipo dark ride mostrando cómo se hacen los ladrillos LEGO — imperdible, apto para toda la familia, ritmo suave.'},
 {id:'duploexpress',name:'LEGO DUPLO Express',cat:'descanso',priorityTier:2.6,zone:'🎡 Bricktopia',mapNumber:17,adult:false,
@@ -171,16 +277,24 @@ window.PARK={
   restrictions:{adultRequiredBelowIn:40,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center (contenido más antiguo indexado decía 42" — usar 40" vigente).',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🎵 GIRO SUAVE'],
   why:'Vueltas suaves con música — buena opción ligera dentro de Bricktopia.'},
-{id:'ninjagoride',name:'LEGO NINJAGO The Ride',cat:'lego',priorityTier:1,zone:'🥷 LEGO NINJAGO World',mapNumber:32,adult:true,
+{id:'ninjagoride',name:'LEGO NINJAGO The Ride',cat:'lego',priorityTier:1,zone:'🥷 LEGO NINJAGO World',mapNumber:32,mapMarker:{x:36.08,y:32.12},adult:true,
   restrictions:{adultRequiredBelowIn:48,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center: sin altura mínima, acompañante requerido para menores de 48".',lastVerified:'2026-08-19',confidence:'verified-official'},
+  // geo: centroide derivado de OpenStreetMap (mapcarta.com/W993708875, Plus Code 87H79MJP+52), NO
+  // oficial de LEGOLAND — huella del edificio/atracción, no la entrada de fila medida en sitio.
+  geo:{lat:41.38048,lng:-74.31494,source:'openstreetmap-poi',reference:'ride-poi'},plusCode:'87H79MJP+52',
   tags:['🔥 IMPERDIBLE','🥷 INTERACTIVA (GESTOS)','🏠 INDOOR'],
   tip:'👟 Puede pedir calzado cerrado — no confirmado en esta actualización si sigue vigente ese requisito, preguntar en la entrada de la atracción.',
   why:'Dark ride interactivo: "lanzan" energía con gestos de las manos contra villanos — de las experiencias más pedidas por los niños, indoor (buen plan si llueve).'},
 {id:'gravityforce',name:"Jay's Gravity Force Trainer",cat:'rides',priorityTier:2,zone:'🥷 LEGO NINJAGO World',mapNumber:27,adult:false,
   restrictions:{minHeightIn:42,minAge:4,adultRequiredBelowInAndAge:{heightIn:52,ageYears:8},source:'2026 Accessibility Guide V6 + Height Restrictions Help Center: mínimo 42"/4 años; acompañante para menores de 8 años Y de 52".',lastVerified:'2026-08-19',confidence:'verified-official'},
+  // plusCode expuesto directamente por la búsqueda estructurada de lugares (9MJP+7F, Goshen, NY
+  // 10924) — NO se decodificó a lat/lng offline (sin decodificador local de Open Location Code
+  // disponible), así que geo queda null a propósito en vez de inventar coordenadas. Buen
+  // candidato para medir la entrada de fila real en sitio (ver lista de prioridad de captura).
+  plusCode:'9MJP+7F Goshen, NY',geo:null,
   tags:['🌀 GIRO MÁS INTENSO'],
   why:'Entrenamiento giratorio estilo ninja — el ride "más emocionante" del día si los niños quieren algo con más intensidad, sin ser un coaster grande.'},
-{id:'miniland',name:'Miniland USA',cat:'miniland',priorityTier:0,zone:'🏙️ Miniland',adult:false,
+{id:'miniland',name:'Miniland USA',cat:'miniland',priorityTier:0,zone:'🏙️ Miniland',mapNumber:98,mapMarker:{x:54.4,y:28.5},adult:false,
   tags:['🔥 IMPERDIBLE','🏙️ RECORRIDO','📸 FOTOS'],
   why:'Miniaturas de ciudades de EE.UU. hechas con millones de piezas LEGO — el corazón visual del parque, sin restricciones, ritmo libre.'},
 {id:'buildtest',name:'Build & Test',cat:'descanso',priorityTier:3,zone:'🧱 Brick Street',mapNumber:14,adult:false,
@@ -229,7 +343,7 @@ window.PARK={
 {id:'show-dreamzzz4d',type:'show',icon:'🎬',name:'LEGO DREAMZzz 4D: Z-Blob Rescue Rush',zone:'🌆 LEGO City',nearbyText:'Horarios confirmados oficialmente como variables — se consultan en la app oficial el día de la visita, sin agenda fija publicada en la web.',source:'https://newyork-support.legoland.com/hc/en-us/articles/22950265526557-What-4D-shows-do-you-have-at-LEGOLAND-New-York-Resort',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
 {id:'character-meetgreet',type:'character',icon:'👋',name:'Meet & Greet con Minifiguras',zone:'Varía',nearbyText:'Personajes y horarios confirmados oficialmente como variables — se consultan en la app oficial el día de la visita.',source:'https://newyork-support.legoland.com/hc/en-us/articles/23710553919901-What-shows-and-entertainment-can-I-enjoy-at-LEGOLAND-New-York-Resort',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
 {id:'ev-lotb',type:'ev',icon:'🔌',name:'Carga EV — Park Lot B (2 estaciones)',zone:'🅿️ Estacionamiento',nearbyText:'Confirmado oficialmente: 2 estaciones de carga hacia el frente, lado más lejano del Lot B. Máximo 2 horas de carga, sin carga nocturna, espacios solo para carga activa. El FAQ oficial NO especifica marca, tipo de conector ni costo — no asumir "Livingston Charge Port"/J1772/gratis sin confirmarlo en el parque. Llevar el adaptador J1772→NACS por si acaso, pero no está garantizado que sea compatible.',source:'https://newyork-support.legoland.com/hc/en-us/articles/6344836333725-Do-you-have-Car-Charging-Stations-at-LEGOLAND-New-York',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
-{id:'entrance-main',type:'entrance',icon:'🚪',name:'Entrada principal',zone:'🚪 Entrada',nearbyText:'1 LEGOLAND Way, Goshen, NY — dirección pública del parque (no residencial).',source:'Búsqueda web (iloveny.com, Wikipedia) — dirección pública del predio.',lastVerified:'2026-08-19',confidence:'approximate',geo:{lat:41.37806,lng:-74.31333,source:'official-map',reference:'entrance'}},
+{id:'entrance-main',type:'entrance',icon:'🚪',mapNumber:1,mapMarker:{x:52.94,y:63.64},name:'Entrada principal',zone:'🚪 Entrada',nearbyText:'1 LEGOLAND Way, Goshen, NY — dirección pública del parque (no residencial). mapNumber/mapMarker: Ticket Windows (#1), leídos visualmente del mapa oficial 2026 local (torre del reloj de la plaza de entrada).',source:'Búsqueda web (iloveny.com, Wikipedia) — dirección pública del predio.',lastVerified:'2026-08-19',confidence:'approximate',geo:{lat:41.37806,lng:-74.31333,source:'official-map',reference:'entrance'}},
 {id:'parking-main',type:'parking',icon:'🅿️',name:'Estacionamiento principal',zone:'🅿️ Estacionamiento',nearbyText:'Llegar antes de la apertura para tiempo de parking + caminata a la entrada.',source:'Recomendación general — sin tarifa/ubicación exacta confirmada en esta implementación.',lastVerified:'2026-08-19',confidence:'inferred',geo:null},
   ],
 };

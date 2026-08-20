@@ -45,6 +45,16 @@ window.PARK={
     url:'https://hfe.widen.net/view/pdf/icf5sgszuz/STL26_General_ParkMap_Download.pdf?t.download=true&u=exbmhu', // PDF oficial 2026 — fuente de verdad; enlace externo "Abrir PDF oficial" (fuera de la app, nunca embebido)
     image:'assets/storyland-map-2026.webp', // imagen local generada a partir del PDF oficial (ver specs/SPECIFICATIONS.md.asc sección 21)
     center:[44.1168,-71.1805],
+    // Transformación afín (lat/lng → %x,%y sobre storyland-map-2026.webp),
+    // ajustada offline por mínimos cuadrados (numpy.lstsq) a partir de las 6
+    // atracciones que tienen tanto `geo` como `mapMarker` calibrado a mano
+    // (polar, roar, bamboo, raptour, antiquecars, loopylab — ver abajo).
+    // Movida acá (antes vivía como constante fija en theme-park-core.js) al
+    // generalizar el motor para más de un parque — mismos 6 coeficientes,
+    // mismo resultado numérico que siempre tuvo Story Land. Detalle completo
+    // (script, residuales) en specs/SPECIFICATIONS.md.asc sección 21.
+    geoCalibration:{ax:-24598.225084,bx:5992.442921,cx:1511778.056777,ay:-951.387361,by:-13334.325079,cy:-907130.644129,
+      controlPointIds:['polar','roar','bamboo','raptour','antiquecars','loopylab'],fittedOn:'2026-08'},
   },
   storageKey:'storyland_state_v1',
   mustIds:['polar','roar','bamboo','raptour','flyingfish','antiquecars','farmtractors'],
