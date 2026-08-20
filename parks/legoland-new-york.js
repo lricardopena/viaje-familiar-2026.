@@ -182,6 +182,13 @@ window.PARK={
   attractions:[
 {id:'dragon',name:'The Dragon',cat:'rides',priorityTier:1,zone:'🏰 LEGO Castle',mapNumber:45,adult:true,
   restrictions:{minHeightIn:42,minAge:4,adultRequiredBelowInAndAge:{heightIn:48,ageYears:6},source:'2026 Accessibility Guide V6 (05.29.2026) + Height Restrictions Help Center — https://www.legoland.com/new-york/media/o0uhthqm/llny-accessibility-guide-v6-52926.pdf',lastVerified:'2026-08-19',confidence:'verified-official'},
+  // geo: Plus Code que el usuario buscó en Google Maps antes de la visita (no medido parado en el
+  // parque) — decodificado offline con el algoritmo Open Location Code (recoverNearest, referencia
+  // = centro público del parque) a partir de "9MMM+2X Goshen, New York" → código completo
+  // 87H79MMM+2X. Mismo nivel de procedencia que las otras 4 coordenadas de este archivo: POI de
+  // mapa/terceros, NO la entrada de fila medida en sitio — reference:'ride-poi', nunca
+  // 'queue-entrance' sin medición física real durante la visita.
+  plusCode:'87H79MMM+2X',geo:{lat:41.382563,lng:-74.315063,source:'google-maps-poi',reference:'ride-poi'},
   tags:['🔥 IMPERDIBLE','🎢 COASTER FAMILIAR','🐉 CASTLE'],
   why:'El coaster principal de LEGO Castle: familiar pero con emoción real — conviene temprano antes de que se formen filas.',
   tip:'Nuestro niño de 6 años puede calificar para ir sin adulto (verificar en el parque si "6 años" cuenta como "menor de 6" o no); las dos niñas de 5 necesitan acompañante por la regla combinada edad+altura.'},
