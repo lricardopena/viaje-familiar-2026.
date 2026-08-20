@@ -2,7 +2,8 @@
    Resort (Goshen, NY) para el Theme Park Companion (assets/theme-park-core.js).
    Instancia #2 del motor reutilizable — demuestra que agregar un parque
    nuevo es escribir este archivo, no copiar la app. Visita familiar:
-   domingo 23 de agosto de 2026, ida y vuelta desde Home.
+   domingo 23 de agosto de 2026, ida y vuelta desde casa (ver nota de
+   privacidad de ubicaciones residenciales en CLAUDE.md / data.js).
 
    ⚠️ PROCEDENCIA Y CONFIANZA — leer antes de editar:
    Primera versión (2026-08-19) se armó por WebSearch indirecto, sin poder

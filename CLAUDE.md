@@ -42,6 +42,7 @@ The page is rendered client-side from a single data structure, `TRIP_DATA` (defi
 - Keep all user-facing copy in Spanish, matching the existing tone (casual, addressed to the family, second person).
 - `data.js` is one array/map entry per line (minified within each line, JSON-shaped) — match this style rather than reformatting, to keep diffs small and each day skimmable as one line. `index.html` stays minified/dense as before.
 - EV-charging (`ev` field) entries distinguish "✅ principal/alternativa" (fast NACS DC chargers) from "🔌 backup" (slower J1772 Level 2) — preserve this distinction when editing charging info.
+- **Residential locations are never stored in this public repo.** When the itinerary needs to represent the family's home, use the logical label `"Home"` in `data.js` (`maps`/`activityDests`/`hotelDests` entries, and Google Maps links as `?destination=Home`) — Google Maps resolves it from whichever account opens the link, so no address, residential city, coordinates, Plus Code, or Place ID for the residence is ever committed. In UI copy, show "🏠 Casa" (or "🏠 Regresar a casa") to the user; the literal string "Home" only needs to appear inside the Maps URL/data value, not in visible text.
 
 ## Decisions & specs — where a change gets recorded
 
