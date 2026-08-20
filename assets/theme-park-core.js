@@ -1611,8 +1611,8 @@ function renderFavoritas(){
    POIS (PARK.pois) nunca compite por la recomendación — es puramente
    informativo, igual que en Story Land. Agrupado por tipo con su propio
    ícono/etiqueta; un parque puede traer tipos que otro no usa. */
-const POI_TYPE_LABEL={food:'🍴 Comida',restroom:'🚻 Baños',firstaid:'🩹 First Aid / Family Care',
-  locker:'🔒 Lockers',water:'🚰 Estaciones de agua',playground:'🛝 Playgrounds',show:'🎭 Shows',
+const POI_TYPE_LABEL={food:'🍴 Comida',restroom:'🚻 Baños',firstaid:'🩹 First Aid',
+  familycare:'👶 Family Care',locker:'🔒 Lockers',water:'🚰 Estaciones de agua',playground:'🛝 Playgrounds',show:'🎭 Shows',
   character:'👋 Personajes',store:'🛍️ Tiendas',entrance:'🚪 Entradas',parking:'🅿️ Estacionamiento',
   ev:'🔌 Carga EV'};
 function poiCardHtml(p){
