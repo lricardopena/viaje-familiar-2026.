@@ -78,15 +78,17 @@ window.PARK={
   map:{
     // Página oficial del mapa (enlace externo, "Abrir mapa oficial" — nunca embebido).
     url:'https://www.legoland.com/new-york/plan-your-visit/planning-tools/park-map/',
-    // Imagen JPG oficial 2026, enlazada directamente desde la página anterior — confirmado
-    // verified-official (ver legoland-research-findings.md, sección 3). Es esquemática, el
-    // propio sitio la marca "not to scale", y ninguna atracción tiene mapMarker calibrado
-    // (no hubo visita previa al parque) — el visor la muestra completa, sin círculos ni
-    // zoom automático, mismo comportamiento que Story Land para una atracción sin marcador.
-    // A diferencia de storyland-map-2026.webp (generada y alojada localmente), esta es un
-    // hotlink al CDN de legoland.com: si algún día deja de resolver, ensureMapImage() ya
-    // cae automáticamente al fallback "Abrir mapa oficial" (ver assets/theme-park-core.js).
-    image:'https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',
+    // Copia local del mapa oficial 2026 (assets/legoland-map-2026.webp) — el usuario adjuntó
+    // la imagen directamente (misma fuente que la URL oficial gushogjw/2026-legoland-new-york-
+    // park-map.jpg, ver legoland-research-findings.md sección 3) y pidió alojarla en el repo
+    // para no depender de un hotlink al CDN de legoland.com mientras tanto — mismo motivo que
+    // storyland-map-2026.webp (ver assets/theme-park-core.js / specs sección 21). Es
+    // esquemática ("not to scale"), y ninguna atracción tiene mapMarker calibrado en pixeles
+    // (no hubo visita previa al parque) — el visor la muestra completa, sin círculos ni zoom
+    // automático, mismo comportamiento que Story Land para una atracción sin marcador.
+    // "Fija por el momento" (pedido explícito del usuario, 23-ago-2026): si LEGOLAND publica
+    // un mapa nuevo, hay que reemplazar este archivo a mano — no hay sincronización automática.
+    image:'assets/legoland-map-2026.webp',
     center:[41.37806,-74.31333], // LEGOLAND New York Resort, Goshen NY — coordenada pública del predio (Wikipedia/registros públicos), NO una dirección residencial.
   },
   storageKey:'legoland_ny_state_v1',
