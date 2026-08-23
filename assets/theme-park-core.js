@@ -1402,17 +1402,23 @@ function computeScore(a){
     +groupEarlyBonus(a)+reactionBonus(a)+restBonus(a)+closingSoonBonus(a)
     -deferredPenalty-skipPenalty-adultOnlyPenalty(a);
 }
-/* candidateList(): TODO lo que no esté "done" ni "closed" — incluye
-   "repeat", para que los favoritos puedan volver a competir más adelante en
-   vez de desaparecer del todo. "closed" (atracción cerrada — mantenimiento,
-   clima, etc.) se excluye igual que "done": no tiene sentido seguir
-   recomendándola mientras esté marcada así. A diferencia de "done", closed
-   no significa que ya la disfrutaron — por eso no cuenta para
-   "Imperdibles: x/N" ni aparece en Favoritas, solo deja de competir.
+/* candidateList(): TODO lo que no esté "done", "closed" ni "discarded" —
+   incluye "repeat", para que los favoritos puedan volver a competir más
+   adelante en vez de desaparecer del todo. "closed" (atracción
+   temporalmente cerrada — mantenimiento, clima, etc.) se excluye igual que
+   "done": no tiene sentido seguir recomendándola mientras esté marcada así.
+   "discarded" (la familia decidió explícitamente que NO quiere hacerla) se
+   excluye de forma permanente — a diferencia de "closed"/"later"/"skipped",
+   ningún bonus de scoring (imperdible, favorita del niño, cercanía, misma
+   zona, agua, prioridad alta) puede traerla de vuelta mientras esté
+   descartada; la decisión explícita de la familia siempre gana. A
+   diferencia de "done", ni "closed" ni "discarded" significan que ya la
+   disfrutaron — por eso ninguno de los dos cuenta para "Imperdibles: x/N"
+   ni aparece en Favoritas, solo dejan de competir.
    Se recalcula por completo en cada llamada: no hay itinerario guardado,
    solo el estado actual de cada atracción. */
 function candidateList(){
-  return ALL.filter(a=>!['done','closed'].includes(getStatus(a.id)))
+  return ALL.filter(a=>!['done','closed','discarded'].includes(getStatus(a.id)))
     .map(a=>({...a,tier:effectiveTier(a),score:computeScore(a),deferred:isOnCooldown(a.id),skipCooldown:isOnSkipCooldown(a.id)}))
     .sort((a,b)=>b.score-a.score||a._i-b._i);
 }
@@ -1483,13 +1489,14 @@ function tipFor(a){
 }
 /* prioLabel(a): recibe un candidato (id + tier + deferred/skipCooldown
    opcionales, como los que produce candidateList()). El estado "repeat" se
-   revisa primero porque manda sobre el tier numérico. "closed" también se
-   revisa primero, aunque en la práctica solo se llega acá para una cerrada
-   desde el detalle del checklist (candidateList() ya la excluye de la
-   recomendación) — mostrar su tier numérico ahí sería engañoso, como si
-   siguiera compitiendo. */
+   revisa primero porque manda sobre el tier numérico. "closed" y
+   "discarded" también se revisan primero, aunque en la práctica solo se
+   llega acá para una de esas dos desde el detalle del checklist
+   (candidateList() ya las excluye de la recomendación) — mostrar su tier
+   numérico ahí sería engañoso, como si siguieran compitiendo. */
 function prioLabel(a){
-  if(getStatus(a.id)==='closed')return {t:'🚫 CERRADA',c:'priolow'};
+  if(getStatus(a.id)==='discarded')return {t:'🙅 NO LA QUEREMOS HACER',c:'priolow'};
+  if(getStatus(a.id)==='closed')return {t:'🚫 TEMPORALMENTE CERRADA',c:'priolow'};
   if(getStatus(a.id)==='repeat')return {t:'🔁 REPETIR (favorita)',c:'priorepeat'};
   if(a.deferred)return {t:'🕐 EN ESPERA (fila larga)',c:'priomed'};
   if(a.skipCooldown)return {t:'⏭️ SALTADA HACE POCO',c:'priomed'};
@@ -1538,16 +1545,42 @@ function actLong(id){
   if(state.skipped)delete state.skipped[id];
   setStatus(id,'later');
 }
-/* Atracción cerrada (mantenimiento, clima, etc.) — deja de competir por la
-   recomendación (candidateList()) sin marcarla como "hecha". Reabrir es
-   simétrico a los demás estados: tocar de nuevo el mismo botón (🚫 en el
-   checklist, o "🚫 Cerrada" repetido) la vuelve a "pending" — mismo
-   mecanismo genérico de cycleStatus(), no hace falta una acción aparte. */
+/* Atracción temporalmente cerrada (mantenimiento, clima, una atracción que
+   avisan cerrada al llegar — ej. NINJAGO The Ride el 23-ago-2026 — etc.) —
+   deja de competir por la recomendación (candidateList()) sin marcarla
+   como "hecha" ni como "descartada": es un estado operativo del parque, no
+   una decisión de la familia, así que no cuenta para "Imperdibles: x/N" ni
+   aparece en Favoritas/Descartadas. Reabrir es simétrico a los demás
+   estados: tocar de nuevo el mismo botón (🚫 en el checklist, o "🚫
+   TEMPORALMENTE CERRADA" repetido) la vuelve a "pending" — mismo mecanismo
+   genérico de cycleStatus(), no hace falta una acción aparte. Genérico
+   para cualquier parque — ver assets/theme-park-core.js, no vive en
+   parks/*.js. */
 function actClose(id){
   tick();
   if(state.deferred)delete state.deferred[id];
   if(state.skipped)delete state.skipped[id];
   setStatus(id,'closed');
+}
+/* Atracción descartada — la familia decidió explícitamente que NO la
+   quiere hacer (a diferencia de "closed", que es un estado operativo del
+   parque, no una decisión de la familia). Deja de competir por la
+   recomendación (candidateList()) de forma permanente: ningún bonus de
+   scoring la trae de vuelta mientras esté marcada así — ver el comentario
+   de candidateList(). No cuenta como "hecha" (no suma a "Imperdibles: x/N"
+   ni aparece en Favoritas) ni se oculta del catálogo: sigue visible y
+   consultable en el checklist, con su propio estado "🙅". Descartar es
+   simétrico a los demás estados: tocar de nuevo el mismo botón (🙅 en el
+   checklist, o "↩️ Volver a considerar" en la sección de Descartadas) la
+   vuelve a "pending" vía cycleStatus() — no hace falta una acción de
+   deshacer aparte. Persistida en el mismo state.status[] que el resto
+   (mismo localStorage, sin estructura paralela). Genérico para cualquier
+   parque — ver assets/theme-park-core.js, no vive en parks/*.js. */
+function actDiscard(id){
+  tick();
+  if(state.deferred)delete state.deferred[id];
+  if(state.skipped)delete state.skipped[id];
+  setStatus(id,'discarded');
 }
 function recheckLine(id){
   if(state.deferred)delete state.deferred[id];
@@ -1654,9 +1687,21 @@ function renderAhora(){
     html+=`<div class="banner zoneclose"><b>📍 Antes de movernos</b>Todavía queda <b>${zoneClose.name}</b> en esta zona (${zoneClose.zone}).</div>`;
   }
   if(!rec){
-    const doneTitle=(PARK.copy&&PARK.copy.doneTitle)||`¡Completaron el plan de ${PARK.name}!`;
-    const doneBody=(PARK.copy&&PARK.copy.doneBody)||'Ya hicieron todo lo importante. Si quieren, repitan alguna favorita antes de irse.';
-    html+=`<div class="donebig"><div class="emoji">🎉</div><h2>${doneTitle}</h2><p>${doneBody}</p></div>`;
+    // Si hay algo descartado, no asumimos que "completaron el plan" — puede
+    // que solo hayan descartado lo que quedaba, no hecho todo. Mensaje
+    // neutral en vez del festejo, con la opción de restaurar visible justo
+    // abajo (extraSectionsHtml() ya lista las descartadas con su botón
+    // "↩️ Volver a considerar").
+    let anyDiscarded=ALL.some(a=>getStatus(a.id)==='discarded');
+    if(anyDiscarded){
+      const neutralTitle=(PARK.copy&&PARK.copy.noPendingTitle)||`No quedan atracciones pendientes en el plan actual`;
+      const neutralBody=(PARK.copy&&PARK.copy.noPendingBody)||'Pueden restaurar alguna descartada, repetir una favorita o explorar libremente.';
+      html+=`<div class="donebig"><div class="emoji">🙂</div><h2>${neutralTitle}</h2><p>${neutralBody}</p></div>`;
+    }else{
+      const doneTitle=(PARK.copy&&PARK.copy.doneTitle)||`¡Completaron el plan de ${PARK.name}!`;
+      const doneBody=(PARK.copy&&PARK.copy.doneBody)||'Ya hicieron todo lo importante. Si quieren, repitan alguna favorita antes de irse.';
+      html+=`<div class="donebig"><div class="emoji">🎉</div><h2>${doneTitle}</h2><p>${doneBody}</p></div>`;
+    }
   }else{
     let prio=prioLabel(rec);
     let tags=rec.tags.map(t=>`<span class="tag ${t.includes('IMPERDIBLE')||t.includes('INTENSA')?'hot':t.includes('RECOMENDADA')?'star':''}">${t}</span>`).join('');
@@ -1681,7 +1726,8 @@ function renderAhora(){
         <button class="actbtn skip" onclick="actSkip('${rec.id}')">⏭️ SALTAR POR AHORA</button>
         <button class="actbtn repeat" onclick="actRepeat('${rec.id}')">❤️ QUIERE REPETIR</button>
         <button class="actbtn long" onclick="actLong('${rec.id}')">👥 FILA MUY LARGA</button>
-        <button class="actbtn closed" onclick="actClose('${rec.id}')">🚫 CERRADA</button>
+        <button class="actbtn closed" onclick="actClose('${rec.id}')">🚫 TEMPORALMENTE CERRADA</button>
+        <button class="actbtn discard" onclick="actDiscard('${rec.id}')">🙅 NO QUEREMOS HACERLO</button>
         <button class="actbtn map" onclick="openParkMap('${rec.id}')">🗺️ VER PARK MAP OFICIAL</button>
       </div>
     </div>`;
@@ -1721,6 +1767,7 @@ function alternativesHtml(rec){
       <div class="altbtns">
         <button onclick="actDone('${alt.id}')">✅ Hecho</button>
         <button onclick="actSkip('${alt.id}')">⏭️ Saltar</button>
+        <button onclick="actDiscard('${alt.id}')">🙅 No la queremos</button>
         <button onclick="openParkMap('${alt.id}')">🗺️ Mapa</button>
       </div>
     </div>`;
@@ -1751,7 +1798,11 @@ function extraSectionsHtml(){
   }
   let closed=ALL.filter(a=>getStatus(a.id)==='closed');
   if(closed.length){
-    html+=`<div class="miniSectTitle">🚫 Cerradas</div><div class="minilist">${closed.map(a=>`<div class="miniitem"><span>${a.name}<small>No la sugerimos mientras esté cerrada. Tocá 🚫 de nuevo en el checklist si reabre.</small></span><span class="pill">🚫</span></div>`).join('')}</div>`;
+    html+=`<div class="miniSectTitle">🚫 Temporalmente cerradas</div><div class="minilist">${closed.map(a=>`<div class="miniitem"><span>${a.name}<small>No la sugerimos mientras esté cerrada. Tocá 🚫 de nuevo en el checklist si reabre.</small></span><span class="pill">🚫</span></div>`).join('')}</div>`;
+  }
+  let discarded=ALL.filter(a=>getStatus(a.id)==='discarded');
+  if(discarded.length){
+    html+=`<div class="miniSectTitle">🙅 Descartadas</div><div class="minilist">${discarded.map(a=>`<div class="miniitem"><span>${a.name}<small>La familia decidió no hacerla. Sigue en el checklist si quieren reconsiderarla.</small></span><span class="pill">🙅</span><button class="zonemapbtn" onclick="cycleStatus('${a.id}','discarded')">↩️ Volver a considerar</button></div>`).join('')}</div>`;
   }
   return html;
 }
@@ -1777,6 +1828,7 @@ function cycleStatus(id,val){
   else if(val==='repeat')actRepeat(id);
   else if(val==='skipped')actSkip(id);
   else if(val==='closed')actClose(id);
+  else if(val==='discarded')actDiscard(id);
 }
 function renderChecklist(){
   let el=document.getElementById('tab-checklist');
@@ -1787,7 +1839,7 @@ function renderChecklist(){
     html+=`<div class="catblock"><h3>${label}</h3>`;
     items.forEach(a=>{
       let s=getStatus(a.id);
-      let stLabel={pending:'⬜ Pendiente',done:'✅ Hecho',skipped:'⏭️ Saltado',later:'🕐 Volver después',repeat:'❤️ Repetir',closed:'🚫 Cerrada'}[s];
+      let stLabel={pending:'⬜ Pendiente',done:'✅ Hecho',skipped:'⏭️ Saltado',later:'🕐 Volver después',repeat:'❤️ Repetir',closed:'🚫 Temporalmente cerrada',discarded:'🙅 No la queremos'}[s];
       let open=expandedItems.has(a.id);
       // Mismo tipo de detalle que la tarjeta "Ahora" (por qué + prioridad +
       // tip), pero sin los datos que solo tienen sentido para "lo próximo a
@@ -1815,7 +1867,8 @@ function renderChecklist(){
         <button class="${s==='skipped'?'active':''}" title="Saltar" onclick="event.stopPropagation();cycleStatus('${a.id}','skipped')">⏭️</button>
         <button class="${s==='later'?'active':''}" title="Fila muy larga / volver después" onclick="event.stopPropagation();cycleStatus('${a.id}','later')">🕐</button>
         <button class="${s==='repeat'?'active':''}" title="Quiere repetir" onclick="event.stopPropagation();cycleStatus('${a.id}','repeat')">❤️</button>
-        <button class="${s==='closed'?'active':''}" title="Cerrada (tocar de nuevo para reabrir)" onclick="event.stopPropagation();cycleStatus('${a.id}','closed')">🚫</button>
+        <button class="${s==='closed'?'active':''}" title="Temporalmente cerrada (tocar de nuevo para reabrir)" onclick="event.stopPropagation();cycleStatus('${a.id}','closed')">🚫</button>
+        <button class="${s==='discarded'?'active':''}" title="No la queremos hacer (tocar de nuevo para reconsiderarla)" onclick="event.stopPropagation();cycleStatus('${a.id}','discarded')">🙅</button>
       </div></div>`;
     });
     html+='</div>';
@@ -1895,13 +1948,18 @@ function renderTips(){
 
 /* ---------- Progreso ---------- */
 function renderProgress(){
+  // doneTotal/pct nunca cuentan "discarded" ni "closed" como si estuvieran
+  // realizadas — el % de la barra solo refleja lo que de verdad hicieron
+  // (✅/❤️), no lo que decidieron NO hacer ni lo que está momentáneamente
+  // fuera de servicio.
   let doneTotal=ALL.filter(a=>{let s=getStatus(a.id);return s==='done'||s==='repeat'}).length;
   let pct=ALL.length?Math.round(doneTotal/ALL.length*100):0;
   document.getElementById('progTxt').textContent=`${doneTotal} de ${ALL.length} realizadas · ${pct}%`;
   document.getElementById('progBar').style.width=pct+'%';
   let mustDone=MUST.filter(id=>{let s=getStatus(id);return s==='done'||s==='repeat'}).length;
   let repeatsPending=ALL.filter(a=>getStatus(a.id)==='repeat').length;
-  document.getElementById('mustTxt').textContent=`🔥 Imperdibles: ${mustDone}/${MUST.length}`+(repeatsPending?` · ❤️ ${repeatsPending}`:'');
+  let discardedTotal=ALL.filter(a=>getStatus(a.id)==='discarded').length;
+  document.getElementById('mustTxt').textContent=`🔥 Imperdibles: ${mustDone}/${MUST.length}`+(repeatsPending?` · ❤️ ${repeatsPending}`:'')+(discardedTotal?` · 🙅 ${discardedTotal} descartadas`:'');
 }
 
 /* ---------- Render total ---------- */
