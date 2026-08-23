@@ -623,6 +623,17 @@ let mapViewType='oficial';
 let mapGeoZoomMode='full';
 const MAP_GEO_ALL_FILTERS=['attraction','restroom','food','help'];
 let mapGeoFilters=new Set(['attraction','restroom','food']); // por defecto, sin saturar el mapa
+/* Ningún POI trae type:'help' — es el nombre del botón/chip de filtro
+   ("🩹 Ayuda"), no un tipo de dato. Sin este mapeo, mapGeoFilters.has(p.type)
+   nunca era true para 'firstaid'/'familycare' aunque el chip "Ayuda"
+   estuviera activo (bug encontrado al agregar First Aid/Family Care a
+   LEGOLAND New York — Story Land nunca lo mostró porque no define ningún
+   POI de esos dos tipos). mapGeoFilterCategory() traduce el type real del
+   POI/atracción a la categoría de filtro que le corresponde; cualquier
+   type sin entrada acá usa su propio nombre como categoría (comportamiento
+   de siempre para 'attraction'/'restroom'/'food'). */
+const MAP_GEO_FILTER_CATEGORY={firstaid:'help',familycare:'help'};
+function mapGeoFilterCategory(type){ return MAP_GEO_FILTER_CATEGORY[type]||type; }
 let mapGeoMap=null,mapGeoTileLayer=null,mapGeoMarkersById={},mapGeoTileTimer=null,mapGeoTileOk=false;
 
 function mapSetViewType(type){
@@ -754,7 +765,7 @@ function mapGeoRenderMarkers(){
   // El pin de la atracción seleccionada (el destino) siempre se muestra,
   // aunque su tipo esté desmarcado en los filtros — es "dónde vamos", no
   // debería poder desaparecer por accidente al tocar un chip de filtro.
-  geoKnownPoints().filter(p=>mapGeoFilters.has(p.type)||p.id===mapViewerState.selectedAttractionId).forEach(p=>{
+  geoKnownPoints().filter(p=>mapGeoFilters.has(mapGeoFilterCategory(p.type))||p.id===mapViewerState.selectedAttractionId).forEach(p=>{
     const selected=mapViewerState.selectedAttractionId===p.id;
     const html=p.type==='attraction'
       ?`<div class="geo-pin${selected?' selected':''}"><div class="pinnum">#${p.mapNumber} ${p.name.split(' ')[0]}</div></div>`
@@ -769,7 +780,7 @@ function mapGeoRenderMarkers(){
    POIS): NUNCA un pin fabricado en Leaflet, solo esta lista de texto
    con la zona/referencia que sí conocemos, debajo del mapa. */
 function mapGeoRenderNoGeoList(){
-  const items=POIS.filter(p=>!p.geo&&mapGeoFilters.has(p.type));
+  const items=POIS.filter(p=>!p.geo&&mapGeoFilters.has(mapGeoFilterCategory(p.type)));
   document.getElementById('mapGeoNoGeo').hidden=!items.length;
   document.getElementById('mapGeoNoGeoList').innerHTML=items.map(p=>`<div class="mapgeo-item"><span class="ic">${p.icon}</span><div class="txt"><b>${p.icon} ${p.name}${p.zone?` — ${p.zone}`:''}</b><small>${p.nearbyText||'Según el mapa oficial'} · sin coordenada registrada</small></div></div>`).join('');
 }
