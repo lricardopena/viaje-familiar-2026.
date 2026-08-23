@@ -51,7 +51,17 @@ const CHILD_FAVORITE_IDS=PARK.childFavoriteIds||[];
 const WATER_IDS=PARK.waterIds||[];
 const MAP_URL=PARK.map&&PARK.map.url;
 const MAP_IMAGE=PARK.map&&PARK.map.image;
-const BY_ID={};ALL.forEach((a,i)=>BY_ID[a.id]={...a,_i:i});
+// Incluye POIS además de ALL (antes solo indexaba atracciones): sin esto,
+// openParkMap(poiId) / mapApplyAttraction(poiId) — usado por el botón
+// "🗺️ Ver mapa" de poiCardHtml() para cualquier POI con `geo`, y ahora
+// también por los baños con geo (ver nearestRestroomInfo()) — no
+// encontraba nada y mostraba el mapa genérico sin pin. IDs de atracciones
+// y de POIs nunca se pisan (verificado: cero colisiones en Story Land y
+// LEGOLAND New York), así que el merge es seguro; el resto de usos de
+// BY_ID (estado de recomendación, currentZone, priorityGroups) solo
+// reciben ids de atracciones reales por construcción — un POI nunca entra
+// a esos caminos porque los POIs no tienen tarjeta de "toggle done".
+const BY_ID={};[...ALL,...POIS].forEach((a,i)=>BY_ID[a.id]={...a,_i:i});
 
 /* ---------- Tema: aplica los colores/textos del parque a la página ----------
    Un único punto que traduce PARK.theme/PARK.copy a la UI ya presente en el
@@ -86,8 +96,12 @@ function haversineMeters(a,b){
    lean del mismo conjunto. */
 function geoKnownPoints(){
   return [
-    ...ALL.filter(a=>a.geo).map(a=>({id:a.id,type:'attraction',icon:null,name:a.name,mapNumber:a.mapNumber,zone:a.zone,geo:a.geo,plusCode:a.plusCode,nearbyText:null,attraction:a})),
-    ...POIS.filter(p=>p.geo).map(p=>({id:p.id,type:p.type,icon:p.icon,name:p.name,mapNumber:p.mapNumber!=null?p.mapNumber:null,zone:p.zone,geo:p.geo,plusCode:p.plusCode,nearbyText:p.nearbyText,attraction:null})),
+    ...ALL.filter(a=>a.geo).map(a=>({id:a.id,type:'attraction',icon:null,name:a.name,mapNumber:a.mapNumber,mapMarker:a.mapMarker||null,zone:a.zone,geo:a.geo,plusCode:a.plusCode,nearbyText:null,attraction:a})),
+    // mapMarker agregado acá (antes solo vivía en el objeto attraction) para
+    // que un POI con mapMarker propio (ej. los baños con geo estimado desde
+    // anchors) también pueda ofrecer "🗺️ Ver mapa oficial" — ver officialBtn
+    // en mapGeoPopupHtml().
+    ...POIS.filter(p=>p.geo).map(p=>({id:p.id,type:p.type,icon:p.icon,name:p.name,mapNumber:p.mapNumber!=null?p.mapNumber:null,mapMarker:p.mapMarker||null,zone:p.zone,geo:p.geo,plusCode:p.plusCode,nearbyText:p.nearbyText,attraction:null})),
   ];
 }
 function zoneLine(a){return a.mapNumber!=null?`📍 Mapa #${a.mapNumber} · ${a.zone}`:`📍 ${a.zone}`}
@@ -623,6 +637,17 @@ let mapViewType='oficial';
 let mapGeoZoomMode='full';
 const MAP_GEO_ALL_FILTERS=['attraction','restroom','food','help'];
 let mapGeoFilters=new Set(['attraction','restroom','food']); // por defecto, sin saturar el mapa
+/* Ningún POI trae type:'help' — es el nombre del botón/chip de filtro
+   ("🩹 Ayuda"), no un tipo de dato. Sin este mapeo, mapGeoFilters.has(p.type)
+   nunca era true para 'firstaid'/'familycare' aunque el chip "Ayuda"
+   estuviera activo (bug encontrado al agregar First Aid/Family Care a
+   LEGOLAND New York — Story Land nunca lo mostró porque no define ningún
+   POI de esos dos tipos). mapGeoFilterCategory() traduce el type real del
+   POI/atracción a la categoría de filtro que le corresponde; cualquier
+   type sin entrada acá usa su propio nombre como categoría (comportamiento
+   de siempre para 'attraction'/'restroom'/'food'). */
+const MAP_GEO_FILTER_CATEGORY={firstaid:'help',familycare:'help'};
+function mapGeoFilterCategory(type){ return MAP_GEO_FILTER_CATEGORY[type]||type; }
 let mapGeoMap=null,mapGeoTileLayer=null,mapGeoMarkersById={},mapGeoTileTimer=null,mapGeoTileOk=false;
 
 function mapSetViewType(type){
@@ -695,8 +720,22 @@ function mapGeoListItemHtml(p){
        terceros) o reference 'ride-poi'/'service-poi': centroide aproximado
        de la atracción/servicio, NUNCA la entrada de fila real.
      - cualquier otra cosa (ej. 'official-map'): referencia general según
-       el mapa oficial del parque. */
+       el mapa oficial del parque.
+     - `geo.confidence` (nuevo, opcional — modelo de 3 niveles pedido para
+       los baños de LEGOLAND New York, reutilizable por cualquier parque):
+       'confirmed_on_site' (Plus Code medido parado en el punto — mismo
+       nivel que 'onsite-plus-code', úsalo cuando `source` no alcance a
+       distinguirlo), 'official_map' (coordenada publicada por el parque,
+       sin Plus Code propio) u 'approximate' (estimada cruzando el ícono
+       del mapa esquemático con anchors reales cercanos — nunca inventada
+       de la nada, siempre con `estimatedFrom` documentando qué anchors se
+       usaron). Revisado ANTES que `source`/`reference`: dale prioridad
+       porque es la señal más explícita cuando está presente. */
 function geoSourceBadge(geo){
+  const conf=geo.confidence;
+  if(conf==='confirmed_on_site')return '📍 Ubicación registrada en sitio';
+  if(conf==='official_map')return '🗺️ Ubicación según mapa oficial';
+  if(conf==='approximate')return '🧭 Ubicación estimada (no medida en sitio — ver detalle)';
   const src=geo.source||'',ref=geo.reference||'';
   if(src==='onsite-plus-code')return '📍 Ubicación registrada en sitio';
   if(src==='user-measured'||ref==='queue-entrance'||ref==='service-entrance')return '📍 Entrada medida en el parque';
@@ -725,13 +764,17 @@ function mapGeoPopupHtml(p){
   // Distancia desde el GPS del usuario (si dio permiso) — siempre línea recta,
   // nunca "caminando": no tenemos una red de senderos internos verificada.
   const gpsLine=mapGpsState.coords?`<div class="geopopup-near">📍 ~${Math.round(haversineMeters(mapGpsState.coords,p.geo))} m de tu ubicación (línea recta)</div>`:'';
+  // Cuando geo.confidence==='approximate', geo.estimatedFrom documenta con qué
+  // anchors reales se derivó — nunca se presenta como medición exacta.
+  const estimatedLine=(p.geo.confidence==='approximate'&&p.geo.estimatedFrom&&p.geo.estimatedFrom.length)
+    ?`<div class="geopopup-near">🧭 Estimado a partir de: ${p.geo.estimatedFrom.join(', ')}</div>`:'';
   const mapNum=p.mapNumber!=null?`#${p.mapNumber} `:'';
-  const officialBtn=(p.attraction&&p.attraction.mapMarker)?`<button onclick="mapGeoOpenOfficial('${p.id}')">🗺️ Ver mapa oficial</button>`:'';
+  const officialBtn=p.mapMarker?`<button onclick="mapGeoOpenOfficial('${p.id}')">🗺️ Ver mapa oficial</button>`:'';
   const gmapsUrl=`https://www.google.com/maps/search/?api=1&query=${p.geo.lat},${p.geo.lng}`;
   return `<div class="geopopup">
     <b>${mapNum}${p.name}</b>
     <span class="geopopup-badge">${badge}</span>
-    ${zoneLine}${nearLine}${distLine}${gpsLine}
+    ${zoneLine}${nearLine}${distLine}${gpsLine}${estimatedLine}
     <div class="geopopup-btns">
       ${officialBtn}
       <a href="${gmapsUrl}" target="_blank" rel="noopener noreferrer">Abrir en Google Maps ↗</a>
@@ -754,7 +797,7 @@ function mapGeoRenderMarkers(){
   // El pin de la atracción seleccionada (el destino) siempre se muestra,
   // aunque su tipo esté desmarcado en los filtros — es "dónde vamos", no
   // debería poder desaparecer por accidente al tocar un chip de filtro.
-  geoKnownPoints().filter(p=>mapGeoFilters.has(p.type)||p.id===mapViewerState.selectedAttractionId).forEach(p=>{
+  geoKnownPoints().filter(p=>mapGeoFilters.has(mapGeoFilterCategory(p.type))||p.id===mapViewerState.selectedAttractionId).forEach(p=>{
     const selected=mapViewerState.selectedAttractionId===p.id;
     const html=p.type==='attraction'
       ?`<div class="geo-pin${selected?' selected':''}"><div class="pinnum">#${p.mapNumber} ${p.name.split(' ')[0]}</div></div>`
@@ -769,7 +812,7 @@ function mapGeoRenderMarkers(){
    POIS): NUNCA un pin fabricado en Leaflet, solo esta lista de texto
    con la zona/referencia que sí conocemos, debajo del mapa. */
 function mapGeoRenderNoGeoList(){
-  const items=POIS.filter(p=>!p.geo&&mapGeoFilters.has(p.type));
+  const items=POIS.filter(p=>!p.geo&&mapGeoFilters.has(mapGeoFilterCategory(p.type)));
   document.getElementById('mapGeoNoGeo').hidden=!items.length;
   document.getElementById('mapGeoNoGeoList').innerHTML=items.map(p=>`<div class="mapgeo-item"><span class="ic">${p.icon}</span><div class="txt"><b>${p.icon} ${p.name}${p.zone?` — ${p.zone}`:''}</b><small>${p.nearbyText||'Según el mapa oficial'} · sin coordenada registrada</small></div></div>`).join('');
 }
@@ -803,11 +846,16 @@ function renderMapGeo(){
   ensureGeoMap();
   const a=mapCurrentAttraction;
   const banner=document.getElementById('mapGeoBanner');
-  if(a&&!a.geo){
-    banner.hidden=false;
-    banner.textContent=`📍 Ubicación geográfica de ${a.name} todavía no registrada — mostrando el parque completo.`;
-  }else{
-    banner.hidden=true;
+  if(!updateNearestRestroomBanner()){
+    // updateNearestRestroomBanner() ya se ocupó del banner (modo baños,
+    // sin atracción seleccionada) — este bloque es el comportamiento de
+    // siempre para cualquier otro caso.
+    if(a&&!a.geo){
+      banner.hidden=false;
+      banner.textContent=`📍 Ubicación geográfica de ${a.name} todavía no registrada — mostrando el parque completo.`;
+    }else{
+      banner.hidden=true;
+    }
   }
   document.querySelectorAll('#mapGeoFilters button[data-filter]').forEach(btn=>{
     btn.classList.toggle('active',btn.dataset.filter==='all'?mapGeoFilters.size===MAP_GEO_ALL_FILTERS.length:mapGeoFilters.has(btn.dataset.filter));
@@ -820,12 +868,72 @@ function renderMapGeo(){
   mapGeoApplyZoom();
   if(mapGeoMap)setTimeout(()=>mapGeoMap.invalidateSize(),50);
 }
+/* ---------- Baño más cercano según la posición del usuario ----------
+   Dos niveles, nunca inventando una distancia que no se puede sustentar:
+     1. Coincidencia de zona (prioridad): el baño de la MISMA zona que el
+        punto real conocido más cercano al GPS del usuario. Caminar es lo
+        que importa (zonas suelen estar separadas por colas/paredes
+        temáticas), no la distancia en línea recta a un baño que podría
+        estar más cerca en el mapa pero en otra zona. Si ese baño tiene
+        `geo` (medido o estimado), se muestra su distancia real; si no,
+        se muestra la distancia real al anchor conocido más cercano de esa
+        zona ("cerca de Fire Academy, a ~40 m de tu posición") — nunca se
+        afirma una distancia al baño mismo que no se calculó.
+     2. Sin baño en la zona actual (no debería pasar con los baños ya
+        cubiertos, pero por si un parque futuro tiene huecos): el baño con
+        `geo` más cercano por línea recta, entre los que sí tienen
+        coordenada.
+   Devuelve null si no hay GPS o no hay ningún baño en absoluto. */
+function nearestRestroomInfo(){
+  if(!mapGpsState.coords)return null;
+  const gps=mapGpsState.coords;
+  const restrooms=POIS.filter(p=>p.type==='restroom');
+  if(!restrooms.length)return null;
+  const known=geoKnownPoints();
+  const nearestKnown=known.length?known.map(p=>({p,d:haversineMeters(gps,p.geo)})).sort((a,b)=>a.d-b.d)[0]:null;
+  const zoneMatch=nearestKnown&&restrooms.find(r=>r.zone===nearestKnown.p.zone);
+  if(zoneMatch){
+    if(zoneMatch.geo)return {restroom:zoneMatch,meters:Math.round(haversineMeters(gps,zoneMatch.geo)),exact:true};
+    return {restroom:zoneMatch,meters:null,exact:false,anchorName:nearestKnown.p.name,anchorMeters:Math.round(nearestKnown.d)};
+  }
+  const withGeo=restrooms.filter(r=>r.geo);
+  if(withGeo.length){
+    const best=withGeo.map(r=>({r,d:haversineMeters(gps,r.geo)})).sort((a,b)=>a.d-b.d)[0];
+    return {restroom:best.r,meters:Math.round(best.d),exact:true};
+  }
+  return null;
+}
+function nearestRestroomBannerHtml(){
+  const info=nearestRestroomInfo();
+  if(!info)return mapGpsState.coords
+    ?'' // hay GPS pero ni siquiera hay un anchor conocido cerca — no hay nada honesto que decir todavía
+    :'🚻 Activa "📍 Mi ubicación" para ver el baño más cercano — mientras tanto, todos los baños conocidos aparecen abajo.';
+  const r=info.restroom,zoneTxt=r.zone?` — ${r.zone}`:'';
+  if(info.exact)return `🚻 <b>Baño más cercano:</b> ${r.name}${zoneTxt} · ~${info.meters} m de tu posición`;
+  return `🚻 <b>Baño más cercano (por zona):</b> ${r.name}${zoneTxt} · cerca de ${info.anchorName} (~${info.anchorMeters} m de tu posición)`;
+}
+/* Refresca el banner de baño más cercano si el visor de baños está
+   abierto ahora mismo (filtro reducido a solo 'restroom' — ver
+   openRestroomFinder()). No hace nada si el usuario está viendo otra
+   pestaña/filtro, para no pisar el banner de "atracción sin geo". Se
+   llama desde renderMapGeo() (al abrir/cambiar filtros) y desde
+   mapGpsOnSuccess() (cuando llega o se actualiza el GPS) — así, si el
+   usuario ya había concedido el permiso, tocar "🚻 ¿Dónde hay un baño?"
+   muestra el más cercano sin ningún toque adicional. */
+function updateNearestRestroomBanner(){
+  const restroomMode=mapGeoFilters.size===1&&mapGeoFilters.has('restroom');
+  if(!restroomMode||mapCurrentAttraction)return false;
+  const banner=document.getElementById('mapGeoBanner');
+  const html=nearestRestroomBannerHtml();
+  banner.hidden=!html;
+  if(html)banner.innerHTML=html;
+  return true;
+}
 /* Acción rápida "🚻 ¿Dónde hay un baño?" (Tips) y "📍 Mapa del parque"
    (Tips, mapBlockHtml()) — ambas abren el visor en modo mapa general
    (sin atracción) forzando la pestaña geográfica; la de baños además fuerza
-   el filtro a solo 'restroom'. currentZone (si hay una atracción reciente)
-   se usa nada más que como contexto visual del banner — nunca se afirma
-   "este es el más cercano" sin coordenadas para comprobarlo. */
+   el filtro a solo 'restroom', lo que activa el banner de "baño más
+   cercano" de arriba en cuanto haya GPS. */
 function openRestroomFinder(){ openParkMap(null,{forceView:'geo',geoFilterOnly:'restroom'}); }
 function openParkGeoMap(){ openParkMap(null,{forceView:'geo'}); }
 
@@ -887,6 +995,7 @@ function mapGpsOnSuccess(pos){
   mapGpsSyncButton();
   mapGpsRenderMarker();
   mapGpsUpdateDistanceLine();
+  updateNearestRestroomBanner(); // si el visor de baños está abierto, refleja el nuevo/primer fix sin que el usuario tenga que volver a tocar nada
   updateIllustratedGpsMarker(); // actualiza el "Estás aquí (estimado)" del mapa ilustrado aunque esa pestaña no esté activa ahora mismo
   // Solo se reencuadra el mapa en el primer fix — encuadra usuario (+
   // atracción seleccionada si tiene geo). Actualizaciones siguientes de
