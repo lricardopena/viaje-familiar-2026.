@@ -49,6 +49,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .actbtn.repeat{background:#ffe1ee;color:#a41457;border:1px solid #f5b9d4}
 .actbtn.long{background:#fff0e0;color:#a4530a;border:1px solid #f0c896}
 .actbtn.closed{background:#fde2e1;color:#a4241d;border:1px solid #f5b3ae}
+.actbtn.discard{background:#ede9f4;color:#5b3ea8;border:1px solid #d6cbef}
 .actbtn.map{background:#e4f5ff;color:#0b5e8e;border:1px solid #a9dcf5}
 
 .reactcard{background:#fff;border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--shadow);text-align:center}
@@ -108,6 +109,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 .st-later{background:#ffe6d4;color:#a4530a}
 .st-repeat{background:#ffe1ee;color:#a41457}
 .st-closed{background:#fde2e1;color:#a4241d}
+.st-discarded{background:#ede9f4;color:#5b3ea8}
 .item .tagrow{margin:7px 0}
 .itemzone{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);margin:2px 0 4px}
 .zonemapbtn{background:none;border:0;color:var(--blue);font-weight:850;font-size:.72rem;padding:2px 4px;white-space:nowrap}

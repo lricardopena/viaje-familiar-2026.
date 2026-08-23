@@ -1409,10 +1409,19 @@ function computeScore(a){
    recomendándola mientras esté marcada así. A diferencia de "done", closed
    no significa que ya la disfrutaron — por eso no cuenta para
    "Imperdibles: x/N" ni aparece en Favoritas, solo deja de competir.
+   "discarded" (🙅 "No queremos hacerlo" — decisión explícita del usuario,
+   distinta de "skipped": ese es "saltar por ahora", con cooldown, vuelve a
+   competir solo; "discarded" es permanente, nunca vuelve sola) se excluye
+   por el mismo motivo — y es el ÚNICO punto donde hace falta excluirla:
+   como getRecommendation()/getAlternatives()/candidatePool() siempre pasan
+   por acá, ninguna señal de scoring (must, favorita infantil, cercanía,
+   misma zona, agua, prioridad alta) puede hacer que una atracción
+   descartada vuelva a aparecer — la decisión explícita del usuario le gana
+   al scoring automático simplemente porque nunca llega a evaluarse.
    Se recalcula por completo en cada llamada: no hay itinerario guardado,
    solo el estado actual de cada atracción. */
 function candidateList(){
-  return ALL.filter(a=>!['done','closed'].includes(getStatus(a.id)))
+  return ALL.filter(a=>!['done','closed','discarded'].includes(getStatus(a.id)))
     .map(a=>({...a,tier:effectiveTier(a),score:computeScore(a),deferred:isOnCooldown(a.id),skipCooldown:isOnSkipCooldown(a.id)}))
     .sort((a,b)=>b.score-a.score||a._i-b._i);
 }
@@ -1490,6 +1499,7 @@ function tipFor(a){
    siguiera compitiendo. */
 function prioLabel(a){
   if(getStatus(a.id)==='closed')return {t:'🚫 CERRADA',c:'priolow'};
+  if(getStatus(a.id)==='discarded')return {t:'🙅 NO LA QUEREMOS',c:'priolow'};
   if(getStatus(a.id)==='repeat')return {t:'🔁 REPETIR (favorita)',c:'priorepeat'};
   if(a.deferred)return {t:'🕐 EN ESPERA (fila larga)',c:'priomed'};
   if(a.skipCooldown)return {t:'⏭️ SALTADA HACE POCO',c:'priomed'};
@@ -1548,6 +1558,27 @@ function actClose(id){
   if(state.deferred)delete state.deferred[id];
   if(state.skipped)delete state.skipped[id];
   setStatus(id,'closed');
+}
+/* 🙅 "No queremos hacerlo" — descarte PERMANENTE por decisión explícita de
+   la familia, distinto de "skipped" (⏭️ saltar por ahora, temporal, vuelve
+   a competir solo tras SKIP_COOLDOWN_STEPS acciones). No reutiliza el
+   booleano "done" ni el status 'skipped' existente — usa un valor nuevo en
+   el mismo mapa unificado state.status, mismo mecanismo que 'closed'/
+   'later'/etc., sin campos nuevos en el objeto de estado ni migración
+   necesaria (un usuario con datos guardados de antes de este cambio
+   simplemente no tiene ningún id en 'discarded' todavía, exactamente como
+   si esta pasada nunca hubiera pasado — ver loadState()). candidateList()
+   la excluye (ver ese comentario) — no vuelve a aparecer en "Qué hacer
+   ahora" pase lo que pase con el scoring, hasta que el usuario la
+   restaure. Restaurar es simétrico a los demás estados: tocar de nuevo el
+   mismo botón (🙅 en el checklist, o "↩️ Volver a considerar") la vuelve a
+   "pending" vía el mecanismo genérico de cycleStatus() — no hace falta una
+   acción aparte para deshacer. */
+function actDiscard(id){
+  tick();
+  if(state.deferred)delete state.deferred[id];
+  if(state.skipped)delete state.skipped[id];
+  setStatus(id,'discarded');
 }
 function recheckLine(id){
   if(state.deferred)delete state.deferred[id];
@@ -1654,9 +1685,18 @@ function renderAhora(){
     html+=`<div class="banner zoneclose"><b>📍 Antes de movernos</b>Todavía queda <b>${zoneClose.name}</b> en esta zona (${zoneClose.zone}).</div>`;
   }
   if(!rec){
-    const doneTitle=(PARK.copy&&PARK.copy.doneTitle)||`¡Completaron el plan de ${PARK.name}!`;
-    const doneBody=(PARK.copy&&PARK.copy.doneBody)||'Ya hicieron todo lo importante. Si quieren, repitan alguna favorita antes de irse.';
-    html+=`<div class="donebig"><div class="emoji">🎉</div><h2>${doneTitle}</h2><p>${doneBody}</p></div>`;
+    // Sin candidatas no siempre significa "hicieron todo lo importante" — puede ser que el resto
+    // quedó descartado (🙅), no realizado. No asumir "completado" cuando hay al menos un
+    // descarte: mensaje neutral que reconoce ambos casos, nunca "completaron el plan" si algo
+    // quedó explícitamente sin querer hacerse.
+    const anyDiscarded=ALL.some(a=>getStatus(a.id)==='discarded');
+    if(anyDiscarded){
+      html+=`<div class="donebig"><div class="emoji">🙅</div><h2>Ya no quedan atracciones pendientes en su plan actual</h2><p>Pueden restaurar alguna descartada, repetir una favorita o explorar libremente.</p></div>`;
+    }else{
+      const doneTitle=(PARK.copy&&PARK.copy.doneTitle)||`¡Completaron el plan de ${PARK.name}!`;
+      const doneBody=(PARK.copy&&PARK.copy.doneBody)||'Ya hicieron todo lo importante. Si quieren, repitan alguna favorita antes de irse.';
+      html+=`<div class="donebig"><div class="emoji">🎉</div><h2>${doneTitle}</h2><p>${doneBody}</p></div>`;
+    }
   }else{
     let prio=prioLabel(rec);
     let tags=rec.tags.map(t=>`<span class="tag ${t.includes('IMPERDIBLE')||t.includes('INTENSA')?'hot':t.includes('RECOMENDADA')?'star':''}">${t}</span>`).join('');
@@ -1679,6 +1719,7 @@ function renderAhora(){
       <div class="actionsgrid">
         <button class="actbtn done" onclick="actDone('${rec.id}')">✅ HECHO</button>
         <button class="actbtn skip" onclick="actSkip('${rec.id}')">⏭️ SALTAR POR AHORA</button>
+        <button class="actbtn discard" onclick="actDiscard('${rec.id}')">🙅 NO QUEREMOS HACERLO</button>
         <button class="actbtn repeat" onclick="actRepeat('${rec.id}')">❤️ QUIERE REPETIR</button>
         <button class="actbtn long" onclick="actLong('${rec.id}')">👥 FILA MUY LARGA</button>
         <button class="actbtn closed" onclick="actClose('${rec.id}')">🚫 CERRADA</button>
@@ -1721,6 +1762,7 @@ function alternativesHtml(rec){
       <div class="altbtns">
         <button onclick="actDone('${alt.id}')">✅ Hecho</button>
         <button onclick="actSkip('${alt.id}')">⏭️ Saltar</button>
+        <button onclick="actDiscard('${alt.id}')">🙅 No la queremos</button>
         <button onclick="openParkMap('${alt.id}')">🗺️ Mapa</button>
       </div>
     </div>`;
@@ -1753,6 +1795,13 @@ function extraSectionsHtml(){
   if(closed.length){
     html+=`<div class="miniSectTitle">🚫 Cerradas</div><div class="minilist">${closed.map(a=>`<div class="miniitem"><span>${a.name}<small>No la sugerimos mientras esté cerrada. Tocá 🚫 de nuevo en el checklist si reabre.</small></span><span class="pill">🚫</span></div>`).join('')}</div>`;
   }
+  // 🙅 Descartadas: consultable acá (no solo en el checklist por categoría) — nunca desaparecen del
+  // catálogo, y "↩️ Volver a considerar" las restaura con el mismo mecanismo genérico que el resto
+  // de los estados (cycleStatus() tocando de nuevo 'discarded' → 'pending').
+  let discarded=ALL.filter(a=>getStatus(a.id)==='discarded');
+  if(discarded.length){
+    html+=`<div class="miniSectTitle">🙅 No queremos hacer</div><div class="minilist">${discarded.map(a=>`<div class="miniitem"><span>${a.name}<small>No vuelve a aparecer en "Qué hacer ahora" hasta que la restauren.</small></span><button onclick="cycleStatus('${a.id}','discarded')">↩️ Volver a considerar</button></div>`).join('')}</div>`;
+  }
   return html;
 }
 
@@ -1777,6 +1826,7 @@ function cycleStatus(id,val){
   else if(val==='repeat')actRepeat(id);
   else if(val==='skipped')actSkip(id);
   else if(val==='closed')actClose(id);
+  else if(val==='discarded')actDiscard(id);
 }
 function renderChecklist(){
   let el=document.getElementById('tab-checklist');
@@ -1787,7 +1837,7 @@ function renderChecklist(){
     html+=`<div class="catblock"><h3>${label}</h3>`;
     items.forEach(a=>{
       let s=getStatus(a.id);
-      let stLabel={pending:'⬜ Pendiente',done:'✅ Hecho',skipped:'⏭️ Saltado',later:'🕐 Volver después',repeat:'❤️ Repetir',closed:'🚫 Cerrada'}[s];
+      let stLabel={pending:'⬜ Pendiente',done:'✅ Hecho',skipped:'⏭️ Saltado',later:'🕐 Volver después',repeat:'❤️ Repetir',closed:'🚫 Cerrada',discarded:'🙅 No la queremos'}[s];
       let open=expandedItems.has(a.id);
       // Mismo tipo de detalle que la tarjeta "Ahora" (por qué + prioridad +
       // tip), pero sin los datos que solo tienen sentido para "lo próximo a
@@ -1801,6 +1851,7 @@ function renderChecklist(){
       </div>
       <div class="itemzone"><span>${zoneLine(a)}</span><button class="zonemapbtn" onclick="event.stopPropagation();openParkMap('${a.id}')">🗺️ Ver mapa</button></div>
       <div class="tagrow">${(a.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      ${s==='discarded'?`<div class="tipline">🙅 No queremos hacerla — no vuelve a aparecer en "Qué hacer ahora" hasta que la restauren. <button onclick="event.stopPropagation();cycleStatus('${a.id}','discarded')">↩️ Volver a considerar</button></div>`:''}
       ${open?`<div class="expandbox">
         ${mapOrientationHtml(a)}
         <div class="whybox"><b>🎯 Por qué:</b> ${a.why||''}</div>
@@ -1812,10 +1863,11 @@ function renderChecklist(){
       </div>`:''}
       <div class="itembtns">
         <button class="${s==='done'?'active':''}" title="Hecho" onclick="event.stopPropagation();cycleStatus('${a.id}','done')">✅</button>
-        <button class="${s==='skipped'?'active':''}" title="Saltar" onclick="event.stopPropagation();cycleStatus('${a.id}','skipped')">⏭️</button>
+        <button class="${s==='skipped'?'active':''}" title="Saltar por ahora" onclick="event.stopPropagation();cycleStatus('${a.id}','skipped')">⏭️</button>
         <button class="${s==='later'?'active':''}" title="Fila muy larga / volver después" onclick="event.stopPropagation();cycleStatus('${a.id}','later')">🕐</button>
         <button class="${s==='repeat'?'active':''}" title="Quiere repetir" onclick="event.stopPropagation();cycleStatus('${a.id}','repeat')">❤️</button>
         <button class="${s==='closed'?'active':''}" title="Cerrada (tocar de nuevo para reabrir)" onclick="event.stopPropagation();cycleStatus('${a.id}','closed')">🚫</button>
+        <button class="${s==='discarded'?'active':''}" title="No queremos hacerla (tocar de nuevo para volver a considerarla)" onclick="event.stopPropagation();cycleStatus('${a.id}','discarded')">🙅</button>
       </div></div>`;
     });
     html+='</div>';
@@ -1896,8 +1948,11 @@ function renderTips(){
 /* ---------- Progreso ---------- */
 function renderProgress(){
   let doneTotal=ALL.filter(a=>{let s=getStatus(a.id);return s==='done'||s==='repeat'}).length;
+  // 🙅 descartadas: nunca se cuentan como realizadas (no incrementan doneTotal/pct) ni desaparecen
+  // del catálogo — se muestran aparte para que "realizadas" y "descartadas" nunca se confundan.
+  let discardedTotal=ALL.filter(a=>getStatus(a.id)==='discarded').length;
   let pct=ALL.length?Math.round(doneTotal/ALL.length*100):0;
-  document.getElementById('progTxt').textContent=`${doneTotal} de ${ALL.length} realizadas · ${pct}%`;
+  document.getElementById('progTxt').textContent=`${doneTotal} de ${ALL.length} realizadas`+(discardedTotal?` · 🙅 ${discardedTotal} descartadas`:'')+` · ${pct}%`;
   document.getElementById('progBar').style.width=pct+'%';
   let mustDone=MUST.filter(id=>{let s=getStatus(id);return s==='done'||s==='repeat'}).length;
   let repeatsPending=ALL.filter(a=>getStatus(a.id)==='repeat').length;
