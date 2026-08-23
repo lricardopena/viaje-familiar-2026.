@@ -398,6 +398,22 @@ window.PARK={
   tags:['🧱 CONSTRUCCIÓN','⚠️ VERIFICAR RESTRICCIONES'],
   tip:'⚠️ Sin restricción de altura/edad verificada en esta actualización — confirmar en el parque.',
   why:'Experiencia de construcción dentro del castillo, junto a The Dragon — sin verificar en esta pasada si es la misma actividad que Master Model Builder Experience (Bricktopia #18) o algo distinto.'},
+// Tower Climb Tournament: el usuario pidió "actualizar el registro existente" con el Plus Code
+// nuevo, pero no había ningún registro propio en este archivo — solo se lo mencionaba como
+// referencia de texto en restroom-castle.nearbyText ("... entre The Dragon y Tower Climb
+// Tournament (#51)"). Se agrega ahora como registro nuevo (mismo tratamiento que Builder's Guild
+// en esta misma pasada), con el Plus Code confirmado como su primer geo real — no hay nada que
+// duplicar. #51, LEGO CASTLE, RIDES & ATTRACTIONS según la leyenda del mapa oficial.
+{id:'towerclimb',name:'Tower Climb Tournament',cat:'rides',priorityTier:2,zone:'🏰 LEGO Castle',mapNumber:51,mapMarker:{x:33.59,y:17.97},adult:false,
+  // geo: MEDIDO EN SITIO (novena pasada, 23-ago-2026) — Plus Code "9MJP+W5Q Goshen, New York" →
+  // 87H79MJP+W5Q. A 18-29 m de los otros 3 puntos confirmados de este cluster (Dragon, Builder's
+  // Guild, restroom-castle) — coherente con estar en la misma zona de la fuente/torre central.
+  plusCode:'9MJP+W5Q Goshen, New York',
+  geo:{lat:41.382359,lng:-74.31461,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'},
+  nearbyAttractions:['dragon','builders'],
+  tags:['🧗 TREPAR','⚠️ VERIFICAR RESTRICCIONES'],
+  tip:'⚠️ Sin restricción de altura/edad verificada en esta actualización — confirmar en el parque.',
+  why:'Torres de escalada temáticas en el centro de LEGO Castle, junto a la fuente — buena opción física entre The Dragon y Builder\'s Guild.'},
 {id:'dragonsapprentice',name:"Dragon's Apprentice",cat:'rides',priorityTier:0,zone:'🏰 LEGO Castle',mapNumber:42,mapMarker:{x:34.51,y:22.27},adult:false,
   restrictions:{minHeightIn:36,adultRequiredBelowIn:42,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center (mínimo 36"; acompañante requerido debajo de 42").',lastVerified:'2026-08-19',confidence:'verified-official'},
   // geo: coordenada de coasterpedia.net (base de datos independiente de coasters), NO oficial de
