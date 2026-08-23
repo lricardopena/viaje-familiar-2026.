@@ -90,6 +90,45 @@ function haversineMeters(a,b){
   const s=Math.sin(dLat/2)**2+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
   return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
 }
+/* ---------- Proximidad GPS real (independiente del mapa ilustrado) ----------
+   Capa nueva, genérica: distancia real (Haversine) entre el GPS del
+   usuario (mapGpsState.coords, definido más abajo) y cualquier punto con
+   `geo` real — NUNCA usa `mapMarker` (posición en la imagen ilustrada, no
+   es una coordenada) ni depende de `PARK.map.geoCalibration` (que sigue
+   sin activarse para LEGOLAND mientras la precisión no alcance la barra
+   pedida — ver parks/legoland-new-york.js). Sin permiso GPS o sin `geo`
+   en el punto, todas estas funciones devuelven null/'' — nunca inventan
+   una distancia. */
+function gpsDistanceMeters(geo){
+  if(!geo||!mapGpsState.coords)return null;
+  return haversineMeters(mapGpsState.coords,geo);
+}
+/* "<100 m": metros · "100 m–1 km": metros redondeados a la decena ·
+   ">1 km": kilómetros con un decimal — pedido explícito del usuario. */
+function humanDistanceLabel(m){
+  if(m<100)return `${Math.round(m)} m`;
+  if(m<1000)return `${Math.round(m/10)*10} m`;
+  return `${(m/1000).toFixed(1)} km`;
+}
+// Aproximación conservadora de caminata dentro del parque — NUNCA routing real (no hay red de
+// senderos internos verificada), siempre presentada como estimación explícita.
+const WALK_METERS_PER_MIN=75;
+function walkEstimateLabel(m){
+  return `~${Math.max(1,Math.round(m/WALK_METERS_PER_MIN))} min caminando (estimado)`;
+}
+// Sufijo compacto para líneas ya existentes (itemzone del checklist, altmeta de alternativas) —
+// '' si no hay GPS o el punto no tiene geo, nunca fabricado.
+function distanceSuffix(geo){
+  const m=gpsDistanceMeters(geo);
+  return m!=null?` · 📍 ${humanDistanceLabel(m)}`:'';
+}
+// Línea completa (distancia + estimación de caminata) para espacios con más lugar: tarjeta "Ahora"
+// y detalle expandido del checklist.
+function proximityLineHtml(geo){
+  const m=gpsDistanceMeters(geo);
+  if(m==null)return '';
+  return `<div class="proxline">📍 A ${humanDistanceLabel(m)} · ${walkEstimateLabel(m)}</div>`;
+}
 /* Todos los puntos con coordenada geográfica real conocida hoy — atracciones
    de ALL con geo + POIs de POIS con geo. Único lugar que arma esta lista
    combinada, para que el mapa geográfico y el cálculo de "cerca de" siempre
@@ -190,6 +229,23 @@ function adultOnlyPenalty(a){
   const summ=eligibilitySummary(a);
   if(!summ||!summ.length)return 0;
   return summ.every(({elig})=>elig.status==='cannot-ride')?ADULT_ONLY_PENALTY:0;
+}
+/* Razón compacta "👧 apta para..." para reasonsFor() — SIEMPRE respaldada
+   por datos reales (restrictions+family.children, o el flag genérico
+   `adult`), nunca inventada. Prioriza el dato más específico (elegibilidad
+   por niño) sobre el genérico; si NINGÚN niño puede subir, no hay nada
+   positivo que decir acá (adultOnlyPenalty ya se encarga del lado
+   negativo, no es trabajo de esta función). */
+function childEligibilityReason(a){
+  const summ=eligibilitySummary(a);
+  if(summ&&summ.length){
+    const okCount=summ.filter(({elig})=>elig.status!=='cannot-ride').length;
+    if(okCount===0)return null;
+    return okCount===summ.length?'👧 Apta para los niños':`👧 Apta para ${okCount} de ${summ.length} niños`;
+  }
+  if(a.restrictions)return null; // hay restricciones pero no family.children para evaluarlas — no inventar
+  if(a.adult===false)return '👧 Sin restricción de adulto';
+  return null;
 }
 
 /* ---------- Referencia visual rápida para el Park Map (mapRegion) ----------
@@ -609,7 +665,13 @@ function openParkMap(attractionId,opts){
   document.getElementById('mapSheetFallbackLink').href=MAP_URL;
   document.getElementById('mapSheetControls').hidden=false;
   document.getElementById('mapViewTabs').hidden=false;
-  if(opts.geoFilterOnly){ mapGeoFilters=new Set([opts.geoFilterOnly]); }
+  // mapGeoFilterCategory() traduce el type real (ej. 'firstaid'/'familycare') a su categoría de
+  // filtro (ambos son 'help') — sin esto, geoFilterOnly:'firstaid' armaba un Set(['firstaid']) que
+  // nunca hacía match contra mapGeoFilters.has(mapGeoFilterCategory(p.type))==='help' (bug latente,
+  // sin efecto hasta esta pasada porque openRestroomFinder() es el único caso que existía antes, y
+  // 'restroom' es su propia categoría — se vuelve visible al generalizar los accesos rápidos de
+  // servicios a food/firstaid/familycare, ver quickServicesHtml()).
+  if(opts.geoFilterOnly){ mapGeoFilters=new Set([mapGeoFilterCategory(opts.geoFilterOnly)]); }
   mapPrevFocus=document.activeElement;
   mapPrevScrollY=window.scrollY;
   document.body.classList.add('noscroll');
@@ -863,8 +925,8 @@ function renderMapGeo(){
   ensureGeoMap();
   const a=mapCurrentAttraction;
   const banner=document.getElementById('mapGeoBanner');
-  if(!updateNearestRestroomBanner()){
-    // updateNearestRestroomBanner() ya se ocupó del banner (modo baños,
+  if(!updateQuickServiceBanner()){
+    // updateQuickServiceBanner() ya se ocupó del banner (modo baños/comida/ayuda,
     // sin atracción seleccionada) — este bloque es el comportamiento de
     // siempre para cualquier otro caso.
     if(a&&!a.geo){
@@ -948,11 +1010,54 @@ function nearestRestroomBannerHtml(){
    mapGpsOnSuccess() (cuando llega o se actualiza el GPS) — así, si el
    usuario ya había concedido el permiso, tocar "🚻 ¿Dónde hay un baño?"
    muestra el más cercano sin ningún toque adicional. */
-function updateNearestRestroomBanner(){
-  const restroomMode=mapGeoFilters.size===1&&mapGeoFilters.has('restroom');
-  if(!restroomMode||mapCurrentAttraction)return false;
+/* nearestServiceInfo(types): igual mecánica que nearestRestroomInfo() (distancia real manda,
+   fallback a inferencia de zona solo si NINGÚN POI del grupo tiene `geo`) pero genérica para
+   cualquier grupo de tipos de POI — usada por los accesos rápidos nuevos (🍔 Comida, 🩹 Ayuda). No
+   reemplaza a nearestRestroomInfo() (se deja intacta, ya validada) — evita tocar código de baños ya
+   probado mientras generaliza el resto. */
+function nearestServiceInfo(types){
+  if(!mapGpsState.coords)return null;
+  const gps=mapGpsState.coords;
+  const items=POIS.filter(p=>types.includes(p.type));
+  if(!items.length)return null;
+  const withGeo=items.filter(p=>p.geo);
+  if(withGeo.length){
+    const ranked=withGeo.map(p=>({
+      p,d:haversineMeters(gps,p.geo),
+      tier:RESTROOM_GEO_CONFIDENCE_RANK[p.geo.confidence]!=null?RESTROOM_GEO_CONFIDENCE_RANK[p.geo.confidence]:3,
+    })).sort((a,b)=>a.d-b.d||a.tier-b.tier);
+    const best=ranked[0];
+    return {item:best.p,meters:Math.round(best.d),exact:true};
+  }
+  const known=geoKnownPoints();
+  const nearestKnown=known.length?known.map(p=>({p,d:haversineMeters(gps,p.geo)})).sort((a,b)=>a.d-b.d)[0]:null;
+  const zoneMatch=nearestKnown&&items.find(p=>p.zone===nearestKnown.p.zone);
+  if(zoneMatch)return {item:zoneMatch,meters:null,exact:false,anchorName:nearestKnown.p.name,anchorMeters:Math.round(nearestKnown.d)};
+  return null;
+}
+function quickServiceBannerHtml(types,icon,label){
+  const info=nearestServiceInfo(types);
+  if(!info)return mapGpsState.coords
+    ?''
+    :`${icon} Activa "📍 Mi ubicación" para ver ${label.toLowerCase()} más cercano — mientras tanto, todos los puntos conocidos aparecen abajo.`;
+  const zoneTxt=info.item.zone?` — ${info.item.zone}`:'';
+  if(info.exact)return `${icon} <b>${label} más cercano</b> · ~${humanDistanceLabel(info.meters)} en línea recta — ${info.item.name}${zoneTxt}`;
+  return `${icon} <b>${label} cercano</b> · cerca de ${info.anchorName} (~${humanDistanceLabel(info.anchorMeters)} en línea recta de tu posición) — ${info.item.name}${zoneTxt}`;
+}
+/* updateQuickServiceBanner(): generaliza updateNearestRestroomBanner() (que se deja arriba
+   intacta, ver nota) a cualquiera de los accesos rápidos — se activa solo cuando el filtro del
+   mapa geográfico quedó reducido a una única categoría de servicio (restroom/food/help) y no hay
+   atracción seleccionada, mismo criterio de antes. 'help' agrupa firstaid+familycare (ver
+   MAP_GEO_FILTER_CATEGORY) — banner conjunto para el grupo, mismo criterio que ya usa el filtro. */
+function updateQuickServiceBanner(){
+  if(mapGeoFilters.size!==1||mapCurrentAttraction)return false;
+  const filter=[...mapGeoFilters][0];
   const banner=document.getElementById('mapGeoBanner');
-  const html=nearestRestroomBannerHtml();
+  let html='';
+  if(filter==='restroom')html=nearestRestroomBannerHtml();
+  else if(filter==='food')html=quickServiceBannerHtml(['food'],'🍴','Comida');
+  else if(filter==='help')html=quickServiceBannerHtml(['firstaid','familycare'],'🩹','Ayuda (First Aid / Family Care)');
+  else return false;
   banner.hidden=!html;
   if(html)banner.innerHTML=html;
   return true;
@@ -964,6 +1069,9 @@ function updateNearestRestroomBanner(){
    cercano" de arriba en cuanto haya GPS. */
 function openRestroomFinder(){ openParkMap(null,{forceView:'geo',geoFilterOnly:'restroom'}); }
 function openParkGeoMap(){ openParkMap(null,{forceView:'geo'}); }
+/* openServiceQuickView(type): igual patrón que openRestroomFinder(), generalizado para cualquier
+   tipo de servicio de los accesos rápidos nuevos (ver quickServicesHtml() más abajo). */
+function openServiceQuickView(type){ openParkMap(null,{forceView:'geo',geoFilterOnly:type}); }
 
 /* ---------- Geolocalización del usuario ("📍 Mi ubicación") ----------
    100% client-side: la posición nunca se envía a ningún servidor, no se
@@ -1003,6 +1111,7 @@ function mapGpsStart(){
   if(mapGpsState.watchId!=null)return; // ya hay un watch activo — no pedir de nuevo
   mapGpsState.status='requesting';
   mapGpsSyncButton();
+  renderAhora(); // refleja "Buscando ubicación…" en el acceso rápido de la pestaña Ahora (ver appGpsButtonHtml), se haya tocado el botón ahí o dentro del visor de mapa
   mapGpsState.watchId=navigator.geolocation.watchPosition(mapGpsOnSuccess,mapGpsOnError,{
     enableHighAccuracy:true,
     maximumAge:5000,
@@ -1023,7 +1132,7 @@ function mapGpsOnSuccess(pos){
   mapGpsSyncButton();
   mapGpsRenderMarker();
   mapGpsUpdateDistanceLine();
-  updateNearestRestroomBanner(); // si el visor de baños está abierto, refleja el nuevo/primer fix sin que el usuario tenga que volver a tocar nada
+  updateQuickServiceBanner(); // si el visor de baños/comida/ayuda está abierto, refleja el nuevo/primer fix sin que el usuario tenga que volver a tocar nada
   updateIllustratedGpsMarker(); // actualiza el "Estás aquí (estimado)" del mapa ilustrado aunque esa pestaña no esté activa ahora mismo
   // Solo se reencuadra el mapa en el primer fix — encuadra usuario (+
   // atracción seleccionada si tiene geo). Actualizaciones siguientes de
@@ -1033,6 +1142,7 @@ function mapGpsOnSuccess(pos){
     mapGeoApplyZoom();
     if(mapImageStatus==='loaded')renderMapViewers(); // recalcula el encuadre "cerca de" del mapa ilustrado ahora que ya hay GPS para fijar los dos puntos
   }
+  refreshAppForGps();
 }
 function mapGpsOnError(err){
   mapGpsStopWatch();
@@ -1044,6 +1154,24 @@ function mapGpsOnError(err){
     mapGpsShowMessage('No pudimos obtener tu ubicación por ahora. Puedes seguir usando el mapa sin GPS.');
   }
   mapGpsSyncButton();
+  renderAhora(); // refleja el rechazo/error en el acceso rápido de la pestaña Ahora — la app sigue 100% usable sin GPS, solo deja de ofrecer distancias reales
+}
+/* refreshAppForGps(): repinta Ahora/Checklist/Tips (las tres pestañas que usan mapGpsState.coords
+   para proximidad/scoring/orden de servicios) cuando llega un fix GPS significativamente distinto
+   del último usado para pintar. Mismo principio que MAPME_SIGNIFICANT_MOVE_M (mapa ilustrado):
+   sin este throttle, cada tick de watchPosition (cada pocos segundos, con el ruido normal de GPS
+   de unos metros) recalcularía toda la recomendación — el "cambio brusco por variaciones pequeñas
+   del GPS" que se pidió evitar explícitamente. GPS_APP_REFRESH_MOVE_M es más laxo que el del mapa
+   ilustrado (8 m) a propósito: acá el costo de refrescar es mayor (recalcula todo candidateList())
+   y lo que importa es la recomendación completa, no solo un punto visual. */
+const GPS_APP_REFRESH_MOVE_M=15;
+let gpsAppRefreshLast=null;
+function refreshAppForGps(){
+  const coords=mapGpsState.coords;
+  if(!coords)return;
+  if(gpsAppRefreshLast&&haversineMeters(gpsAppRefreshLast,coords)<GPS_APP_REFRESH_MOVE_M)return;
+  gpsAppRefreshLast={lat:coords.lat,lng:coords.lng};
+  renderAhora();renderChecklist();renderTips();
 }
 function mapGpsShowMessage(text){
   const el=document.getElementById('mapGpsStatus');
@@ -1062,6 +1190,22 @@ function mapGpsSyncButton(){
       :mapGpsState.status==='requesting'?'📍 Buscando…'
       :'📍 Mi ubicación';
   });
+}
+/* Botón de ubicación para el acceso rápido de la pestaña Ahora (ver quickServicesHtml) — reutiliza
+   mapGpsButtonTap() tal cual (mismo flujo/permiso/watchPosition que los dos botones del visor de
+   mapa), así que activar el GPS desde acá no requiere abrir el mapa primero. No se sincroniza vía
+   mapGpsSyncButton() (ese solo conoce los dos ids del visor) — como este botón vive dentro de HTML
+   que renderAhora() regenera por completo en cada render, simplemente se recalcula su texto/clase
+   acá mismo a partir de mapGpsState.status en cada llamada. */
+function appGpsButtonHtml(){
+  const st=mapGpsState.status;
+  const label=st==='granted'?'📍 Ubicación activa ✓'
+    :st==='requesting'?'📍 Buscando ubicación…'
+    :st==='denied'?'📍 Ubicación rechazada — tocar para reintentar'
+    :st==='error'?'📍 No se pudo obtener ubicación — reintentar'
+    :st==='unsupported'?'📍 GPS no disponible en este navegador'
+    :'📍 Activar ubicación (distancias reales)';
+  return `<button class="appgpsbtn ${st==='granted'?'active':''} ${st==='requesting'?'requesting':''}" onclick="mapGpsButtonTap()"${st==='unsupported'?' disabled':''}>${label}</button>`;
 }
 /* Marcador "Estás aquí": un único marcador + un único círculo de precisión,
    reutilizados (setLatLng/setRadius) en cada actualización de watchPosition
@@ -1203,12 +1347,83 @@ function loadState(){
   if(!s.deferred)s.deferred={};                       // id -> {atCount, zone} cuando se marca "fila muy larga"
   if(!('recommendationCount' in s))s.recommendationCount=0; // avanza con cada acción, usado para el cooldown
   if(!s.skipped)s.skipped={};                          // id -> {atCount} cuando se toca "saltar por ahora"
+  // id -> {range:'0-10'|'10-20'|'20-40'|'40+', at:timestamp} — fila observada a mano por la
+  // familia (ver "Tiempo de espera manual" más abajo). Migración defensiva: un estado guardado
+  // antes de esta pasada simplemente no tiene esta clave — no se borra ningún progreso existente.
+  if(!s.waitTimes)s.waitTimes={};
   return s;
 }
 let state=loadState();
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 function getStatus(id){return state.status[id]||'pending'}
 function setStatus(id,val){state.status[id]=val;save();renderAll()}
+
+/* ---------- Tiempo de espera manual ("¿cuánta fila hay?") ----------
+   Genérico para cualquier parque — no depende de ninguna API externa de
+   tiempos de espera (a propósito, no en esta pasada). La familia registra
+   a mano el rango que observaron parados en la fila; ese dato:
+     1. Ajusta el scoring mientras esté "vigente" (WAIT_EXPIRY_MS) — ver
+        waitTimeScoreAdjust() y computeScore().
+     2. Sigue MOSTRÁNDOSE aunque haya caducado para el scoring ("dato
+        antiguo"), hasta que la familia lo reemplace o lo borre — nunca
+        desaparece solo por caducar, sería perder información útil
+        ("¿hace cuánto lo vieron?" sigue siendo relevante aunque ya no
+        deba mover la recomendación).
+   Toggle genérico: tocar el mismo rango de nuevo lo borra — mismo patrón
+   que cycleStatus() para el resto de los estados de la app. */
+const WAIT_RANGES=['0-10','10-20','20-40','40+'];
+const WAIT_RANGE_LABEL={'0-10':'0–10 min','10-20':'10–20 min','20-40':'20–40 min','40+':'40+ min'};
+const WAIT_EXPIRY_MS=40*60*1000; // ~40 min — dentro del rango 30-45 min pedido
+// Ajuste de score por rango: pequeño bonus / neutral (bonus chico) / penalización moderada /
+// penalización fuerte. Todos muy por debajo de TIER_W (100): una fila corta puede desempatar entre
+// candidatos parecidos, pero nunca hace que algo de tier bajo le gane a un imperdible pendiente, ni
+// que una fila larga saque a un imperdible de la recomendación (solo lo compite, con la explicación
+// dejando claro que la fila es larga — ver reasonsFor()).
+const WAIT_SCORE={'0-10':14,'10-20':4,'20-40':-35,'40+':-80};
+function waitTimeInfo(id){
+  const w=state.waitTimes&&state.waitTimes[id];
+  if(!w)return null;
+  const ageMs=Date.now()-w.at;
+  return {range:w.range,at:w.at,ageMin:Math.floor(ageMs/60000),expired:ageMs>WAIT_EXPIRY_MS};
+}
+function setWaitTime(id,range){
+  if(!state.waitTimes)state.waitTimes={};
+  if(state.waitTimes[id]&&state.waitTimes[id].range===range)delete state.waitTimes[id]; // mismo rango de nuevo = borrar
+  else state.waitTimes[id]={range,at:Date.now()};
+  save();renderAll();
+}
+function clearWaitTime(id){
+  if(state.waitTimes)delete state.waitTimes[id];
+  save();renderAll();
+}
+function waitTimeScoreAdjust(a){
+  const info=waitTimeInfo(a.id);
+  if(!info||info.expired)return 0;
+  return WAIT_SCORE[info.range]||0;
+}
+/* Texto compacto "10–20 min · hace 8 min" / "20–40 min · dato antiguo" —
+   sin ícono (los call sites deciden cuál usar según contexto). */
+function waitTimeStatusText(id){
+  const info=waitTimeInfo(id);
+  if(!info)return null;
+  const ageTxt=info.expired?'dato antiguo':`hace ${info.ageMin<1?'<1':info.ageMin} min`;
+  return `${WAIT_RANGE_LABEL[info.range]} · ${ageTxt}`;
+}
+/* Selector compacto de rango, pensado para tocar de pie con una mano —
+   pocos taps (uno para fijar, uno más para borrar tocando el mismo de
+   nuevo). Reutilizable en la tarjeta "Ahora" y en el detalle del
+   checklist. */
+function waitPillsHtml(id){
+  const cur=state.waitTimes&&state.waitTimes[id]?state.waitTimes[id].range:null;
+  const statusText=waitTimeStatusText(id);
+  return `<div class="waitrow">
+    <div class="waitrow-label">⏱ Fila observada${statusText?`: <b>${statusText}</b>`:''}</div>
+    <div class="waitpills">${WAIT_RANGES.map(rg=>`<button class="waitpill ${cur===rg?'active':''}" onclick="event.stopPropagation();setWaitTime('${id}','${rg}')">${WAIT_RANGE_LABEL[rg]}</button>`).join('')}</div>
+  </div>`;
+}
+// Refresca "hace N min"/caducidad sin depender de que llegue otra interacción — solo si hay algún
+// dato registrado (costo cero cuando no se usó nunca esta función en la sesión).
+setInterval(()=>{ if(state.waitTimes&&Object.keys(state.waitTimes).length)renderAll(); },60000);
 
 /* ---------- Lógica de recomendación ----------
    NO es un itinerario: no hay una secuencia fija de atracciones guardada en
@@ -1364,6 +1579,37 @@ function proximityBonus(a){
   return BY_ID[lastId].nearbyAttractions.includes(a.id)?PROXIMITY_BONUS:0;
 }
 function childBonus(a){return CHILD_FAVORITE_IDS.includes(a.id)?CHILD_BONUS:0}
+/* childReasonFor(a,status): una única razón "👧" para reasonsFor() — nunca
+   dos a la vez. Prioriza la más específica (elegibilidad real, ver
+   childEligibilityReason arriba) sobre la etiqueta curada
+   childFavoriteIds/CHILD_BONUS, que solo se usa como respaldo cuando no
+   hay datos de elegibilidad para evaluar. */
+function childReasonFor(a,status){
+  const specific=childEligibilityReason(a);
+  if(specific)return specific;
+  if(childBonus(a)&&status==='pending')return '👧 Buena opción para los niños';
+  return null;
+}
+/* gpsProximityBonus: distancia REAL (GPS, ver gpsDistanceMeters arriba) —
+   nunca mapMarker ni geoCalibration. Bucketeada (en vez de continua) por
+   dos motivos: (1) mantiene el bonus muy por debajo de TIER_W/SAME_ZONE_BONUS
+   — ayuda a desempatar, nunca "inventa" prioridad ni le gana a un
+   imperdible pendiente; (2) el bucketing en sí mismo absorbe el ruido
+   normal de GPS (unos pocos metros) sin cruzar de bucket, lo que evita
+   cambios bruscos de recomendación por variaciones pequeñas — junto con
+   el throttle de refreshAppForGps() más abajo (que además evita
+   re-renderizar en cada tick de watchPosition). Sin GPS o sin `geo` en el
+   punto: 0, igual que cualquier otro bonus sin datos. */
+const GPS_PROXIMITY_NEAR_M=60,GPS_PROXIMITY_MED_M=180,GPS_PROXIMITY_FAR_M=450;
+const GPS_PROXIMITY_BONUS_NEAR=18,GPS_PROXIMITY_BONUS_MED=10,GPS_PROXIMITY_BONUS_FAR=4;
+function gpsProximityBonus(a){
+  const m=gpsDistanceMeters(a.geo);
+  if(m==null)return 0;
+  if(m<=GPS_PROXIMITY_NEAR_M)return GPS_PROXIMITY_BONUS_NEAR;
+  if(m<=GPS_PROXIMITY_MED_M)return GPS_PROXIMITY_BONUS_MED;
+  if(m<=GPS_PROXIMITY_FAR_M)return GPS_PROXIMITY_BONUS_FAR;
+  return 0;
+}
 function timeOfDayBonus(a){
   if(!waterBoostActive()||!WATER_IDS.includes(a.id))return 0;
   return a.secondaryWaterBonus?WATER_BONUS_SECONDARY:WATER_BONUS;
@@ -1393,13 +1639,19 @@ function restBonus(a){
   if(!afterLunchWindowActive())return 0;
   return (a.cat==='descanso'||CALM_IDS.includes(a.id))?AFTER_LUNCH_BONUS:0;
 }
+/* computeScore: extendido esta pasada con gpsProximityBonus (cercanía GPS real, ver arriba) y
+   waitTimeScoreAdjust (fila observada a mano, ver "Tiempo de espera manual" cerca de loadState()).
+   Ninguno de los dos cambia el orden de magnitud de los pesos existentes — siguen siendo
+   desempates dentro de un mismo tier, nunca "prioridad inventada". Determinístico a igualdad de
+   estado/datos: mismo principio que waterBoostActive()/closingSoonActive() (ya leen la hora del
+   reloj) — mismos GPS+waitTimes+reloj producen siempre el mismo resultado. */
 function computeScore(a){
   let tier=effectiveTier(a);
   let priorityScore=(5-tier)*TIER_W;
   let deferredPenalty=isOnCooldown(a.id)?DEFERRED_PENALTY:0;
   let skipPenalty=isOnSkipCooldown(a.id)?SKIP_PENALTY:0;
-  return priorityScore+sameZoneBonus(a)+proximityBonus(a)+childBonus(a)+timeOfDayBonus(a)
-    +groupEarlyBonus(a)+reactionBonus(a)+restBonus(a)+closingSoonBonus(a)
+  return priorityScore+sameZoneBonus(a)+proximityBonus(a)+gpsProximityBonus(a)+childBonus(a)+timeOfDayBonus(a)
+    +groupEarlyBonus(a)+reactionBonus(a)+restBonus(a)+closingSoonBonus(a)+waitTimeScoreAdjust(a)
     -deferredPenalty-skipPenalty-adultOnlyPenalty(a);
 }
 /* candidateList(): TODO lo que no esté "done", "closed" ni "discarded" —
@@ -1458,25 +1710,44 @@ function whyNow(a){
   if(status==='later')return `Ya pasó un rato desde que la fila estaba muy larga — vale la pena volver a intentarlo. ${a.why||''}`;
   return a.why||'';
 }
-/* Razones cortas (máx. 2) que explican por qué se sugiere esto ahora mismo,
-   sin convertir la tarjeta en un párrafo largo ni mostrar puntajes. El orden
-   de los "if" es la prioridad editorial: lo más específico al contexto
-   actual va primero, así slice(0,2) muestra lo más relevante. */
+/* Razones cortas (entre 0 y 4 — nunca se fuerza un mínimo, solo se
+   muestran las que de verdad tienen datos detrás) que explican por qué se
+   sugiere esto ahora mismo, sin convertir la tarjeta en un párrafo largo
+   ni mostrar el score numérico. El orden de los "if" es la prioridad
+   editorial: lo más específico al contexto actual va primero, así
+   slice(0,4) muestra lo más relevante. Vocabulario de íconos fijo (para
+   que la familia aprenda a leerlos de un vistazo): ⭐ imperdible/prioridad
+   · 📍 cercana (GPS real) · 👧 apta para los niños · 🗺️ misma zona ·
+   🧭 buena siguiente parada por ubicación (nearbyAttractions) · 💦 buen
+   momento para refrescarse · 🔁 favorita/repetir · ⏱/🕐 fila corta/larga
+   registrada a mano. Genérico en el core — ningún ícono ni texto es
+   específico de LEGOLAND ni de Story Land. */
 function reasonsFor(a){
   let r=[],status=getStatus(a.id);
-  if(status==='repeat')r.push('❤️ La quería repetir.');
+  if(status==='repeat')r.push('🔁 La quería repetir.');
   if(status==='later'&&!isOnCooldown(a.id))r.push('🕐 La fila larga anterior ya puede revisarse.');
-  if(a.tier<=1&&status==='pending')r.push('🔥 Sigue siendo un imperdible pendiente.');
-  if(sameZoneBonus(a))r.push('📍 Ya estás en esta zona.');
-  else if(proximityBonus(a))r.push('📍 Está cerca de lo que acabamos de hacer.');
+  if(a.tier<=1&&status==='pending')r.push('⭐ Sigue siendo un imperdible pendiente.');
+  if(sameZoneBonus(a))r.push('🗺️ Ya estás en esta zona.');
+  else if(proximityBonus(a))r.push('🧭 Buena siguiente parada — está cerca de lo último que hicieron.');
+  else if(gpsProximityBonus(a)){
+    const gm=gpsDistanceMeters(a.geo);
+    if(gm!=null)r.push(`📍 A ${humanDistanceLabel(gm)}`);
+  }
   (PARK.priorityGroups||[]).forEach(g=>{
     if(g.ids.includes(a.id)&&g.ids.some(id=>id!==a.id&&BY_ID[id]&&BY_ID[id].zone===a.zone&&['pending','later'].includes(getStatus(id))))r.push(g.reasonLabel);
   });
-  if(timeOfDayBonus(a))r.push('☀️ Buen momento para las atracciones de agua.');
-  if(childBonus(a)&&status==='pending')r.push('⭐ Tiene alta probabilidad de gustarle.');
+  if(timeOfDayBonus(a))r.push('💦 Buen momento para refrescarse.');
+  const childR=childReasonFor(a,status);
+  if(childR)r.push(childR);
   if(restBonus(a))r.push('😌 Buena opción para descansar.');
   if(closingSoonBonus(a))r.push('⏰ Quedan pocas horas — mejor no dejarla para el final.');
-  return r.slice(0,2);
+  const waitInfo=waitTimeInfo(a.id);
+  if(waitInfo&&!waitInfo.expired){
+    r.push(waitInfo.range==='0-10'||waitInfo.range==='10-20'
+      ?`⏱ Fila ${WAIT_RANGE_LABEL[waitInfo.range]} (registrada)`
+      :`🕐 Fila larga registrada (${WAIT_RANGE_LABEL[waitInfo.range]})`);
+  }
+  return r.slice(0,4);
 }
 /* tipFor(a): el tip por atracción vive directamente en el dato (a.tip) —
    cada parque lo escribe en su park.js. Un reactionSystem activo puede
@@ -1640,7 +1911,11 @@ function showSoonBannerHtml(){
 /* ---------- Render: Ahora ---------- */
 function renderAhora(){
   let el=document.getElementById('tab-ahora');
-  let html='';
+  // Accesos rápidos + GPS: primero en la pestaña, siempre presente sin
+  // importar qué otra cosa se esté mostrando (pregunta de reacción,
+  // banners, recomendación o plan completo) — zona persistente pedida
+  // explícitamente para servicios importantes durante la visita.
+  let html=quickServicesHtml();
 
   // pregunta de reacción (opcional, ver PARK.reactionSystem)
   const rs=PARK.reactionSystem;
@@ -1711,6 +1986,7 @@ function renderAhora(){
       <span class="kicker">⭐ AHORA</span>
       <h2>${rec.name}</h2>
       <div class="zonebadge">${zoneLine(rec)}</div>
+      ${proximityLineHtml(rec.geo)}
       ${mapOrientationHtml(rec)}
       <div class="tagrow">${tags}</div>
       ${reasons.length?`<div class="reasonrow">${reasons.map(r=>`<span class="reasonchip">${r}</span>`).join('')}</div>`:''}
@@ -1720,6 +1996,7 @@ function renderAhora(){
         <div class="fact">🔥 Prioridad<b class="${prio.c}">${prio.t}</b></div>
         <div class="fact">📂 Categoría<b>${catLabel(rec.cat)}</b></div>
       </div>
+      ${waitPillsHtml(rec.id)}
       ${tip?`<div class="tipline">${tip}</div>`:''}
       <div class="actionsgrid">
         <button class="actbtn done" onclick="actDone('${rec.id}')">✅ HECHO</button>
@@ -1762,7 +2039,7 @@ function alternativesHtml(rec){
     let reasons=reasonsFor(alt);
     return `<div class="altcard">
       <div class="altname">${alt.name}</div>
-      <div class="altmeta">${zoneLine(alt)}</div>
+      <div class="altmeta">${zoneLine(alt)}${distanceSuffix(alt.geo)}</div>
       ${reasons.length?`<div class="reasonrow">${reasons.map(r=>`<span class="reasonchip">${r}</span>`).join('')}</div>`:''}
       <div class="altbtns">
         <button onclick="actDone('${alt.id}')">✅ Hecho</button>
@@ -1851,15 +2128,17 @@ function renderChecklist(){
         <h4><span class="expandicon">${open?'▾':'▸'}</span>${a.name}</h4>
         <span class="statusChip st-${s}">${stLabel}</span>
       </div>
-      <div class="itemzone"><span>${zoneLine(a)}</span><button class="zonemapbtn" onclick="event.stopPropagation();openParkMap('${a.id}')">🗺️ Ver mapa</button></div>
+      <div class="itemzone"><span>${zoneLine(a)}${distanceSuffix(a.geo)}</span><button class="zonemapbtn" onclick="event.stopPropagation();openParkMap('${a.id}')">🗺️ Ver mapa</button></div>
       <div class="tagrow">${(a.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
       ${open?`<div class="expandbox">
+        ${proximityLineHtml(a.geo)}
         ${mapOrientationHtml(a)}
         <div class="whybox"><b>🎯 Por qué:</b> ${a.why||''}</div>
         ${eligibilityFactHtml(a)}
         <div class="factrow">
           <div class="fact">🔥 Prioridad<b class="${prio.c}">${prio.t}</b></div>
         </div>
+        ${waitPillsHtml(a.id)}
         ${tip?`<div class="tipline">${tip}</div>`:''}
       </div>`:''}
       <div class="itembtns">
@@ -1898,7 +2177,12 @@ const POI_TYPE_LABEL={food:'🍴 Comida',restroom:'🚻 Baños',firstaid:'🩹 F
 function poiCardHtml(p){
   const near=p.nearbyText?`<small>${p.nearbyText}</small>`:'';
   const mapBtn=p.geo?`<button class="zonemapbtn" onclick="openParkMap('${p.id}')">🗺️ Ver mapa</button>`:'';
-  return `<div class="miniitem"><span>${p.icon||'📍'} ${p.name}${p.zone?` — ${p.zone}`:''}${near}</span>${mapBtn}</div>`;
+  // Distancia real (GPS) cuando hay permiso y el POI tiene geo — nunca fabricada. approxTxt avisa
+  // explícitamente cuando la única coordenada disponible es una estimación, no una medición.
+  const dist=gpsDistanceMeters(p.geo);
+  const distTxt=dist!=null?`<span class="svcdist">📍 ~${humanDistanceLabel(dist)}</span>`:'';
+  const approxTxt=(p.geo&&p.geo.confidence==='approximate')?`<span class="svcapprox">🧭 aprox.</span>`:'';
+  return `<div class="miniitem"><span>${p.icon||'📍'} ${p.name}${p.zone?` — ${p.zone}`:''}${near}</span>${distTxt}${approxTxt}${mapBtn}</div>`;
 }
 function servicesHtml(){
   // Plegado dentro de la pestaña Tips (no una 5ª pestaña) para no tocar el
@@ -1909,10 +2193,53 @@ function servicesHtml(){
   let html='<div class="miniSectTitle">🧭 Servicios del parque</div>';
   const types=[...new Set(POIS.map(p=>p.type))];
   types.forEach(t=>{
-    const items=POIS.filter(p=>p.type===t);
+    let items=POIS.filter(p=>p.type===t);
+    // Ordenar por distancia real solo con GPS concedido — los que no tienen `geo` se van al final
+    // (nunca se inventa su posición para ordenarlos primero ni se ocultan).
+    if(mapGpsState.coords){
+      items=[...items].sort((a,b)=>{
+        const da=gpsDistanceMeters(a.geo),db=gpsDistanceMeters(b.geo);
+        if(da==null&&db==null)return 0;
+        if(da==null)return 1;
+        if(db==null)return -1;
+        return da-db;
+      });
+    }
     html+=`<div class="miniSectTitle">${POI_TYPE_LABEL[t]||t}</div><div class="minilist">${items.map(poiCardHtml).join('')}</div>`;
   });
   return html;
+}
+/* ---------- Accesos rápidos a servicios (pestaña Ahora) ----------
+   Zona persistente pensada para usar de pie/caminando: 1 toque abre el mapa geográfico ya
+   filtrado al tipo elegido (mismo visor que "🚻 ¿Dónde hay un baño?", ver openServiceQuickView),
+   donde ya existen "Cómo llegar"/Google Maps, badge de procedencia/confianza y ver el resto de
+   puntos cercanos (mapGeoPopupHtml, sin cambios). Genérico: lee PARK.pois — un parque sin alguno
+   de estos tipos simplemente no muestra esa ficha (no hardcodea nada de LEGOLAND). */
+const QUICK_SERVICE_TYPES=[
+  {type:'restroom',icon:'🚻',label:'Baño'},
+  {type:'food',icon:'🍔',label:'Comida'},
+  {type:'firstaid',icon:'🩹',label:'First Aid'},
+  {type:'familycare',icon:'🧃',label:'Descanso'},
+];
+function quickServiceTileHtml(t){
+  let sub;
+  if(t.type==='restroom'){
+    const info=nearestRestroomInfo();
+    sub=info&&info.exact?`~${humanDistanceLabel(info.meters)}`:info?`cerca de ${info.anchorName}`:'Ver lista';
+  }else{
+    const near=nearestServiceInfo([t.type]);
+    sub=near&&near.exact?`~${humanDistanceLabel(near.meters)}`:'Ver lista';
+  }
+  return `<button class="quicksvc-tile" onclick="openServiceQuickView('${t.type}')"><span class="ic">${t.icon}</span><span class="lbl">${t.label}</span><span class="sub">${sub}</span></button>`;
+}
+function quickServicesHtml(){
+  const present=QUICK_SERVICE_TYPES.filter(t=>POIS.some(p=>p.type===t.type));
+  if(!present.length)return '';
+  return `<div class="quicksvc">
+    <div class="miniSectTitle" style="margin-top:0">🧭 Accesos rápidos</div>
+    <div class="quicksvc-grid">${present.map(quickServiceTileHtml).join('')}</div>
+    ${appGpsButtonHtml()}
+  </div>`;
 }
 
 /* ---------- Render: Tips + Mapa ---------- */
