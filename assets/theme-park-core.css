@@ -66,7 +66,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-ap
 
 .miniSectTitle{margin:18px 2px 8px;font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:#657d8a;font-weight:950}
 .minilist{display:grid;gap:8px}
-.miniitem{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px;font-size:.84rem;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.miniitem{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px;font-size:.84rem;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
 .miniitem small{display:block;color:var(--muted);font-size:.72rem;margin-top:2px}
 .pill{font-size:.68rem;font-weight:900;background:#f4f6f7;padding:4px 8px;border-radius:999px;white-space:nowrap}
 
@@ -285,4 +285,30 @@ body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .bottom button{min-height:56px;border:0;border-radius:12px;background:#fff;color:var(--ink);font-weight:900;font-size:.72rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
 .bottom button .bi{font-size:1.25rem}
 .bottom button.on{background:var(--orange);color:#fff}
-@media(max-width:360px){.factrow{grid-template-columns:1fr}.actionsgrid{grid-template-columns:1fr}}
+/* ---------- Proximidad GPS real / accesos rápidos / fila manual ----------
+   Nuevo esta pasada, genérico (sin nada específico de LEGOLAND): capa de
+   proximidad basada en geo real (nunca mapMarker/geoCalibration), la
+   explicación compacta de reasonsFor() ya reutiliza .reasonrow/.reasonchip
+   existentes (sin CSS nuevo), y el selector de fila manual. */
+.proxline{background:#eef8ff;border:1px solid #bfe0f7;color:#0b5e8e;border-radius:12px;padding:7px 10px;font-size:.78rem;font-weight:750;margin-bottom:8px}
+
+.waitrow{background:#fff9e0;border:1px dashed #eecf6a;border-radius:14px;padding:9px 10px;margin:10px 0;font-size:.78rem}
+.waitrow-label{margin-bottom:6px;font-weight:800}
+.waitpills{display:flex;gap:6px;flex-wrap:wrap}
+.waitpill{flex:1 1 auto;min-height:38px;min-width:58px;border-radius:10px;border:1px solid #eecf6a;background:#fff;font-weight:850;font-size:.72rem;padding:4px 6px}
+.waitpill.active{background:#a4530a;color:#fff;border-color:#a4530a}
+
+.quicksvc{background:#fff;border:1px solid var(--line);border-radius:20px;padding:14px;margin-bottom:14px;box-shadow:var(--shadow)}
+.quicksvc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.quicksvc-tile{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:66px;border-radius:14px;border:1px solid var(--line);background:#f6f7f2;padding:8px 4px;font-weight:850}
+.quicksvc-tile .ic{font-size:1.3rem}
+.quicksvc-tile .lbl{font-size:.68rem}
+.quicksvc-tile .sub{font-size:.6rem;color:var(--muted);font-weight:800;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.appgpsbtn{display:block;width:100%;margin-top:10px;min-height:46px;border-radius:13px;border:1px solid #a9dcf5;background:#e4f5ff;color:#0b5e8e;font-weight:900;font-size:.8rem}
+.appgpsbtn.active{background:#1a73e8;color:#fff;border-color:#1a73e8}
+.appgpsbtn.requesting{opacity:.7}
+.appgpsbtn:disabled{opacity:.5}
+
+.svcdist,.svcapprox{font-size:.66rem;font-weight:850;color:var(--muted);white-space:nowrap;flex:0 0 auto}
+
+@media(max-width:360px){.factrow{grid-template-columns:1fr}.actionsgrid{grid-template-columns:1fr}.quicksvc-grid{grid-template-columns:repeat(2,1fr)}}
