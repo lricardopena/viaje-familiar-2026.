@@ -176,7 +176,93 @@
      - Nombre a verificar: el usuario dictó "Minifigure Skyline"; el
        registro oficial de este archivo es "Minifigure Skyflyer". Se
        asumió la misma atracción (misma zona + nota de "acceso por la
-       parte de abajo"), pero conviene confirmarlo. */
+       parte de abajo"), pero conviene confirmarlo.
+
+   Séptima pasada (23-ago-2026, misma sesión) — 3 Plus Codes en sitio más +
+   modelo de confianza de 3 niveles para geo + baños navegables:
+     - 3 Plus Codes nuevos, mismo procedimiento de decodificación que la
+       sexta pasada: Driving School `9MJP+PP3` → 41.381766,-74.313213;
+       Coast Guard Academy `9MJP+VX7` → 41.382172,-74.312613 (ambas ya
+       tenían `mapMarker`, ahora también `geo`); Ocean Explorer `9MJQ+W37`
+       → 41.382297,-74.312363 (atracción nueva — #64, no estaba en la
+       lista). Las tres con `confidence:'confirmed_on_site'` (nuevo campo
+       en `geo`, ver más abajo).
+     - Se agregaron las 3 atracciones/POIs que había señalado la auditoría
+       de mismatches de la pasada anterior como faltantes de la leyenda del
+       mapa: `mmbe` (Master Model Builder Experience, Bricktopia #18),
+       `ninjakitchen` (Ninja Kitchen, NINJAGO World #29, POI dining) y
+       `wuswarehouse` (Wu's Warehouse, NINJAGO World #30, POI shopping) —
+       mapMarker leído del mapa oficial, mismo método de siempre.
+     - **Modelo de confianza de 3 niveles para `geo`** (pedido explícito del
+       usuario, generalizable a cualquier parque): `geo.confidence` puede
+       ser `'confirmed_on_site'` (Plus Code medido parado en el punto),
+       `'official_map'` (coordenada publicada por el parque, sin Plus Code
+       propio — LEGOLAND no tiene ninguna así hoy, el mapa 2026 es
+       esquemático) o `'approximate'` (estimada cruzando la posición del
+       ícono en el mapa con anchors reales cercanos, con
+       `geo.estimatedFrom` documentando cuáles). `geoSourceBadge()` en el
+       core ahora revisa `geo.confidence` antes que `geo.source`/
+       `geo.reference` — compatible con todo el geo existente, que no
+       define `confidence` y sigue mostrando el mismo badge de siempre.
+     - **Baños navegables, con el mismo modelo de 3 niveles.** Los 4 baños
+       ya trackeados (`restroom-entrance`, `restroom-city`,
+       `restroom-miniland`, `restroom-bricktopia`) reciben `mapMarker`
+       (posición del ícono 🚻 en el mapa oficial, leída visualmente, mismo
+       método que el resto del archivo). Se agregan 3 baños que no estaban
+       trackeados: `restroom-castle`, `restroom-ninjago`, `restroom-pirates`
+       (mismo método). De los 7, solo 2 reciben `geo` estimado —
+       `restroom-city`/`restroom-miniland` (mismo ícono físico, en el borde
+       de ambas zonas — comparten coordenada) y `restroom-pirates` —
+       porque son los únicos con 3+ anchors `confirmed_on_site` lo bastante
+       cerca (LEGO City: fireacademy/waterplayground/drivingschool/
+       coastguard/oceanexplorer, residual máximo 2.68pp en un ajuste afín
+       local — mejor que el ajuste de todo el parque documentado en
+       `map:{}`; LEGO Pirates: anchorsaway/splashbattle/skyflyer, solo 3
+       puntos así que el ajuste los reproduce exactos por construcción, sin
+       margen propio de validación — tratar con más cautela). Los otros 4
+       baños (`restroom-entrance`, `restroom-bricktopia`, `restroom-castle`,
+       `restroom-ninjago`) se quedan con `geo:null` a propósito: sus
+       anchors más cercanos son de terceros/OSM (no `confirmed_on_site`) o
+       no hay ninguno cerca — encadenar una estimación sobre otra
+       estimación habría sido demasiado ruido. Quedan igual localizables
+       por `mapMarker` (mapa ilustrado) y `nearbyText` (referencia a la
+       atracción numerada más cercana); están listos para que un `geo`
+       real reemplace la ausencia en cuanto se mida un Plus Code parado en
+       la puerta.
+     - ⚠️ Corrección importante señalada por el usuario: el Plus Code
+       `9MJQ+C59` (Water Playground, sexta pasada) NUNCA fue ni debe usarse
+       para un baño — quedó una posible confusión de una versión anterior
+       de la investigación offline. Verificado en este archivo: `9MJQ+C59`
+       solo aparece en el registro de `waterplayground`.
+     - Motor (`assets/theme-park-core.js`): `BY_ID` ahora indexa POIs
+       además de atracciones (antes solo `ALL`) — sin esto, el botón
+       "🗺️ Ver mapa" que ya existía para cualquier POI con `geo`
+       (`poiCardHtml()`) no encontraba nada al tocarlo (bug preexistente,
+       nunca se había notado porque hasta ahora ningún POI con `geo` lo
+       había expuesto lo suficiente). Cero colisiones de id entre
+       atracciones y POIs en ningún parque (verificado). Nueva función
+       `nearestRestroomInfo()`: con GPS, prioriza el baño de la MISMA zona
+       que el punto real conocido más cercano al usuario (con su distancia
+       real si el baño tiene `geo`, o la distancia real al anchor de esa
+       zona si no la tiene — nunca una distancia al baño que no se calculó)
+       y solo cae a "el baño con geo más cercano en línea recta" si no hay
+       ninguno en la zona actual. `openRestroomFinder()` la activa
+       automáticamente (banner en `mapGeoBanner`, reutilizando el
+       contenedor existente) — si el usuario ya había concedido GPS antes,
+       ver el baño más cercano no pide ningún toque adicional.
+     - Verificado en Chromium: banner de baño más cercano correcto en 3
+       ubicaciones simuladas (LEGO City → distancia real ~35 m; LEGO
+       Pirates → distancia real ~60 m; Bricktopia, sin geo en su baño →
+       fallback de zona "~1 m de LEGO Factory Adventure Ride" en vez de
+       inventar una distancia al baño); sin GPS, banner invita a activar
+       "Mi ubicación" y los 4 baños sin geo siguen listados por texto; los
+       3 baños con geo aparecen como pines; badge "🧭 Ubicación estimada"
+       + línea "Estimado a partir de: ..." visibles en el popup de
+       restroom-city; botón "🗺️ Ver mapa oficial" y el toggle de zoom
+       cerca/completo funcionan para un baño (antes solo para
+       atracciones); sin regresión en Story Land (BY_ID pasa de solo
+       atracciones a atracciones+POIs sin romper nada, mismo resultado de
+       siempre). */
 window.PARK={
   id:'legoland-new-york',
   name:'LEGOLAND New York Resort',
@@ -344,15 +430,31 @@ window.PARK={
 {id:'coastguard',name:'Coast Guard Academy',cat:'lego',priorityTier:1,zone:'🌆 LEGO City',mapNumber:63,mapMarker:{x:51.7,y:15.7},adult:true,
   // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px)
   // — pin #63 recortado a resolución original y ubicado por la punta de la bandera, mismo método
-  // que el resto de mapMarker de este archivo. Reportado por el usuario como "no resaltado en el
-  // mapa" — no tenía mapMarker (solo mapNumber), así que el visor caía al texto "📍 Busca el #63
-  // en el mapa" sin dibujar el círculo/pin. Sin geo (no hay Plus Code ni coordenada real
-  // recolectada para esta atracción) — no participa del ajuste de geoCalibration.
+  // que el resto de mapMarker de este archivo.
+  // geo: MEDIDO EN SITIO (séptima pasada) — Plus Code "9MJP+VX7 Goshen, New York" → 87H79MJP+VX7.
+  // Reemplaza el estado anterior sin geo (solo tenía mapMarker).
+  plusCode:'9MJP+VX7 Goshen, New York',
+  geo:{lat:41.382172,lng:-74.312613,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'},
   restrictions:{minHeightIn:34,adultRequiredBelowIn:52,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center.',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🚤 INTERACTIVA','👨‍👦 CON ADULTO'],
   why:'Manejan botes patrulla en un canal de agua — similar en espíritu a Fire Academy, buena alternativa si hay fila ahí.'},
+// Ocean Explorer (#64): no estaba en la lista — el mapa oficial la muestra junto a Coast Guard
+// Academy (a ~25 m según sus dos Plus Codes en sitio), pero no se había agregado hasta tener una
+// ubicación confirmada. Sin `restrictions`: no se volvió a consultar el Accessibility Guide en
+// esta pasada — cae al indicador genérico de adulto, con tip pidiendo confirmar en el parque.
+{id:'oceanexplorer',name:'Ocean Explorer',cat:'rides',priorityTier:2,zone:'🌆 LEGO City',mapNumber:64,mapMarker:{x:55.96,y:11.21},adult:true,
+  // geo: MEDIDO EN SITIO (séptima pasada) — Plus Code "9MJQ+W37 Goshen, New York" → 87H79MJQ+W37.
+  plusCode:'9MJQ+W37 Goshen, New York',
+  geo:{lat:41.382297,lng:-74.312363,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'},
+  nearbyAttractions:['coastguard'],
+  tags:['🌀 GIRO/PÉNDULO','⚠️ VERIFICAR RESTRICCIONES'],
+  tip:'⚠️ Sin restricción de altura/edad verificada en esta actualización — confirmar en el parque antes de hacer fila.',
+  why:'Ride de péndulo/giro junto a Coast Guard Academy — buena alternativa si hay fila ahí, sin haberse verificado su regla de altura en esta pasada.'},
 {id:'drivingschool',name:'Driving School',cat:'lego',priorityTier:1,zone:'🌆 LEGO City',mapNumber:58,mapMarker:{x:48.5,y:22.6},adult:false,
-  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #58 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #58 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo.
+  // geo: MEDIDO EN SITIO (séptima pasada) — Plus Code "9MJP+PP3 Goshen, New York" → 87H79MJP+PP3.
+  plusCode:'9MJP+PP3 Goshen, New York',
+  geo:{lat:41.381766,lng:-74.313213,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'},
   restrictions:{minAgeUnaccompanied:6,maxAge:13,soloOnly:true,source:'Página oficial de la atracción + 2026 Accessibility Guide V6 + Height Restrictions Help Center: sin altura mínima, edades 6–13, autos que se manejan solos (no admite ir "con adulto" en el mismo auto) — https://www.legoland.com/new-york/things-to-do/theme-park/rides-attractions/driving-school/',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🚗 MANEJAN SOLOS','6-13 AÑOS'],
   why:'Autos eléctricos con carril propio — solo para quien ya cumple la edad mínima; los demás pueden hacer Junior Driving School.'},
@@ -440,6 +542,15 @@ window.PARK={
   // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #19 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   tags:['🎵 INTERACTIVA','😌 TRANQUILA'],
   why:'Piso musical interactivo — ideal cuando estén cansados de caminar, cerca de Bricktopia.'},
+// Master Model Builder Experience: no estaba en la lista — la leyenda del mapa oficial la lista
+// bajo BRICKTOPIA #18 (el mismo hueco de cobertura que encontró la auditoría de mismatches).
+// El § junto al ícono en la leyenda significa "puede no estar disponible durante sesiones
+// escolares" — se guarda como tip, no como `restrictions` (no es una regla de altura/edad).
+{id:'mmbe',name:'Master Model Builder Experience',cat:'descanso',priorityTier:3,zone:'🎡 Bricktopia',mapNumber:18,mapMarker:{x:51.37,y:50.58},adult:false,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #18 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo. Sin geo — no participa del ajuste de geoCalibration.
+  tags:['🧱 CONSTRUCCIÓN','😌 TRANQUILA','⚠️ PUEDE CERRAR EN TEMPORADA ESCOLAR'],
+  tip:'⚠️ El mapa oficial marca esta atracción como posiblemente no disponible durante sesiones escolares — confirmar en el parque.',
+  why:'Sesión de construcción guiada por un Model Builder — buena pausa creativa, cerca de Build + Test y LEGO DUPLO Express.'},
 // Ferrari Build & Race y Minifigure Skyflyer: no estaban en la lista original
 // (research doc no confirmaba su zona) — se agregan ahora porque el mapa
 // oficial 2026 (imagen compartida por el usuario) SÍ confirma su ubicación
@@ -472,15 +583,31 @@ window.PARK={
   why:'Conecta Brick Street con LEGO Pirates por el aire — puede servir como transporte además de experiencia, siempre que la regla de acompañante lo permita.'},
   ],
   pois:[
+// Ninja Kitchen y Wu's Warehouse: no estaban en la lista — la leyenda del mapa oficial las lista
+// bajo LEGO NINJAGO WORLD, DINING #29 y SHOPPING #30 respectivamente (el mismo hueco de cobertura
+// que encontró la auditoría de mismatches). mapMarker leído visualmente del mapa oficial 2026,
+// mismo método que el resto del archivo.
+{id:'ninjakitchen',type:'food',icon:'🥢',name:'Ninja Kitchen',zone:'🥷 LEGO NINJAGO World',mapNumber:29,mapMarker:{x:42.71,y:35.0},nearbyText:'Junto a Wu’s Warehouse y Jay’s Gravity Force Trainer.',source:'Mapa oficial 2026 (número/zona) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'verified-official',geo:null},
+{id:'wuswarehouse',type:'store',icon:'🛍️',name:'Wu’s Warehouse',zone:'🥷 LEGO NINJAGO World',mapNumber:30,mapMarker:{x:39.08,y:36.97},nearbyText:'Junto a Ninja Kitchen.',source:'Mapa oficial 2026 (número/zona) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'verified-official',geo:null},
 {id:'brickolinis',type:'food',icon:'🍕',name:'Brickolini’s Pizza & Pasta',zone:'🌆 LEGO City',mapNumber:68,nearbyText:'Pizza, pasta y ensaladas — recomendado para las dos familias.',source:'Mapa oficial 2026 (número/zona) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
 {id:'royalfeast',type:'food',icon:'🍔',name:'Royal Feast',zone:'🏰 LEGO Castle',mapNumber:50,nearbyText:'Hamburguesas y menú infantil.',source:'Mapa oficial 2026 (número/zona) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
 {id:'smokeys',type:'food',icon:'🍖',name:'Smokey’s Brick-B-Que',zone:'🎡 Bricktopia',mapNumber:20,nearbyText:'Barbacoa clásica.',source:'Mapa oficial 2026 (número/zona) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-19',confidence:'verified-official',geo:null}, // nombre corregido (auditoría 23-ago-2026): la leyenda dice "Brick-B-Que", no "Brick B-Q-Que" — zona/número ya estaban correctos.
 {id:'brickbeards',type:'food',icon:'🌮',name:'Brickbeard’s Food Market',zone:'🏴‍☠️ LEGO Pirates',mapNumber:84,nearbyText:'Hamburguesas, ensaladas, tacos y más. Sin coordenada propia: en el mapa oficial queda entre Anchors Away (#83) y Splash Battle (#87), los dos con ubicación confirmada en sitio — orientarse por ellos.',source:'Mapa oficial 2026 (número/zona) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
 {id:'legocoffee',type:'food',icon:'☕',name:'LEGOLAND Coffee Company',zone:'🧱 Brick Street',mapNumber:8,nearbyText:'Café, pastelería y sándwiches.',source:'Mapa oficial 2026 (número/zona) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
-{id:'restroom-entrance',type:'restroom',icon:'🚻',name:'Restrooms — junto a Ticket Windows',zone:'🧱 Brick Street',nearbyText:'Junto a las Ticket Windows (#1) de la entrada — confirmado por el mapa oficial 2026 y por el Services page (kiosco Cash-to-Card justo al lado).',source:'Mapa oficial 2026 + Services page — https://www.legoland.com/new-york/things-to-do/theme-park/services/',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
-{id:'restroom-city',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🌆 LEGO City',nearbyText:'Sin coordenada propia: el mapa oficial 2026 marca baños con ícono en esta zona, sin referencia textual más precisa. Para ubicarlos, caminar hacia el grupo Fire Academy (#71) / First Aid (#72) / Water Playground — los tres sí tienen ubicación confirmada en sitio y aparecen en el mapa geográfico.',source:'Mapa oficial 2026 — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-19',confidence:'approximate',geo:null},
-{id:'restroom-miniland',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🏙️ Miniland',nearbyText:'El mapa oficial 2026 marca baños con ícono en esta zona, sin referencia textual más precisa ni coordenada.',source:'Mapa oficial 2026 — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-19',confidence:'approximate',geo:null},
-{id:'restroom-bricktopia',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🎡 Bricktopia',nearbyText:'El mapa oficial 2026 marca baños con ícono en esta zona, sin referencia textual más precisa ni coordenada.',source:'Mapa oficial 2026 — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-19',confidence:'approximate',geo:null},
+{id:'restroom-entrance',type:'restroom',icon:'🚻',name:'Restrooms — junto a Ticket Windows',zone:'🧱 Brick Street',mapMarker:{x:54.7,y:59.76},nearbyText:'Junto a las Ticket Windows (#1) de la entrada — confirmado por el mapa oficial 2026 y por el Services page (kiosco Cash-to-Card justo al lado).',source:'Mapa oficial 2026 + Services page — https://www.legoland.com/new-york/things-to-do/theme-park/services/',lastVerified:'2026-08-19',confidence:'verified-official',geo:null}, // sin geo: no hay 2+ anchors confirmados en sitio lo bastante cerca en Brick Street para una estimación 'approximate' defendible (entrance-main es un único punto 'official-map', no confirmado en sitio) — queda para cuando se mida un Plus Code acá.
+{id:'restroom-city',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🌆 LEGO City',mapMarker:{x:58.18,y:29.76},nearbyText:'Junto al grupo Fire Academy (#71) / First Aid (#72) / Water Playground — el mismo ícono de baños sirve también a Miniland (ver restroom-miniland), en el borde entre ambas zonas.',source:'Mapa oficial 2026 (posición del ícono) + anchors en sitio (estimación) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'approximate',
+  geo:{lat:41.381083,lng:-74.312709,confidence:'approximate',estimatedFrom:['Fire Academy','Water Playground','Driving School','Coast Guard Academy','Ocean Explorer']}}, // geo estimado (séptima pasada): ajuste afín local con los 5 anchors confirmados en sitio de esta zona (residual máximo 2.68pp, mejor que el ajuste de todo el parque) — ver specs/SPECIFICATIONS.md.asc sección 21bis. NUNCA 'confirmed_on_site': reemplazar cuando se mida un Plus Code parado en la puerta real.
+{id:'restroom-miniland',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🏙️ Miniland',mapMarker:{x:58.18,y:29.76},nearbyText:'Mismo ícono físico que restroom-city (ver ese registro) — está justo en el borde LEGO City/Miniland, junto a Miniland Hub (#98) y Fire Academy (#71).',source:'Mapa oficial 2026 (posición del ícono) + anchors en sitio (estimación) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'approximate',
+  geo:{lat:41.381083,lng:-74.312709,confidence:'approximate',estimatedFrom:['Fire Academy','Water Playground','Driving School','Coast Guard Academy','Ocean Explorer']}}, // geo estimado (séptima pasada): ajuste afín local con los 5 anchors confirmados en sitio de esta zona (residual máximo 2.68pp, mejor que el ajuste de todo el parque) — ver specs/SPECIFICATIONS.md.asc sección 21bis. NUNCA 'confirmed_on_site': reemplazar cuando se mida un Plus Code parado en la puerta real.
+{id:'restroom-bricktopia',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🎡 Bricktopia',mapMarker:{x:46.73,y:49.58},nearbyText:'Cerca de LEGO Factory Adventure Ride (#22) y del grupo Build + Test (#14) / DUPLO Express (#17).',source:'Mapa oficial 2026 — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'approximate',geo:null}, // sin geo: los anchors de Bricktopia (legofactory, ninjagoride) son de terceros/OSM, no confirmados en sitio — encadenar una estimación sobre otra estimación sería demasiado ruido; queda para un Plus Code medido en sitio.
+// Baños de LEGO Castle, NINJAGO World y LEGO Pirates: no estaban en la lista — el mapa oficial
+// 2026 marca su ícono en las tres zonas, agregados en la séptima pasada al hacer el barrido
+// completo de baños pedido por el usuario ("agrega los baños para poder ubicar el más cercano
+// según la ubicación").
+{id:'restroom-castle',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🏰 LEGO Castle',mapMarker:{x:33.47,y:13.64},nearbyText:'Junto a Royal Feast (#50), entre The Dragon (#45) y Tower Climb Tournament (#51).',source:'Mapa oficial 2026 — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'approximate',geo:null}, // sin geo: The Dragon/Dragon's Apprentice son de terceros (Google Maps/coasterpedia), no confirmados en sitio — mismo criterio que restroom-bricktopia, no se encadena una estimación sobre otra.
+{id:'restroom-ninjago',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🥷 LEGO NINJAGO World',mapMarker:{x:41.24,y:36.45},nearbyText:'Entre Ninja Kitchen (#29) y Wu’s Warehouse (#30), cerca de LEGO NINJAGO The Ride (#32).',source:'Mapa oficial 2026 — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'approximate',geo:null}, // sin geo: LEGO NINJAGO The Ride es de OpenStreetMap, no confirmado en sitio — mismo criterio.
+{id:'restroom-pirates',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🏴‍☠️ LEGO Pirates',mapMarker:{x:76.86,y:28.7},nearbyText:'Entre Portable Charger Rental (#85) y Splash Battle (#87), junto a Anchors Away (#83).',source:'Mapa oficial 2026 (posición del ícono) + anchors en sitio (estimación) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'approximate',
+  geo:{lat:41.380481,lng:-74.311003,confidence:'approximate',estimatedFrom:['Anchors Away','Splash Battle','Minifigure Skyflyer']}}, // geo estimado (séptima pasada): ajuste afín local con los 3 anchors confirmados en sitio de LEGO Pirates (a diferencia del cluster de LEGO City, son solo 3 puntos — el ajuste los reproduce exactos por construcción, sin margen propio para validar el residual; tratar con más cautela que el estimado de restroom-city). NUNCA 'confirmed_on_site': reemplazar cuando se mida un Plus Code parado en la puerta real.
 {id:'firstaid-brickstreet',type:'firstaid',icon:'🩹',name:'First Aid — Brick Street',zone:'🧱 Brick Street',mapNumber:7,nearbyText:'Junto al Guest Experience Center.',source:'Services page — https://www.legoland.com/new-york/things-to-do/theme-park/services/',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
 {id:'firstaid-legocity',type:'firstaid',icon:'🩹',name:'First Aid — LEGO City',zone:'🌆 LEGO City',mapNumber:72,nearbyText:'Junto al Water Playground, cuya ubicación sí quedó confirmada en sitio (23-ago-2026) — usar ese punto del mapa geográfico como referencia para llegar. Sin coordenada propia registrada.',source:'Services page — https://www.legoland.com/new-york/things-to-do/theme-park/services/',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
 {id:'familycare',type:'familycare',icon:'👶',name:'DUPLO Family Care Center',zone:'🌆 LEGO City',mapNumber:69,nearbyText:'Áreas privadas de lactancia, calentador de biberones, microondas, cambiadores para bebé/adulto y sala sensorial del parque. Un mapa oficial más antiguo (2023) la ubicaba junto a Brickolini’s Pizza & Pasta — referencia de apoyo, no confirmada contra el mapa 2026.',source:'Services page (zona) — https://www.legoland.com/new-york/things-to-do/theme-park/services/ · referencia de ubicación más precisa: LLNY Sensory Guide 2023 — https://www.legoland.com/new-york/media/bgfbqheo/llny-sensory-guide-2023.pdf',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
