@@ -305,7 +305,8 @@ window.PARK={
   geo:{lat:41.38205,lng:-74.31466,source:'third-party-ride-poi',reference:'ride-poi'},
   tags:['🔥 IMPERDIBLE','🎢 COASTER SUAVE','⭐ PUEDE IR SOLO'],
   why:'Coaster pequeño para entrenar "dragones bebé" — a ~47" los tres niños califican para subir solos, buena primera montaña rusa del día.'},
-{id:'merlin',name:"Merlin's Flying Machines",cat:'rides',priorityTier:2,zone:'🏰 LEGO Castle',mapNumber:40,adult:true,
+{id:'merlin',name:"Merlin's Flying Machines",cat:'rides',priorityTier:2,zone:'🏰 LEGO Castle',mapNumber:40,mapMarker:{x:34.78,y:26.30},adult:true,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #40 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   restrictions:{minHeightIn:36,adultRequiredBelowIn:48,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center.',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🎠 GIRO SUAVE','👨‍👦 CON ADULTO'],
   why:'Vueltas suaves en el aire, temática de dragones — buen contraste de ritmo cerca de The Dragon.'},
@@ -344,11 +345,13 @@ window.PARK={
   restrictions:{minHeightIn:34,adultRequiredBelowIn:52,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center.',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🚤 INTERACTIVA','👨‍👦 CON ADULTO'],
   why:'Manejan botes patrulla en un canal de agua — similar en espíritu a Fire Academy, buena alternativa si hay fila ahí.'},
-{id:'drivingschool',name:'Driving School',cat:'lego',priorityTier:1,zone:'🌆 LEGO City',mapNumber:58,adult:false,
+{id:'drivingschool',name:'Driving School',cat:'lego',priorityTier:1,zone:'🌆 LEGO City',mapNumber:58,mapMarker:{x:48.5,y:22.6},adult:false,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #58 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   restrictions:{minAgeUnaccompanied:6,maxAge:13,soloOnly:true,source:'Página oficial de la atracción + 2026 Accessibility Guide V6 + Height Restrictions Help Center: sin altura mínima, edades 6–13, autos que se manejan solos (no admite ir "con adulto" en el mismo auto) — https://www.legoland.com/new-york/things-to-do/theme-park/rides-attractions/driving-school/',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🚗 MANEJAN SOLOS','6-13 AÑOS'],
   why:'Autos eléctricos con carril propio — solo para quien ya cumple la edad mínima; los demás pueden hacer Junior Driving School.'},
-{id:'juniordriving',name:'Junior Driving School',cat:'lego',priorityTier:1,zone:'🌆 LEGO City',mapNumber:56,adult:false,
+{id:'juniordriving',name:'Junior Driving School',cat:'lego',priorityTier:1,zone:'🌆 LEGO City',mapNumber:56,mapMarker:{x:45.6,y:22.3},adult:false,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #56 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   restrictions:{minAgeUnaccompanied:3,maxAge:6,source:'Página oficial vigente de la atracción (edades 3–6) — https://www.legoland.com/new-york/things-to-do/theme-park/rides-attractions/junior-driving-school/ — en acuerdo con 2026 Accessibility Guide V6 + Height Restrictions Help Center. El mapa ilustrado oficial 2026 (#56) rotula la atracción "AGES 3-5" (texto más antiguo/genérico); por regla de prioridad de fuentes se prefiere la página específica y vigente de la atracción sobre el rótulo del mapa esquemático — de todos modos, confirmar en el parque para la niña que ya cumple 6.',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🚗 MANEJAN SOLOS','3-6 AÑOS'],
   why:'Versión para más pequeños de Driving School — pensada para nuestro rango de edad (5 y 6 años); el mapa ilustrado dice "3-5" pero la página oficial vigente de la atracción confirma 3–6, así que la niña de 6 años sí califica — verificar en el parque de todos modos.'},
@@ -381,11 +384,13 @@ window.PARK={
   geo:{lat:41.38009,lng:-74.31435,source:'openstreetmap-poi',reference:'ride-poi'},
   tags:['🔥 IMPERDIBLE','🏭 DARK RIDE','👨‍👦 CON ADULTO'],
   why:'Recorrido tranquilo tipo dark ride mostrando cómo se hacen los ladrillos LEGO — imperdible, apto para toda la familia, ritmo suave.'},
-{id:'duploexpress',name:'LEGO DUPLO Express',cat:'descanso',priorityTier:2.6,zone:'🎡 Bricktopia',mapNumber:17,adult:false,
+{id:'duploexpress',name:'LEGO DUPLO Express',cat:'descanso',priorityTier:2.6,zone:'🎡 Bricktopia',mapNumber:17,mapMarker:{x:55.16,y:46.67},adult:false,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #17 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   restrictions:{adultRequiredBelowIn:34,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center.',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🚂 SUAVE','👨‍👩‍👦 FAMILIAR'],
   why:'Tren tranquilo pensado para los más chicos — buen respiro entre atracciones más activas.'},
-{id:'dizzydisco',name:"DJ's Dizzy Disco Spin",cat:'rides',priorityTier:2.6,zone:'🎡 Bricktopia',mapNumber:15,adult:false,
+{id:'dizzydisco',name:"DJ's Dizzy Disco Spin",cat:'rides',priorityTier:2.6,zone:'🎡 Bricktopia',mapNumber:15,mapMarker:{x:58.84,y:48.88},adult:false,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #15 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   restrictions:{adultRequiredBelowIn:40,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center (contenido más antiguo indexado decía 42" — usar 40" vigente).',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🎵 GIRO SUAVE'],
   why:'Vueltas suaves con música — buena opción ligera dentro de Bricktopia.'},
@@ -397,7 +402,8 @@ window.PARK={
   tags:['🔥 IMPERDIBLE','🥷 INTERACTIVA (GESTOS)','🏠 INDOOR'],
   tip:'👟 Puede pedir calzado cerrado — no confirmado en esta actualización si sigue vigente ese requisito, preguntar en la entrada de la atracción.',
   why:'Dark ride interactivo: "lanzan" energía con gestos de las manos contra villanos — de las experiencias más pedidas por los niños, indoor (buen plan si llueve).'},
-{id:'gravityforce',name:"Jay's Gravity Force Trainer",cat:'rides',priorityTier:2,zone:'🥷 LEGO NINJAGO World',mapNumber:27,adult:false,
+{id:'gravityforce',name:"Jay's Gravity Force Trainer",cat:'rides',priorityTier:2,zone:'🥷 LEGO NINJAGO World',mapNumber:27,mapMarker:{x:44.6,y:29.8},adult:false,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #27 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   restrictions:{minHeightIn:42,minAge:4,adultRequiredBelowInAndAge:{heightIn:52,ageYears:8},source:'2026 Accessibility Guide V6 + Height Restrictions Help Center: mínimo 42"/4 años; acompañante para menores de 8 años Y de 52".',lastVerified:'2026-08-19',confidence:'verified-official'},
   // plusCode expuesto directamente por la búsqueda estructurada de lugares (9MJP+7F, Goshen, NY
   // 10924) — NO se decodificó a lat/lng offline (sin decodificador local de Open Location Code
@@ -409,21 +415,25 @@ window.PARK={
 {id:'miniland',name:'Miniland USA',cat:'miniland',priorityTier:0,zone:'🏙️ Miniland',mapNumber:98,mapMarker:{x:54.4,y:28.5},adult:false,
   tags:['🔥 IMPERDIBLE','🏙️ RECORRIDO','📸 FOTOS'],
   why:'Miniaturas de ciudades de EE.UU. hechas con millones de piezas LEGO — el corazón visual del parque, sin restricciones, ritmo libre.'},
-{id:'buildtest',name:'Build & Test',cat:'descanso',priorityTier:3,zone:'🧱 Brick Street',mapNumber:14,adult:false,
+{id:'buildtest',name:'Build & Test',cat:'descanso',priorityTier:3,zone:'🧱 Brick Street',mapNumber:14,mapMarker:{x:55.06,y:53.3},adult:false,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #14 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   tags:['🧱 CONSTRUCCIÓN','😌 TRANQUILA'],
   why:'Mesa de construcción libre — buena pausa creativa entre atracciones, sin filas largas.'},
-{id:'brickparty',name:'Brick Party',cat:'descanso',priorityTier:3,zone:'🧱 Brick Street',mapNumber:10,adult:false,
+{id:'brickparty',name:'Brick Party',cat:'descanso',priorityTier:3,zone:'🧱 Brick Street',mapNumber:10,mapMarker:{x:63.86,y:55.24},adult:false,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #10 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   restrictions:{adultRequiredBelowInAndAge:{heightIn:44,ageYears:5},source:'2026 Accessibility Guide V6 + Height Restrictions Help Center: acompañante requerido para menores de 5 años Y de 44".',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🎈 INTERACTIVA','👨‍👩‍👦 FAMILIAR'],
   why:'Área de juego temática de fiesta — a ~47" y 5-6 años los tres niños ya superan el umbral de acompañante obligatorio, pero sigue siendo buena para ir en familia.'},
-{id:'steppingtones',name:'Stepping Tones',cat:'descanso',priorityTier:3.2,zone:'🎡 Bricktopia',mapNumber:19,adult:false,
+{id:'steppingtones',name:'Stepping Tones',cat:'descanso',priorityTier:3.2,zone:'🎡 Bricktopia',mapNumber:19,mapMarker:{x:50.41,y:46.09},adult:false,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #19 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   tags:['🎵 INTERACTIVA','😌 TRANQUILA'],
   why:'Piso musical interactivo — ideal cuando estén cansados de caminar, cerca de Bricktopia.'},
 // Ferrari Build & Race y Minifigure Skyflyer: no estaban en la lista original
 // (research doc no confirmaba su zona) — se agregan ahora porque el mapa
 // oficial 2026 (imagen compartida por el usuario) SÍ confirma su ubicación
 // y número. Ferrari Build & Race está marcada "NEW FOR 2026" en el mapa.
-{id:'ferraribuildrace',name:'LEGO Ferrari Build & Race',cat:'lego',priorityTier:1,zone:'🎡 Bricktopia',mapNumber:25,adult:false,
+{id:'ferraribuildrace',name:'LEGO Ferrari Build & Race',cat:'lego',priorityTier:1,zone:'🎡 Bricktopia',mapNumber:25,mapMarker:{x:54.16,y:38.7},adult:false,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #25 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   tags:['🏎️ NUEVA 2026','🧱 CONSTRUCCIÓN','⭐ SIN RESTRICCIÓN DE ALTURA/EDAD'],
   why:'Atracción nueva de 2026: construyen su propio Ferrari de LEGO y lo "corren" — la página oficial de la atracción confirma que no tiene restricción de altura ni edad, buena para las dos familias completas juntas.'},
 // Minifigure Skyflyer aparece dos veces en el mapa (#9 Brick Street, #81 LEGO
@@ -440,7 +450,8 @@ window.PARK={
 //   - El punto decodifica a ~21 m de Anchors Away y ~104 m de Splash Battle, aunque se describió
 //     como "cerca de Splash Battle" — se guarda la coordenada tal como se midió, sin corregirla.
 // Por eso reference:'lower-access' y no 'entrance': ubica el acceso de abajo, no la fila oficial.
-{id:'minifigureskyflyer',name:'Minifigure Skyflyer',cat:'rides',priorityTier:2,zone:'🧱 Brick Street',mapNumber:9,nearbyMapNumbers:[81],adult:false,
+{id:'minifigureskyflyer',name:'Minifigure Skyflyer',cat:'rides',priorityTier:2,zone:'🧱 Brick Street',mapNumber:9,mapMarker:{x:69.12,y:53.64},nearbyMapNumbers:[81],adult:false,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #9 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
   plusCode:'9MJQ+76H Goshen, New York',
   geo:{lat:41.380703,lng:-74.311963,source:'onsite-plus-code',reference:'lower-access'},
   nearbyAttractions:['anchorsaway','splashbattle'],
