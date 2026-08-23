@@ -376,12 +376,29 @@ function createMapViewport(rootId,opts){
   /* "Estás aquí" ESTIMADO sobre la imagen — posición derivada cruzando GPS
      real con mapMarker vía geoToImagePercent() (ver más abajo), nunca una
      medición directa sobre la imagen. Mismo mecanismo que setMarker(): vive
-     dentro de .maptransform, así que nunca se desalinea al hacer zoom/pan. */
-  function setMe(pos){
+     dentro de .maptransform, así que nunca se desalinea al hacer zoom/pan.
+     opts.radiusPct: radio del círculo de precisión en % de imagen (de
+     geoAccuracyRadiusPercent() — ausente/null si no se pudo calcular, nunca
+     inventado). opts.approx: true cuando coords.accuracy es pobre (ver
+     GOOD_ACCURACY_M) — atenúa el punto y cambia la etiqueta, nunca oculta
+     el marcador (el usuario pidió "indicación de posición aproximada", no
+     "ocultarlo"). El z-index del pin de atracción (.mapmarker, más alto)
+     ya garantiza que este marcador nunca lo tapa — ver theme-park-core.css. */
+  function setMe(pos,opts){
     if(!me)return;
     if(pos){
       me.style.setProperty('--mx',pos.x);
       me.style.setProperty('--my',pos.y);
+      if(opts&&opts.radiusPct!=null){
+        me.style.setProperty('--mr',opts.radiusPct);
+        me.classList.add('has-accuracy');
+      }else{
+        me.style.removeProperty('--mr');
+        me.classList.remove('has-accuracy');
+      }
+      me.classList.toggle('approx',!!(opts&&opts.approx));
+      const label=me.querySelector('.mapme-label');
+      if(label)label.textContent=(opts&&opts.approx)?'🔵 Estás aquí (aprox.)':'🔵 Estás aquí';
       me.hidden=false;
     }else{
       me.hidden=true;
@@ -1118,11 +1135,51 @@ function geoToImagePercent(lat,lng){
   let y=cal.ay*lat+cal.by*lng+cal.cy;
   return {x:Math.max(0,Math.min(100,x)),y:Math.max(0,Math.min(100,y))};
 }
+/* Convierte coords.accuracy (metros, tal cual lo reporta el navegador) a un radio en % de imagen,
+   reutilizando el MISMO geoCalibration ya cargado — así funciona para cualquier parque calibrado
+   sin hardcodear una escala metros/% propia. Método: desplaza el punto real `accuracyMeters` al
+   norte y al este (conversión estándar grados↔metros), proyecta los tres puntos (centro, norte,
+   este) con geoToImagePercent(), y toma el mayor de los dos desplazamientos resultantes en % —
+   conservador (nunca subestima el círculo) frente a una transformación afín que puede escalar
+   distinto en cada eje. Devuelve null si el parque no tiene geoCalibration o no hay accuracy. */
+function geoAccuracyRadiusPercent(lat,lng,accuracyMeters){
+  if(!(PARK.map&&PARK.map.geoCalibration)||accuracyMeters==null)return null;
+  const base=geoToImagePercent(lat,lng);
+  const dLat=accuracyMeters/111320;
+  const dLng=accuracyMeters/(111320*Math.cos(lat*Math.PI/180));
+  const north=geoToImagePercent(lat+dLat,lng);
+  const east=geoToImagePercent(lat,lng+dLng);
+  if(!base||!north||!east)return null;
+  const rx=Math.hypot(east.x-base.x,east.y-base.y);
+  const ry=Math.hypot(north.x-base.x,north.y-base.y);
+  return Math.max(rx,ry);
+}
+// Umbral de "buena" precisión GPS para el mapa ilustrado — por debajo, el marcador se muestra
+// normal; por encima (o sin accuracy reportado), se atenúa y se etiqueta "(aprox.)" en vez de
+// aparentar más certeza de la que el dispositivo realmente entrega. 30 m es una precisión típica
+// de GPS de teléfono bajo techo/entre edificios altos — peor que eso, el punto exacto ya no es
+// confiable a la escala de "qué atracción tengo al lado".
+const GOOD_ACCURACY_M=30;
+// Distancia mínima real (Haversine) para volver a mover el punto "Estás aquí" sobre el mapa
+// ilustrado — sin esto, cada tick de watchPosition (llega cada pocos segundos, con ruido GPS
+// normal de unos metros) reposicionaría el punto todo el tiempo, un efecto de "temblor" que el
+// usuario pidió evitar explícitamente. No aplica la primera vez que hay fix, ni cuando se pierde
+// y recupera el GPS (mapMeLastShown se resetea en esos casos). Vive fuera de updateIllustratedGpsMarker
+// (no dentro de mapGpsState) porque es un detalle de renderizado del mapa ilustrado, no del estado
+// de geolocalización en sí — el mapa geográfico (Leaflet) no lo necesita, ya que Leaflet mueve su
+// propio marcador con una transición suave nativa y no sufre el mismo efecto de salto brusco.
+const MAPME_SIGNIFICANT_MOVE_M=8;
+let mapMeLastShown=null;
 function updateIllustratedGpsMarker(){
-  if(!mapGpsState.coords){ mainViewport.setMe(null); thumbViewport.setMe(null); return; }
-  const pos=geoToImagePercent(mapGpsState.coords.lat,mapGpsState.coords.lng); // null si el parque no tiene geoCalibration
-  mainViewport.setMe(pos);
-  thumbViewport.setMe(pos);
+  if(!mapGpsState.coords){ mainViewport.setMe(null); thumbViewport.setMe(null); mapMeLastShown=null; return; }
+  const coords=mapGpsState.coords;
+  if(mapMeLastShown&&haversineMeters(mapMeLastShown,coords)<MAPME_SIGNIFICANT_MOVE_M)return; // variación menor: no reposicionar
+  const pos=geoToImagePercent(coords.lat,coords.lng); // null si el parque no tiene geoCalibration
+  if(pos)mapMeLastShown={lat:coords.lat,lng:coords.lng};
+  const approx=coords.accuracy==null||coords.accuracy>GOOD_ACCURACY_M;
+  const radiusPct=geoAccuracyRadiusPercent(coords.lat,coords.lng,coords.accuracy);
+  mainViewport.setMe(pos,{approx,radiusPct});
+  thumbViewport.setMe(pos,{approx,radiusPct});
 }
 
 
