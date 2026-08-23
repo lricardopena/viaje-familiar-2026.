@@ -373,16 +373,31 @@ window.PARK={
   attractions:[
 {id:'dragon',name:'The Dragon',cat:'rides',priorityTier:1,zone:'🏰 LEGO Castle',mapNumber:45,mapMarker:{x:21.96,y:13.48},adult:true,
   restrictions:{minHeightIn:42,minAge:4,adultRequiredBelowInAndAge:{heightIn:48,ageYears:6},source:'2026 Accessibility Guide V6 (05.29.2026) + Height Restrictions Help Center — https://www.legoland.com/new-york/media/o0uhthqm/llny-accessibility-guide-v6-52926.pdf',lastVerified:'2026-08-19',confidence:'verified-official'},
-  // geo: Plus Code que el usuario buscó en Google Maps antes de la visita (no medido parado en el
-  // parque) — decodificado offline con el algoritmo Open Location Code (recoverNearest, referencia
-  // = centro público del parque) a partir de "9MMM+2X Goshen, New York" → código completo
-  // 87H79MMM+2X. Mismo nivel de procedencia que las otras 4 coordenadas de este archivo: POI de
-  // mapa/terceros, NO la entrada de fila medida en sitio — reference:'ride-poi', nunca
-  // 'queue-entrance' sin medición física real durante la visita.
-  plusCode:'87H79MMM+2X',geo:{lat:41.382563,lng:-74.315063,source:'google-maps-poi',reference:'ride-poi'},
+  // geo: MEDIDO EN SITIO (octava pasada, 23-ago-2026) — Plus Code "9MJP+X2J Goshen, New York" →
+  // 87H79MJP+X2J. Reemplaza el Plus Code buscado en Google Maps antes de la visita (source
+  // 'google-maps-poi', nunca medido físicamente) que tenía este registro — la jerarquía de
+  // procedencia obliga a esto (medido en sitio > terceros). El punto nuevo cae a ~16 m del
+  // anterior, una distancia coherente con "misma atracción, entrada real vs. centroide buscado"
+  // y no con un error de decodificación — buena verificación cruzada. mapMarker/mapNumber/demás
+  // metadata sin cambios.
+  plusCode:'9MJP+X2J Goshen, New York',
+  geo:{lat:41.382453,lng:-74.314937,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'},
   tags:['🔥 IMPERDIBLE','🎢 COASTER FAMILIAR','🐉 CASTLE'],
   why:'El coaster principal de LEGO Castle: familiar pero con emoción real — conviene temprano antes de que se formen filas.',
   tip:'Nuestro niño de 6 años puede calificar para ir sin adulto (verificar en el parque si "6 años" cuenta como "menor de 6" o no); las dos niñas de 5 necesitan acompañante por la regla combinada edad+altura.'},
+// Builder's Guild: no estaba en la lista — la leyenda del mapa oficial la lista bajo LEGO CASTLE,
+// RIDES & ATTRACTIONS #46 (junto a la torre/puerta de The Dragon). Se agrega en la octava pasada
+// con Plus Code propio medido en sitio, en el mismo pedido que actualizó The Dragon.
+{id:'builders',name:"Builder's Guild",cat:'descanso',priorityTier:2,zone:'🏰 LEGO Castle',mapNumber:46,mapMarker:{x:27.1,y:15.76},adult:false,
+  // geo: MEDIDO EN SITIO (octava pasada, 23-ago-2026) — Plus Code "9MJP+X3X Goshen, New York" →
+  // 87H79MJP+X3X. A ~15 m de The Dragon (#45) y ~9 m del baño de Castle — coherente con estar en
+  // la misma torre/puerta del castillo, buena verificación cruzada entre los tres puntos nuevos.
+  plusCode:'9MJP+X3X Goshen, New York',
+  geo:{lat:41.382484,lng:-74.314763,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'},
+  nearbyAttractions:['dragon'],
+  tags:['🧱 CONSTRUCCIÓN','⚠️ VERIFICAR RESTRICCIONES'],
+  tip:'⚠️ Sin restricción de altura/edad verificada en esta actualización — confirmar en el parque.',
+  why:'Experiencia de construcción dentro del castillo, junto a The Dragon — sin verificar en esta pasada si es la misma actividad que Master Model Builder Experience (Bricktopia #18) o algo distinto.'},
 {id:'dragonsapprentice',name:"Dragon's Apprentice",cat:'rides',priorityTier:0,zone:'🏰 LEGO Castle',mapNumber:42,mapMarker:{x:34.51,y:22.27},adult:false,
   restrictions:{minHeightIn:36,adultRequiredBelowIn:42,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center (mínimo 36"; acompañante requerido debajo de 42").',lastVerified:'2026-08-19',confidence:'verified-official'},
   // geo: coordenada de coasterpedia.net (base de datos independiente de coasters), NO oficial de
@@ -604,7 +619,14 @@ window.PARK={
 // 2026 marca su ícono en las tres zonas, agregados en la séptima pasada al hacer el barrido
 // completo de baños pedido por el usuario ("agrega los baños para poder ubicar el más cercano
 // según la ubicación").
-{id:'restroom-castle',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🏰 LEGO Castle',mapMarker:{x:33.47,y:13.64},nearbyText:'Junto a Royal Feast (#50), entre The Dragon (#45) y Tower Climb Tournament (#51).',source:'Mapa oficial 2026 — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'approximate',geo:null}, // sin geo: The Dragon/Dragon's Apprentice son de terceros (Google Maps/coasterpedia), no confirmados en sitio — mismo criterio que restroom-bricktopia, no se encadena una estimación sobre otra.
+{id:'restroom-castle',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🏰 LEGO Castle',mapMarker:{x:33.47,y:13.64},nearbyText:'Junto a Royal Feast (#50), entre The Dragon (#45) y Tower Climb Tournament (#51).',source:'Mapa oficial 2026 (mapMarker) + Plus Code medido en sitio (geo) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'verified-official',
+  // geo: MEDIDO EN SITIO (octava pasada, 23-ago-2026) — Plus Code "9MMP+245 Goshen, New York" →
+  // 87H79MMP+245. Reemplaza el `geo:null` anterior (hasta ahora sin coordenada real porque los
+  // anchors de Castle disponibles eran todos de terceros) — se conserva el `mapMarker` oficial tal
+  // cual (posición del ícono en el mapa ilustrado, no necesariamente exacta contra `geo` real en
+  // un mapa "not to scale").
+  plusCode:'9MMP+245 Goshen, New York',
+  geo:{lat:41.382516,lng:-74.314663,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'}},
 {id:'restroom-ninjago',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🥷 LEGO NINJAGO World',mapMarker:{x:41.24,y:36.45},nearbyText:'Entre Ninja Kitchen (#29) y Wu’s Warehouse (#30), cerca de LEGO NINJAGO The Ride (#32).',source:'Mapa oficial 2026 — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'approximate',geo:null}, // sin geo: LEGO NINJAGO The Ride es de OpenStreetMap, no confirmado en sitio — mismo criterio.
 {id:'restroom-pirates',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🏴‍☠️ LEGO Pirates',mapMarker:{x:76.86,y:28.7},nearbyText:'Entre Portable Charger Rental (#85) y Splash Battle (#87), junto a Anchors Away (#83).',source:'Mapa oficial 2026 (posición del ícono) + anchors en sitio (estimación) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'approximate',
   geo:{lat:41.380481,lng:-74.311003,confidence:'approximate',estimatedFrom:['Anchors Away','Splash Battle','Minifigure Skyflyer']}}, // geo estimado (séptima pasada): ajuste afín local con los 3 anchors confirmados en sitio de LEGO Pirates (a diferencia del cluster de LEGO City, son solo 3 puntos — el ajuste los reproduce exactos por construcción, sin margen propio para validar el residual; tratar con más cautela que el estimado de restroom-city). NUNCA 'confirmed_on_site': reemplazar cuando se mida un Plus Code parado en la puerta real.

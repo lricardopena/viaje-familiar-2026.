@@ -869,38 +869,46 @@ function renderMapGeo(){
   if(mapGeoMap)setTimeout(()=>mapGeoMap.invalidateSize(),50);
 }
 /* ---------- Baño más cercano según la posición del usuario ----------
-   Dos niveles, nunca inventando una distancia que no se puede sustentar:
-     1. Coincidencia de zona (prioridad): el baño de la MISMA zona que el
-        punto real conocido más cercano al GPS del usuario. Caminar es lo
-        que importa (zonas suelen estar separadas por colas/paredes
-        temáticas), no la distancia en línea recta a un baño que podría
-        estar más cerca en el mapa pero en otra zona. Si ese baño tiene
-        `geo` (medido o estimado), se muestra su distancia real; si no,
-        se muestra la distancia real al anchor conocido más cercano de esa
-        zona ("cerca de Fire Academy, a ~40 m de tu posición") — nunca se
-        afirma una distancia al baño mismo que no se calculó.
-     2. Sin baño en la zona actual (no debería pasar con los baños ya
-        cubiertos, pero por si un parque futuro tiene huecos): el baño con
-        `geo` más cercano por línea recta, entre los que sí tienen
-        coordenada.
+   Corregido (octava pasada): la versión anterior priorizaba "mismo zona
+   que el punto conocido más cercano" POR ENCIMA de la distancia real —
+   así que un baño con `geo` real más cerca en línea recta pero en otra
+   zona podía quedar desplazado por un baño sin `geo` propio de la zona
+   "correcta". Regla nueva, en orden:
+     1. Si CUALQUIER baño tiene `geo` (medido o estimado), la distancia
+        real (Haversine) manda siempre — nunca una inferencia de zona
+        desplaza a un baño con ubicación conocida que esté geográficamente
+        más cerca. Entre baños con `geo`, se ordena por distancia real y,
+        solo en un empate exacto de metros, por nivel de confianza
+        (`geo.confidence`: `confirmed_on_site` > `official_map` >
+        `approximate` > sin especificar) — un desempate, no un filtro que
+        excluya candidatos más cercanos de menor confianza.
+     2. Solo si NINGÚN baño tiene `geo` todavía (Story Land hoy; varios
+        baños de LEGOLAND New York mientras no se midan en sitio) se cae a
+        inferencia de zona: el baño de la MISMA zona que el punto real
+        conocido más cercano al GPS, mostrando la distancia real a ESE
+        anchor ("cerca de Fire Academy, a ~40 m de tu posición") — nunca
+        una distancia al baño mismo que no se calculó.
    Devuelve null si no hay GPS o no hay ningún baño en absoluto. */
+const RESTROOM_GEO_CONFIDENCE_RANK={confirmed_on_site:0,official_map:1,approximate:2};
 function nearestRestroomInfo(){
   if(!mapGpsState.coords)return null;
   const gps=mapGpsState.coords;
   const restrooms=POIS.filter(p=>p.type==='restroom');
   if(!restrooms.length)return null;
+  const withGeo=restrooms.filter(r=>r.geo);
+  if(withGeo.length){
+    const ranked=withGeo.map(r=>({
+      r,
+      d:haversineMeters(gps,r.geo),
+      tier:RESTROOM_GEO_CONFIDENCE_RANK[r.geo.confidence]!=null?RESTROOM_GEO_CONFIDENCE_RANK[r.geo.confidence]:3,
+    })).sort((a,b)=>a.d-b.d||a.tier-b.tier);
+    const best=ranked[0];
+    return {restroom:best.r,meters:Math.round(best.d),exact:true,confidence:best.r.geo.confidence||null};
+  }
   const known=geoKnownPoints();
   const nearestKnown=known.length?known.map(p=>({p,d:haversineMeters(gps,p.geo)})).sort((a,b)=>a.d-b.d)[0]:null;
   const zoneMatch=nearestKnown&&restrooms.find(r=>r.zone===nearestKnown.p.zone);
-  if(zoneMatch){
-    if(zoneMatch.geo)return {restroom:zoneMatch,meters:Math.round(haversineMeters(gps,zoneMatch.geo)),exact:true};
-    return {restroom:zoneMatch,meters:null,exact:false,anchorName:nearestKnown.p.name,anchorMeters:Math.round(nearestKnown.d)};
-  }
-  const withGeo=restrooms.filter(r=>r.geo);
-  if(withGeo.length){
-    const best=withGeo.map(r=>({r,d:haversineMeters(gps,r.geo)})).sort((a,b)=>a.d-b.d)[0];
-    return {restroom:best.r,meters:Math.round(best.d),exact:true};
-  }
+  if(zoneMatch)return {restroom:zoneMatch,meters:null,exact:false,anchorName:nearestKnown.p.name,anchorMeters:Math.round(nearestKnown.d)};
   return null;
 }
 function nearestRestroomBannerHtml(){
@@ -909,8 +917,11 @@ function nearestRestroomBannerHtml(){
     ?'' // hay GPS pero ni siquiera hay un anchor conocido cerca — no hay nada honesto que decir todavía
     :'🚻 Activa "📍 Mi ubicación" para ver el baño más cercano — mientras tanto, todos los baños conocidos aparecen abajo.';
   const r=info.restroom,zoneTxt=r.zone?` — ${r.zone}`:'';
-  if(info.exact)return `🚻 <b>Baño más cercano:</b> ${r.name}${zoneTxt} · ~${info.meters} m de tu posición`;
-  return `🚻 <b>Baño más cercano (por zona):</b> ${r.name}${zoneTxt} · cerca de ${info.anchorName} (~${info.anchorMeters} m de tu posición)`;
+  // Plantillas pedidas explícitamente: con coordenada conocida SÍ se muestra una distancia (en
+  // línea recta, nunca "caminando"); sin coordenada del baño, NUNCA se muestra una distancia al
+  // baño mismo — solo la referencia de a qué anchor conocido está cerca.
+  if(info.exact)return `🚻 <b>Baño más cercano</b> · ~${info.meters} m en línea recta — ${r.name}${zoneTxt}`;
+  return `🚻 <b>Baño cercano</b> · cerca de ${info.anchorName} (~${info.anchorMeters} m en línea recta de tu posición) — ${r.name}${zoneTxt}`;
 }
 /* Refresca el banner de baño más cercano si el visor de baños está
    abierto ahora mismo (filtro reducido a solo 'restroom' — ver
