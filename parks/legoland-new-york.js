@@ -374,6 +374,26 @@ window.PARK={
     // assets/theme-park-core.js) y ya funciona hoy en Story Land, que sí tiene su propia
     // calibración. Para LEGOLAND New York queda lista para activarse en cuanto los números lo
     // justifiquen, sin tocar el motor de nuevo — solo escribir el objeto acá.
+    //
+    // RE-AUDITADO (undécima pasada, mismo 23-ago-2026): 3 anchors nuevos — merlin (Castle) y el
+    // primer par confirmed_on_site de NINJAGO World (gravityforce, restroom-ninjago), zona que
+    // hasta ahora no tenía ninguno. Con ferraribuildrace (agregado en el PR anterior) son 16
+    // puntos independientes en total. Se repitió el ajuste global exactamente igual que la pasada
+    // anterior — el resultado NO mejora, empeora: LOO máximo sube de 7.53pp a 12.35pp
+    // (restroom-ninjago), con merlin también entre los peores (9.21pp). Ambos son, justamente, los
+    // 2 puntos más nuevos/aislados: NINJAGO World queda lejos del resto de los clusters y todavía
+    // tiene solo 2 puntos, no 3+, así que el afín global los "estira" mal. La piecewise de Castle
+    // tampoco mejora al pasar de 4 a 5 puntos (dragon/builders/towerclimb/restroom-castle/merlin):
+    // LOO máximo salta a 23.44pp al excluir merlin — sigue estadísticamente inestable, ahora peor
+    // que antes, no mejor. NINJAGO World con solo 2 puntos sigue sin poder ajustarse en piecewise
+    // (mínimo 3 no colineales). Conclusión: los anchors nuevos NO aportan la información que
+    // ayudaría (una tercera zona bien cubierta o una reducción real del LOO máximo existente) — al
+    // contrario, agregar puntos aislados de una zona nueva con poca densidad empeora el ajuste
+    // global. geoCalibration sigue sin activarse, por la misma razón que la pasada anterior más
+    // esta nueva evidencia. El criterio para activarla en el futuro no cambia (ver más arriba):
+    // Bricktopia, Brick Street y Miniland siguen sin ningún punto confirmed_on_site, y NINJAGO
+    // World necesita al menos un tercer punto bien distribuido antes de que un piecewise local ahí
+    // tenga sentido.
   },
   storageKey:'legoland_ny_state_v1',
   mustIds:['dragon','dragonsapprentice','fireacademy','legofactory','ninjagoride','miniland'],
@@ -454,7 +474,12 @@ window.PARK={
   tags:['🔥 IMPERDIBLE','🎢 COASTER SUAVE','⭐ PUEDE IR SOLO'],
   why:'Coaster pequeño para entrenar "dragones bebé" — a ~47" los tres niños califican para subir solos, buena primera montaña rusa del día.'},
 {id:'merlin',name:"Merlin's Flying Machines",cat:'rides',priorityTier:2,zone:'🏰 LEGO Castle',mapNumber:40,mapMarker:{x:34.78,y:26.30},adult:true,
-  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #40 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #40 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71).
+  // geo: MEDIDO EN SITIO (23-ago-2026) — Plus Code "9MJM+PX9 Goshen, New York" → 87H79MJM+PX9. A
+  // ~73 m de Tower Climb Tournament y ~87 m de Restroom in Castle (ambos confirmed_on_site de la
+  // misma zona) — coherente con estar en LEGO Castle, buena verificación cruzada.
+  plusCode:'9MJM+PX9 Goshen, New York',
+  geo:{lat:41.381797,lng:-74.315063,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'},
   restrictions:{minHeightIn:36,adultRequiredBelowIn:48,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center.',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🎠 GIRO SUAVE','👨‍👦 CON ADULTO'],
   why:'Vueltas suaves en el aire, temática de dragones — buen contraste de ritmo cerca de The Dragon.'},
@@ -573,13 +598,16 @@ window.PARK={
   tip:'👟 Puede pedir calzado cerrado — no confirmado en esta actualización si sigue vigente ese requisito, preguntar en la entrada de la atracción.',
   why:'Dark ride interactivo: "lanzan" energía con gestos de las manos contra villanos — de las experiencias más pedidas por los niños, indoor (buen plan si llueve).'},
 {id:'gravityforce',name:"Jay's Gravity Force Trainer",cat:'rides',priorityTier:2,zone:'🥷 LEGO NINJAGO World',mapNumber:27,mapMarker:{x:44.6,y:29.8},adult:false,
-  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #27 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #27 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71).
   restrictions:{minHeightIn:42,minAge:4,adultRequiredBelowInAndAge:{heightIn:52,ageYears:8},source:'2026 Accessibility Guide V6 + Height Restrictions Help Center: mínimo 42"/4 años; acompañante para menores de 8 años Y de 52".',lastVerified:'2026-08-19',confidence:'verified-official'},
-  // plusCode expuesto directamente por la búsqueda estructurada de lugares (9MJP+7F, Goshen, NY
-  // 10924) — NO se decodificó a lat/lng offline (sin decodificador local de Open Location Code
-  // disponible), así que geo queda null a propósito en vez de inventar coordenadas. Buen
-  // candidato para medir la entrada de fila real en sitio (ver lista de prioridad de captura).
-  plusCode:'9MJP+7F Goshen, NY',geo:null,
+  // geo: MEDIDO EN SITIO (23-ago-2026) — Plus Code "9MJP+79X Goshen, New York" → 87H79MJP+79X.
+  // Reemplaza el plusCode anterior ("9MJP+7F", más corto/menos preciso, expuesto por búsqueda
+  // estructurada de lugares y sin decodificar) por este, medido parado en la atracción. A ~111 m
+  // de LEGO NINJAGO The Ride (centroide OSM, misma zona) y ~111 m del baño de NINJAGO
+  // (restroom-ninjago, también confirmed_on_site en esta misma pasada) — coherente con estar
+  // agrupados dentro de LEGO NINJAGO World.
+  plusCode:'9MJP+79X Goshen, New York',
+  geo:{lat:41.380734,lng:-74.314013,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'},
   tags:['🌀 GIRO MÁS INTENSO'],
   why:'Entrenamiento giratorio estilo ninja — el ride "más emocionante" del día si los niños quieren algo con más intensidad, sin ser un coaster grande.'},
 {id:'miniland',name:'Miniland USA',cat:'miniland',priorityTier:0,zone:'🏙️ Miniland',mapNumber:98,mapMarker:{x:54.4,y:28.5},adult:false,
@@ -691,7 +719,16 @@ window.PARK={
   // un mapa "not to scale").
   plusCode:'9MMP+245 Goshen, New York',
   geo:{lat:41.382516,lng:-74.314663,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'}},
-{id:'restroom-ninjago',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🥷 LEGO NINJAGO World',mapMarker:{x:41.24,y:36.45},nearbyText:'Entre Ninja Kitchen (#29) y Wu’s Warehouse (#30), cerca de LEGO NINJAGO The Ride (#32).',source:'Mapa oficial 2026 — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'approximate',geo:null}, // sin geo: LEGO NINJAGO The Ride es de OpenStreetMap, no confirmado en sitio — mismo criterio.
+{id:'restroom-ninjago',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🥷 LEGO NINJAGO World',mapMarker:{x:41.24,y:36.45},nearbyText:'Entre Ninja Kitchen (#29) y Wu’s Warehouse (#30), cerca de LEGO NINJAGO The Ride (#32).',source:'Mapa oficial 2026 (mapMarker) + Plus Code medido en sitio (geo) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'verified-official',
+  // geo: MEDIDO EN SITIO (23-ago-2026) — Plus Code "9MHP+V9X Goshen, New York" → 87H79MHP+V9X. Se
+  // revisaron primero los baños ya trackeados antes de crear un POI nuevo: este código queda a
+  // ~111-113 m de LEGO NINJAGO The Ride (centroide OSM) y de Jay's Gravity Force Trainer (recién
+  // también confirmed_on_site en esta misma pasada) — mucho más cerca que cualquier otro baño ya
+  // registrado (restroom-city/miniland ~232 m, restroom-pirates ~264 m, restroom-castle ~314 m) —
+  // corresponde con confianza al mismo baño físico ya trackeado como restroom-ninjago, no a un
+  // baño distinto. Reemplaza el `geo:null` anterior.
+  plusCode:'9MHP+V9X Goshen, New York',
+  geo:{lat:41.379734,lng:-74.314013,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'}},
 {id:'restroom-pirates',type:'restroom',icon:'🚻',name:'Restrooms',zone:'🏴‍☠️ LEGO Pirates',mapMarker:{x:76.86,y:28.7},nearbyText:'Entre Portable Charger Rental (#85) y Splash Battle (#87), junto a Anchors Away (#83).',source:'Mapa oficial 2026 (posición del ícono) + anchors en sitio (estimación) — https://www.legoland.com/new-york/media/gushogjw/2026-legoland-new-york-park-map.jpg',lastVerified:'2026-08-23',confidence:'approximate',
   geo:{lat:41.380481,lng:-74.311003,confidence:'approximate',estimatedFrom:['Anchors Away','Splash Battle','Minifigure Skyflyer']}}, // geo estimado (séptima pasada): ajuste afín local con los 3 anchors confirmados en sitio de LEGO Pirates (a diferencia del cluster de LEGO City, son solo 3 puntos — el ajuste los reproduce exactos por construcción, sin margen propio para validar el residual; tratar con más cautela que el estimado de restroom-city). NUNCA 'confirmed_on_site': reemplazar cuando se mida un Plus Code parado en la puerta real.
 {id:'firstaid-brickstreet',type:'firstaid',icon:'🩹',name:'First Aid — Brick Street',zone:'🧱 Brick Street',mapNumber:7,nearbyText:'Junto al Guest Experience Center.',source:'Services page — https://www.legoland.com/new-york/things-to-do/theme-park/services/',lastVerified:'2026-08-19',confidence:'verified-official',geo:null},
