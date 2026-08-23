@@ -325,9 +325,15 @@ window.PARK={
 // #72). Se agrega en esta pasada porque ahora tiene ubicación confirmada en sitio. Sin
 // `restrictions`: el Accessibility Guide / Help Center no se volvieron a consultar en esta
 // pasada y no se inventa una regla — la app cae al indicador genérico de adulto, y el `tip`
-// pide confirmarlo en el parque. Sin `mapNumber`/`mapMarker`: no se identificó su pin en el
-// mapa ilustrado 2026, y no se adivina uno.
-{id:'waterplayground',name:'Water Playground',cat:'agua',priorityTier:2,waterBoostTier:1.5,zone:'🌆 LEGO City',adult:false,
+// pide confirmarlo en el parque.
+// mapNumber/mapMarker corregidos (23-ago-2026, revisión posterior): el usuario señaló que la
+// zona de juegos de agua con toboganes junto a Fire Academy/First Aid SÍ es Water Playground —
+// se había pasado por alto que el mapa oficial 2026 la lista explícitamente como #76 (LEGO City,
+// "RIDES & ATTRACTIONS"), no solo como referencia de texto de otro POI. mapMarker leído
+// visualmente del mismo mapa (assets/legoland-map-2026.webp, 5100×3300px), mismo método que el
+// resto del archivo — el recorte confirma visualmente la estructura de toboganes/splash pad
+// bajo el pin #76.
+{id:'waterplayground',name:'Water Playground',cat:'agua',priorityTier:2,waterBoostTier:1.5,zone:'🌆 LEGO City',mapNumber:76,mapMarker:{x:66.7,y:25.2},adult:false,
   // geo: MEDIDO EN SITIO (23-ago-2026) — Plus Code "9MJQ+C59 Goshen, New York" → 87H79MJQ+C59.
   plusCode:'9MJQ+C59 Goshen, New York',
   geo:{lat:41.381047,lng:-74.312062,source:'onsite-plus-code',reference:'entrance'},
