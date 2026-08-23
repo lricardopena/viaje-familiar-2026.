@@ -334,7 +334,13 @@ window.PARK={
   tags:['💦 TE MOJAS','👨‍👩‍👦 FAMILIAR','⚠️ VERIFICAR RESTRICCIONES'],
   tip:'👕 Se mojan de verdad — muda de ropa a mano. Confirmar en el parque si hay altura/edad mínima (no verificado oficialmente en esta versión).',
   why:'Zona de juegos de agua en LEGO City, justo al lado de Fire Academy (#71) y del First Aid (#72) — la mejor parada para refrescarse en la parte más calurosa del día.'},
-{id:'coastguard',name:'Coast Guard Academy',cat:'lego',priorityTier:1,zone:'🌆 LEGO City',mapNumber:63,adult:true,
+{id:'coastguard',name:'Coast Guard Academy',cat:'lego',priorityTier:1,zone:'🌆 LEGO City',mapNumber:63,mapMarker:{x:51.7,y:15.7},adult:true,
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px)
+  // — pin #63 recortado a resolución original y ubicado por la punta de la bandera, mismo método
+  // que el resto de mapMarker de este archivo. Reportado por el usuario como "no resaltado en el
+  // mapa" — no tenía mapMarker (solo mapNumber), así que el visor caía al texto "📍 Busca el #63
+  // en el mapa" sin dibujar el círculo/pin. Sin geo (no hay Plus Code ni coordenada real
+  // recolectada para esta atracción) — no participa del ajuste de geoCalibration.
   restrictions:{minHeightIn:34,adultRequiredBelowIn:52,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center.',lastVerified:'2026-08-19',confidence:'verified-official'},
   tags:['🚤 INTERACTIVA','👨‍👦 CON ADULTO'],
   why:'Manejan botes patrulla en un canal de agua — similar en espíritu a Fire Academy, buena alternativa si hay fila ahí.'},
