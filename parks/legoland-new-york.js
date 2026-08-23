@@ -618,7 +618,15 @@ window.PARK={
 // oficial 2026 (imagen compartida por el usuario) SÍ confirma su ubicación
 // y número. Ferrari Build & Race está marcada "NEW FOR 2026" en el mapa.
 {id:'ferraribuildrace',name:'LEGO Ferrari Build & Race',cat:'lego',priorityTier:1,zone:'🎡 Bricktopia',mapNumber:25,mapMarker:{x:54.16,y:38.7},adult:false,
-  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #25 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71). Sin geo — no participa del ajuste de geoCalibration.
+  // mapMarker leído visualmente del mapa oficial 2026 (assets/legoland-map-2026.webp, 5100×3300px) — pin #25 recortado a resolución original y ubicado por la punta de la bandera, mismo método que el resto de mapMarker de este archivo (verificado reproduciendo primero el mapMarker ya calibrado de Fire Academy #71).
+  // geo: MEDIDO EN SITIO (23-ago-2026) — Plus Code "9MJP+2HC Goshen, New York" → 87H79MJP+2HC. A
+  // ~68 m de LEGO Factory Adventure Ride (#22, mismo Bricktopia, centroide OSM) — coherente con
+  // ser vecinas en la misma zona, buena verificación cruzada. Primer punto confirmed_on_site de
+  // Bricktopia — hasta ahora esa zona no tenía ningún anchor medido en sitio (ver el análisis de
+  // geoCalibration en map:{} más abajo, que documenta ese hueco).
+  plusCode:'9MJP+2HC Goshen, New York',
+  geo:{lat:41.380047,lng:-74.313538,source:'onsite-plus-code',reference:'entrance',confidence:'confirmed_on_site'},
+  nearbyAttractions:['legofactory'],
   tags:['🏎️ NUEVA 2026','🧱 CONSTRUCCIÓN','⭐ SIN RESTRICCIÓN DE ALTURA/EDAD'],
   why:'Atracción nueva de 2026: construyen su propio Ferrari de LEGO y lo "corren" — la página oficial de la atracción confirma que no tiene restricción de altura ni edad, buena para las dos familias completas juntas.'},
 // Minifigure Skyflyer aparece dos veces en el mapa (#9 Brick Street, #81 LEGO
