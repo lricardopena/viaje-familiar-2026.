@@ -1,0 +1,4 @@
+[submodule "agentic-skills"]
+	path = agentic-skills
+	url = https://github.com/lricardopena/agentic-skills.git
+	branch = main
