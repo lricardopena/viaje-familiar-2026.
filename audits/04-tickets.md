@@ -40,15 +40,19 @@
 
 ---
 
-### TICKET-4 (H5, P2) — Extraer el bloque de geolocalización de `theme-park-core.js`
+### TICKET-4 (H5, P2) — ⏸️ DEFERRED / CONDICIONAL — Extraer el bloque de geolocalización de `theme-park-core.js`
 
 **Contexto:** `theme-park-core.js` (2518 líneas) no tiene separación interna en módulos. El bloque de geolocalización/distancia (`haversineMeters` .. `geoKnownPoints`, ~líneas 105–189) es el más autocontenido y de menor riesgo para extraer primero.
 
-**Archivos a tocar:** nuevo `assets/theme-park-geo.js` (o similar), `assets/theme-park-core.js` (remover el bloque), `storyland.html`/`legoland.html` (añadir el nuevo `<script src>` antes del core).
+**Decisión (2026-08-24, explícita del usuario):** no ejecutar ahora como refactor aislado. Se difiere hasta que exista una **necesidad funcional real** de modificar significativamente ese bloque (p. ej. al integrar el tercer parque, si su geolocalización exige un cambio no trivial al bloque haversine/proximidad) — en ese momento, aprovechar el cambio para crear el seam (extraer a `assets/theme-park-geo.js` o similar) como parte del mismo trabajo, no como una pasada de "limpieza" separada sin motivo funcional que la justifique. Consistente con Gall's Law / YAGNI ya aplicado en el resto de esta auditoría (T2.C `coding-kiss`): no generalizar/reestructurar por adelantado sin evidencia de necesidad.
 
-**Criterio de aceptación:** `npm test` sigue pasando (una vez resuelto TICKET-1) sin ningún otro cambio de comportamiento.
+**Archivos a tocar (cuando se active):** nuevo `assets/theme-park-geo.js` (o similar), `assets/theme-park-core.js` (remover el bloque), `storyland.html`/`legoland.html` (añadir el nuevo `<script src>` antes del core).
 
-**Cómo verificar:** diff de comportamiento nulo — cargar ambos parques reales antes/después y comparar recomendaciones/distancias mostradas.
+**Criterio de aceptación (cuando se active):** `npm test` sigue pasando sin ningún otro cambio de comportamiento.
+
+**Cómo verificar (cuando se active):** diff de comportamiento nulo — cargar ambos parques reales antes/después y comparar recomendaciones/distancias mostradas.
+
+**Disparador para reactivar este ticket:** la próxima vez que un cambio real (no cosmético) toque `haversineMeters`/`gpsDistanceMeters`/`humanDistanceLabel`/`walkEstimateLabel`/`distanceSuffix`/`proximityLineHtml`/`geoKnownPoints` — sea por el tercer parque, un bug, o una feature nueva de geolocalización.
 
 ---
 

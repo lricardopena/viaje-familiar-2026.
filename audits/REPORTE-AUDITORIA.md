@@ -14,9 +14,14 @@
 > completa de `reactionSystem`/`shows` + negative contract test) — ver "TICKET-6" en
 > `audits/04-tickets.md`, no derivado de un hallazgo original de esta auditoría sino
 > de un encargo posterior que fortalece directamente el veredicto sobre un tercer
-> parque de este reporte. El resto de este documento se dejó tal cual se entregó
-> originalmente para conservar el registro de lo que encontró la auditoría — ver
-> `audits/03-hallazgos-consolidados.md` para el detalle de la resolución.
+> parque de este reporte. **H5 quedó explícitamente DEFERRED/CONDICIONAL** (decisión
+> del usuario, no un olvido): no se extrae el bloque de geolocalización como refactor
+> aislado — se difiere hasta que una necesidad funcional real obligue a modificarlo
+> significativamente, momento en el que se aprovecha ese cambio para crear el seam
+> (ver TICKET-4 en `audits/04-tickets.md`). El resto de este documento se dejó tal
+> cual se entregó originalmente para conservar el registro de lo que encontró la
+> auditoría — ver `audits/03-hallazgos-consolidados.md` para el detalle de la
+> resolución.
 
 ## Resumen ejecutivo
 
@@ -50,7 +55,7 @@ El resto (H2, H4–H10) es deuda razonable de posponer — ninguno bloquea el us
 
 - **H2** (regresión automatizada contra parques reales) — importante antes de tocar el core de nuevo o de sumar el tercer parque, no antes del viaje.
 - **H4** (confirmar en `HANDOVER.md.asc` que los datos de los niños en texto plano son una decisión aceptada) — bajo riesgo, repo ya es privado.
-- **H5** (modularizar `theme-park-core.js`) — sólo vale la pena si se toca el core de nuevo con frecuencia; no forzar por forzar.
+- **H5** (modularizar `theme-park-core.js`) — ⏸️ **DEFERRED/CONDICIONAL** (decisión explícita del usuario, 2026-08-24): no extraer el bloque de geolocalización como refactor aislado; diferido hasta que una necesidad funcional real obligue a modificar significativamente ese bloque, momento en el que se aprovecha ese cambio para crear el seam. Ver TICKET-4 en `audits/04-tickets.md`.
 - **H6, H8** (accesibilidad: `aria-*`, touch targets) — mejoras reales, no bloqueantes.
 - **H7, H9, H10** — notas menores, sin urgencia.
 
