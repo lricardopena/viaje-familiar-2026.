@@ -4,7 +4,7 @@
 
 ---
 
-### TICKET-1 (H1, P1) — Commitear `package-lock.json` y fijar versión de Playwright
+### TICKET-1 (H1, P1) — ✅ RESUELTO — Commitear `package-lock.json` y fijar versión de Playwright
 
 **Contexto:** `package.json:15` fija `"playwright": "^1.56.1"` sin `package-lock.json` en git. Un `npm install` fresco resuelve una versión distinta a la que el entorno de test espera, y el único test suite del repo no corre.
 
@@ -16,7 +16,7 @@
 
 ---
 
-### TICKET-2 (H2, P1) — Test de regresión contra Story Land y LEGOLAND reales
+### TICKET-2 (H2, P1) — ✅ RESUELTO — Test de regresión contra Story Land y LEGOLAND reales
 
 **Contexto:** `specs/architecture/operations/testing-and-validation.md.asc` exige validar Playwright contra ambos parques reales, no sólo el fixture sintético. Hoy no existe.
 

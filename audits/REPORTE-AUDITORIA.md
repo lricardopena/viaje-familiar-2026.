@@ -2,6 +2,12 @@
 
 **Fecha:** 2026-08-24 · **Alcance:** read-only, todo el repo · **Rama:** `claude/agentic-skill-audit-gubpxq`
 
+> **Actualización 2026-08-24 (post-auditoría):** H1 y H2, los dos únicos P1, quedaron
+> resueltos a petición del usuario tras entregar este reporte (commits "TICKET-1" y
+> "TICKET-2"). El resto de este documento se dejó tal cual se entregó originalmente
+> para conservar el registro de lo que encontró la auditoría — ver
+> `audits/03-hallazgos-consolidados.md` para el detalle de la resolución.
+
 ## Resumen ejecutivo
 
 El repo está en buen estado general. El eje más frágil no es el código de producto sino el **tooling de tests**: la única suite del repo no corre en un checkout limpio (versión de Playwright sin lockfile commiteado) y, aun cuando corra, nunca ejerció los dos parques reales (Story Land/LEGOLAND), sólo un fixture sintético. El itinerario (`index.html`+`data.js`), que es la parte que se usa todos los días del viaje, no tiene ningún test. En privacidad y seguridad no se encontró ninguna fuga: la convención `"Home"` se respeta en todo el repo, y `auth.js` documenta con precisión su propio límite ("eleva el costo de un vistazo casual, no de un ataque dirigido") sin prometer más de lo que da. La frontera arquitectónica entre el motor genérico del Theme Park Companion y los datos de cada parque está limpia — cero leakage de nombres/ids de parque fuera de comentarios, contrato `window.PARK` cumplido por ambos parques reales. No se encontró sobre-ingeniería real; el único problema de tamaño es que `theme-park-core.js` (2518 líneas) ya no tiene estructura interna proporcional a su tamaño.
