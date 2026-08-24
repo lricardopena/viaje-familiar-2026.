@@ -7,6 +7,6 @@
     "test:theme-park": "node tests/theme-park/theme-park-core.spec.js"
   },
   "devDependencies": {
-    "playwright": "^1.56.1"
+    "playwright": "1.56.1"
   }
 }
