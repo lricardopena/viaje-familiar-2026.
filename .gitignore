@@ -1,0 +1,2 @@
+# Solo para tests/ (Playwright) — el sitio en sí no tiene build ni dependencias, ver CLAUDE.md.
+node_modules/

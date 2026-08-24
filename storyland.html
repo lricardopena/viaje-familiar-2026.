@@ -115,13 +115,10 @@
       </div>
     </div>
     <div class="mapsheet-geo" id="mapSheetGeo" hidden>
-      <div class="mapgeo-filters" id="mapGeoFilters">
-        <button type="button" data-filter="attraction" onclick="mapGeoToggleFilter('attraction')">🎢 Atracciones</button>
-        <button type="button" data-filter="restroom" onclick="mapGeoToggleFilter('restroom')">🚻 Baños</button>
-        <button type="button" data-filter="food" onclick="mapGeoToggleFilter('food')">🍴 Comida</button>
-        <button type="button" data-filter="help" onclick="mapGeoToggleFilter('help')">🩹 Ayuda</button>
-        <button type="button" data-filter="all" onclick="mapGeoSetAllFilter()">Todos</button>
-      </div>
+      <!-- Los chips de filtro se generan en JS (ensureMapGeoFilterChips(), assets/theme-park-core.js)
+           a partir de las categorías reales de este PARK — nunca hardcodeados acá, para que un
+           parque nuevo con tipos de servicio distintos no necesite tocar este archivo. -->
+      <div class="mapgeo-filters" id="mapGeoFilters"></div>
       <div class="mapgeo-banner" id="mapGeoBanner" hidden></div>
       <button type="button" class="mapgeo-gpsbtn" id="mapGpsBtn" onclick="mapGpsButtonTap()">📍 Mi ubicación</button>
       <div class="mapgeo-gpsstatus" id="mapGpsStatus" hidden></div>

@@ -1,25 +1,24 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#e30613"><title>LEGOLAND New York · Plan interactivo</title>
-<link rel="stylesheet" href="auth.css">
-<script src="auth.js"></script>
-<!-- Leaflet vendorizado localmente (assets/leaflet/, npm leaflet@1.9.4) en vez de un CDN:
-     mismo motivo que la imagen del mapa oficial — no depender de que un dominio
-     externo esté disponible para que la app cargue. Los tiles del mapa geográfico
-     SÍ vienen de OpenStreetMap en tiempo real (eso no se puede vendorizar) — ver
-     mapGeoView() en assets/theme-park-core.js y specs/SPECIFICATIONS.md.asc
-     sección 22 (Theme Park Companion). -->
-<link rel="stylesheet" href="assets/leaflet/leaflet.css">
-<script src="assets/leaflet/leaflet.js"></script>
-<link rel="stylesheet" href="assets/theme-park-core.css">
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2a7f9e"><title>Minimal Test Park · Fixture de prueba</title>
+<!-- tests/theme-park/fixtures/minimal-test-park.html — esqueleto delgado de fixture de prueba,
+     NO una página real del viaje ni un parque soportado. Prueba el criterio de aceptación
+     arquitectónico: "un tercer parque debe poder agregarse mediante parks/<park-id>.js +
+     configuración + thin HTML shell, sin modificar assets/theme-park-core.js" — este archivo es
+     exactamente el mismo esqueleto que legoland.html/storyland.html (rutas relativas ajustadas por
+     vivir 3 niveles más abajo, en tests/theme-park/fixtures/), con el único cambio real siendo el
+     <script src="minimal-test-park.js"> del final, que carga desde la MISMA carpeta (no desde
+     parks/ — este fixture vive fuera de parks/ a propósito, ver
+     tests/theme-park/fixtures/minimal-test-park.js). Deliberadamente SIN auth.css/auth.js: esta
+     página nunca se enlaza desde index.html ni se muestra a la familia — es un fixture de
+     ingeniería, no contenido protegido (ver specs/SPECIFICATIONS.md.asc sección 26 para el porqué
+     de auth.js en las páginas reales). Carga el MISMO assets/theme-park-core.js de producción —
+     nunca una copia especial para tests. -->
+<link rel="stylesheet" href="../../../assets/leaflet/leaflet.css">
+<script src="../../../assets/leaflet/leaflet.js"></script>
+<link rel="stylesheet" href="../../../assets/theme-park-core.css">
 </head><body>
-<!-- Este archivo es el esqueleto genérico del Theme Park Companion —
-     idéntico al de legoland.html salvo el <script src="parks/..."> de datos
-     al final. Todo lo que varía por parque (título, colores, textos, datos)
-     lo aplica assets/theme-park-core.js en tiempo de carga desde
-     window.PARK (ver applyParkTheme()) — no se duplica marcado por parque.
-     Ver specs/SPECIFICATIONS.md.asc sección 22. -->
-<main class="app protected-content">
+<main class="app">
 <div class="top">
-<div class="row"><a class="back" id="backLink" href="index.html">← Itinerario</a><h1 id="parkHeaderTitle">🧱 LEGOLAND New York</h1><span style="width:70px"></span></div>
+<div class="row"><a class="back" id="backLink" href="#">← Salir</a><h1 id="parkHeaderTitle">🧪 Minimal Test Park</h1><span style="width:70px"></span></div>
 <div class="progress"><div class="stats"><span id="progTxt">…</span><span id="mustTxt"></span></div><div class="pbar"><i id="progBar" style="width:0%"></i></div></div>
 </div>
 
@@ -29,8 +28,8 @@
 <section class="tabpane" id="tab-tips"></section>
 
 </main>
-<button class="fab protected-content" id="fabNext" onclick="goAhora()">⭐ ¿QUÉ SIGUE?</button>
-<div class="bottom protected-content">
+<button class="fab" id="fabNext" onclick="goAhora()">⭐ ¿QUÉ SIGUE?</button>
+<div class="bottom">
 <button id="navAhora" onclick="setTab('ahora')"><span class="bi">⭐</span>Ahora</button>
 <button id="navChecklist" onclick="setTab('checklist')"><span class="bi">☑️</span>Checklist</button>
 <button id="navFavoritas" onclick="setTab('favoritas')"><span class="bi">❤️</span>Favoritas</button>
@@ -115,9 +114,8 @@
       </div>
     </div>
     <div class="mapsheet-geo" id="mapSheetGeo" hidden>
-      <!-- Los chips de filtro se generan en JS (ensureMapGeoFilterChips(), assets/theme-park-core.js)
-           a partir de las categorías reales de este PARK — nunca hardcodeados acá, para que un
-           parque nuevo con tipos de servicio distintos no necesite tocar este archivo. -->
+      <!-- Los chips de filtro se generan en JS (ensureMapGeoFilterChips(), ../../../assets/theme-park-core.js)
+           a partir de las categorías reales de este PARK — nunca hardcodeados acá. -->
       <div class="mapgeo-filters" id="mapGeoFilters"></div>
       <div class="mapgeo-banner" id="mapGeoBanner" hidden></div>
       <button type="button" class="mapgeo-gpsbtn" id="mapGpsBtn" onclick="mapGpsButtonTap()">📍 Mi ubicación</button>
@@ -145,6 +143,6 @@
   </div>
 </div>
 
-<script src="parks/legoland-new-york.js"></script>
-<script src="assets/theme-park-core.js"></script>
+<script src="minimal-test-park.js"></script>
+<script src="../../../assets/theme-park-core.js"></script>
 </body></html>
