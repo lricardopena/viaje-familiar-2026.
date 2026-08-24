@@ -177,14 +177,41 @@ per park, never a core change.
 
 ## Step 8 — Create a thin HTML shell
 
-Copy the *structure* of `storyland.html`/`legoland.html` (they should
-already be near-identical — diff them first) and change only what's truly
-necessary: `<title>`, the `theme-color` meta initial value, the header
-`<h1>` initial text, and the `<script src="parks/<park-id>.js">` tag. Do
-not embed the core into the HTML and do not create a new single-file app.
-If the two existing shells have diverged more than that when you check,
-report it as a follow-up in the completion report rather than silently
-fixing unrelated drift (unless the new park genuinely requires the fix).
+This step is mechanical, not just structural guidance — run it, don't
+eyeball it.
+
+1. **Before writing the new shell**, diff every existing shell against each
+   other (today: `diff storyland.html legoland.html`; if a third+ park was
+   added since, diff all pairs, or diff each against a fixed baseline). The
+   allowed diff, per `specs/architecture/theme-park-core.md.asc`, is
+   **exactly**: the `<title>` text, the `theme-color` meta's initial
+   `content` value, the header `<h1 id="parkHeaderTitle">` initial text,
+   and the `<script src="parks/<park-id>.js">` tag. Nothing else should
+   differ — `applyParkTheme()` in the core overwrites all of those
+   placeholders at load time from `PARK.copy`/`PARK.theme`, so the
+   "filler" values in the raw HTML never actually reach the user; the only
+   reason they exist is to avoid a flash of wrong title/color before JS
+   runs.
+   - **If the existing shells already diverge beyond that allowed set**,
+     stop and report it as its own finding in the completion report
+     (`unresolved_items`) — do not silently carry the drift into the new
+     shell, and do not silently fix it either unless the new park's own
+     requirements genuinely need that fix. Pre-existing drift is a
+     separate follow-up from onboarding this park.
+2. **Write the new shell** by copying the shell with the smallest diff to
+   nothing else, then changing only the four allowed values above.
+3. **After writing it**, diff the new shell against each pre-existing one
+   again and confirm the diff is still exactly those four values, now with
+   the new park's data. Treat any other difference — a missing tag, a
+   reordered attribute, a copy-paste leftover from the source shell's own
+   filler values, anything — as a bug to fix before moving on, not a
+   stylistic choice.
+
+Do not embed the core into the HTML and do not create a new single-file
+app — the shell's only job is to load `assets/theme-park-core.css`, the
+vendored Leaflet assets, `parks/<park-id>.js`, then
+`assets/theme-park-core.js`, in that order, plus the static markup
+skeleton the core renders into.
 
 ## Step 9 — Preserve behavior ownership
 
@@ -305,6 +332,7 @@ add_theme_park_result:
   validation:
     adapter_contract:
     reference_integrity:
+    shell_diff:            # result of Step 8's diff, e.g. "clean" or "pre-existing drift found: <what>"
     browser_smoke:
     story_land_regression:
     legoland_regression:
@@ -351,7 +379,10 @@ written.
       `geoCalibration.controlPointIds`, etc.).
 - [ ] Optional capabilities may be entirely absent without breaking the app.
 - [ ] Uncertain data is marked as such, never presented as confirmed.
-- [ ] HTML shell stays thin — diff against the other shells to confirm.
+- [ ] HTML shell stays thin — actually ran `diff` (Step 8) against every
+      other existing shell, both before writing and after, and any
+      difference beyond title/theme-color/h1/`<script src="parks/...">`
+      is either fixed or explicitly reported as an `unresolved_item`.
 - [ ] No park-specific branches were added to the shared core.
 - [ ] Story Land still works (regression-checked).
 - [ ] LEGOLAND New York still works (regression-checked).
