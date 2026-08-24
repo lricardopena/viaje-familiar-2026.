@@ -2,15 +2,28 @@
 
 Prueba el contrato mínimo de `assets/theme-park-core.js` (el motor genérico
 compartido por `storyland.html`, `legoland.html`, y cualquier parque futuro)
-contra un fixture sintético (`fixtures/minimal-test-park.js` +
-`fixtures/minimal-test-park.html`) que nunca comparte ningún id/nombre/zona
-con Story Land ni con LEGOLAND New York.
+en dos capas:
+
+1. **Contrato genérico (secciones 1–11)** contra un fixture sintético
+   (`fixtures/minimal-test-park.js` + `fixtures/minimal-test-park.html`) que
+   nunca comparte ningún id/nombre/zona con Story Land ni con LEGOLAND New
+   York — ver "Fixture" más abajo.
+2. **Regresión contra los parques reales (sección 12)** — carga
+   `storyland.html`/`legoland.html` tal cual se sirven en producción y
+   verifica que cada uno sigue recomendando, que `candidateList()` no está
+   vacía, y que sus extensiones opcionales propias del contrato
+   (`reactionSystem` en Story Land; `quickServices`/`map.poiFilterGroups` en
+   LEGOLAND) siguen configuradas. `auth.js`/`auth.css` se cargan igual que en
+   producción — no bloquean la ejecución del motor, solo ocultan
+   visibilidad vía CSS, así que no hace falta simular login.
 
 Este test es parte del contrato arquitectónico documentado en
 `specs/operations/testing-and-validation.md.asc`: **un tercer parque debe poder
 agregarse mediante `parks/<park-id>.js` + configuración + thin HTML shell,
-sin modificar `assets/theme-park-core.js`.** Si este test falla contra un
-cambio al core, ese cambio rompió el contrato genérico.
+sin modificar `assets/theme-park-core.js`.** Si la sección 1–11 falla contra
+un cambio al core, ese cambio rompió el contrato genérico; si la sección 12
+falla, el cambio rompió a un parque real concreto (no necesariamente el
+contrato genérico en sí).
 
 ## Ejecutar
 

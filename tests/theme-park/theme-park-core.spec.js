@@ -290,6 +290,64 @@ async function newPage(browser, opts) {
     await ctx.close();
   }
 
+  console.log('\n=== 12. Regresión contra los parques reales (Story Land, LEGOLAND New York) ===');
+  // A diferencia de las secciones 1-11 (contrato genérico contra el fixture sintético),
+  // esto carga storyland.html/legoland.html tal cual se sirven en producción —
+  // exige explícitamente specs/operations/testing-and-validation.md.asc:
+  // "validar con Playwright contra ambos parques además del fixture sintético".
+  // auth.js/auth.css se cargan igual que en producción: no bloquean la ejecución
+  // del motor (solo ocultan visibilidad vía CSS), así que no hace falta simular login.
+  const REAL_PARKS = [
+    {
+      label: 'Story Land',
+      path: '/storyland.html',
+      expectedId: 'story-land',
+      // reactionSystem configurado (Polar -> Roar) es específico de Story Land — ver parks/story-land.js
+      expectReactionSystem: true,
+    },
+    {
+      label: 'LEGOLAND New York',
+      path: '/legoland.html',
+      expectedId: 'legoland-new-york',
+      // quickServices + map.poiFilterGroups configurados explícitamente — ver parks/legoland-new-york.js
+      expectQuickServicesConfigured: true,
+      expectPoiFilterGroups: true,
+    },
+  ];
+  for (const park of REAL_PARKS) {
+    console.log(`\n  --- ${park.label} (${park.path}) ---`);
+    const { ctx, pg, errors } = await newPage(browser, { viewport: { width: 412, height: 892 }, permissions: [] });
+    await pg.goto(`http://127.0.0.1:${port}${park.path}`, { waitUntil: 'networkidle' });
+    await pg.waitForTimeout(500);
+
+    const info = await pg.evaluate(() => ({
+      parkId: window.PARK && window.PARK.id,
+      hasCore: typeof getRecommendation === 'function',
+      candidateCount: typeof candidateList === 'function' ? candidateList().length : null,
+      recExists: !!getRecommendation(),
+      quickServicesConfigured: !!(window.PARK.quickServices && window.PARK.quickServices.length),
+      poiFilterGroupsConfigured: !!(window.PARK.map && window.PARK.map.poiFilterGroups),
+      reactionSystemConfigured: !!window.PARK.reactionSystem,
+    }));
+
+    check(`${park.label}: carga sin errores de consola/página`, errors.length === 0, errors);
+    check(`${park.label}: window.PARK.id === '${park.expectedId}'`, info.parkId === park.expectedId, info.parkId);
+    check(`${park.label}: el core se cargó`, info.hasCore === true);
+    check(`${park.label}: candidateList() no está vacía`, info.candidateCount > 0, info.candidateCount);
+    check(`${park.label}: getRecommendation() devuelve una atracción`, info.recExists);
+    if (park.expectQuickServicesConfigured) {
+      check(`${park.label}: PARK.quickServices sigue configurado (accesos rápidos curados)`, info.quickServicesConfigured);
+    }
+    if (park.expectPoiFilterGroups) {
+      check(`${park.label}: PARK.map.poiFilterGroups sigue configurado (filtro "Ayuda" agrupado)`, info.poiFilterGroupsConfigured);
+    }
+    if (park.expectReactionSystem) {
+      check(`${park.label}: PARK.reactionSystem sigue configurado (Polar -> Roar)`, info.reactionSystemConfigured);
+    }
+
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
 
