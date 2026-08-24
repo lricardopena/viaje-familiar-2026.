@@ -52,15 +52,25 @@
 
 ---
 
-### TICKET-5 (H6, P2) — Pase de accesibilidad con herramienta dedicada
+### TICKET-5 (H6, P2) — ✅ RESUELTO — Pase de accesibilidad con herramienta dedicada
 
 **Contexto:** densidad baja de `aria-*` en `theme-park-core.js` relativa al volumen de UI dinámica. No verificado con herramienta real en esta auditoría.
 
-**Archivos a tocar:** por determinar tras el pase (probablemente `assets/theme-park-core.js`, generación de HTML de tabs/checklist).
+**Archivos tocados:** `tests/accessibility/axe-audit.spec.js` (nuevo), `package.json` (`test:a11y` + `@axe-core/playwright` como devDependency, `package-lock.json` regenerado), `assets/theme-park-core.css` (`--muted`, `--green`, `.tag.hot`, `.priohigh`), `parks/story-land.js` (`theme.accent`/`accentDark`/`themeColor`).
 
-**Criterio de aceptación:** correr axe-core (o equivalente) sobre `storyland.html`/`legoland.html` con datos reales cargados, 0 violaciones de severidad "serious"/"critical".
+**Qué se hizo:** corrida de `@axe-core/playwright` (reglas WCAG 2.0/2.1 A+AA) contra `storyland.html`/`legoland.html` con datos reales, sesión ya autenticada inyectada vía `localStorage` (bypass de `auth.js` sin modificarlo), en las 4 pestañas de cada parque. Resultado inicial: **8 violaciones `serious`** de `color-contrast` (WCAG 1.4.3) — la hipótesis original de `aria-*`/WCAG 4.1.2 **no se confirmó** (0 violaciones de ese tipo). Las 8 violaciones se concentraban en 5 valores de color reutilizados en muchos elementos:
+- `--muted` (#607887, ~4.0-4.3:1 contra los fondos reales) → `#4f6472` (5.4-6.2:1).
+- `--green` (#2a915a, usado como texto Y como fondo con texto blanco — ambos direcciones fallaban) → `#1f6b40` (6.0-6.5:1 en ambos usos).
+- `.tag.hot`/`.priohigh` (#b8471a sobre #ffe3d8/#f6f7f2, ~4.3:1) → `#a83f16` (~5.1:1).
+- Acento naranja de Story Land (`parks/story-land.js`, dato del parque, no del core — usado como fondo sólido con texto blanco en `.kicker`/`.fab`/nav activo, medía ~2.78:1) → `#bd500e`/`#a3440d` (4.86:1).
 
-**Cómo verificar:** el reporte de la herramienta, antes/después.
+Cada cambio de color tiene un comentario inline con el contraste antes/después y la razón. LEGOLAND no necesitó tocarse en su acento (`#e30613` ya medía 4.88:1).
+
+**Criterio de aceptación:** `npm run test:a11y` → 0 violaciones de severidad "serious"/"critical". **Cumplido, con margen:** re-corrido tras el fix dio **0 violaciones de cualquier severidad** en las 8 combinaciones página×pestaña (no sólo serious/critical).
+
+**Cómo verificar:** `npm run test:a11y` — 8 checks, todos verdes. `npm test` (suites existentes) sigue en 79/79 — los cambios fueron sólo de color, sin tocar lógica.
+
+**Límite honesto:** axe-core no reemplaza una prueba con lector de pantalla real para flujo de navegación/foco/anuncios dinámicos — ver `audits/2F-performance-a11y.md` §Actualización.
 
 ---
 

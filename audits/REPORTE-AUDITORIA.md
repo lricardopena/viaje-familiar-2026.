@@ -2,12 +2,16 @@
 
 **Fecha:** 2026-08-24 · **Alcance:** read-only, todo el repo · **Rama:** `claude/agentic-skill-audit-gubpxq`
 
-> **Actualización 2026-08-24 (post-auditoría):** H1 y H2, los dos únicos P1, y H3 (P2)
-> quedaron resueltos a petición del usuario tras entregar este reporte (commits
-> "TICKET-1", "TICKET-2" y "TICKET-3"). Además, a petición explícita del usuario, se
-> implementó un Third Park Contract Test explícito (verificación estática de
-> ausencia de lógica específica de parque + degradación progresiva completa de
-> `reactionSystem`/`shows` + negative contract test) — ver "TICKET-6" en
+> **Actualización 2026-08-24 (post-auditoría):** H1, H2 (los dos únicos P1), H3 y H6
+> (P2) quedaron resueltos a petición del usuario tras entregar este reporte (commits
+> "TICKET-1", "TICKET-2", "TICKET-3" y "TICKET-5"). H6 se resolvió con un matiz
+> importante: el pase real con axe-core no confirmó la hipótesis original
+> (aria-*/WCAG 4.1.2) pero sí encontró y corrigió 8 violaciones reales de contraste
+> de color (WCAG 1.4.3) que el reporte original había marcado "no verificable" — ver
+> `audits/2F-performance-a11y.md` §Actualización. Además, a petición explícita del
+> usuario, se implementó un Third Park Contract Test explícito (verificación
+> estática de ausencia de lógica específica de parque + degradación progresiva
+> completa de `reactionSystem`/`shows` + negative contract test) — ver "TICKET-6" en
 > `audits/04-tickets.md`, no derivado de un hallazgo original de esta auditoría sino
 > de un encargo posterior que fortalece directamente el veredicto sobre un tercer
 > parque de este reporte. El resto de este documento se dejó tal cual se entregó

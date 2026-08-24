@@ -5,9 +5,11 @@
   "scripts": {
     "test": "npm run test:theme-park && npm run test:itinerary",
     "test:theme-park": "node tests/theme-park/theme-park-core.spec.js",
-    "test:itinerary": "node tests/itinerary/index-smoke.spec.js"
+    "test:itinerary": "node tests/itinerary/index-smoke.spec.js",
+    "test:a11y": "node tests/accessibility/axe-audit.spec.js"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "playwright": "1.56.1"
   }
 }

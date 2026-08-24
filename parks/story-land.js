@@ -30,7 +30,15 @@ window.PARK={
   id:'story-land',
   name:'Story Land',
   emoji:'🏰',
-  theme:{accent:'#ed7d24',accentDark:'#d9601c',themeColor:'#ed7d24'},
+  // accent oscurecido de #ed7d24 a #bd500e (2026-08-24, audits/04-tickets.md
+  // TICKET-5): el core (assets/theme-park-core.css) usa este color como fondo
+  // sólido con texto blanco encima (.kicker, .fab, .bottom button.on) — el
+  // naranja original medía ~2.78:1 de contraste con blanco, muy por debajo
+  // del mínimo WCAG AA de 4.5:1 (detectado por axe-core,
+  // tests/accessibility/axe-audit.spec.js). El nuevo valor da 4.86:1.
+  // accentDark ajustado en la misma proporción para conservar el degradado
+  // .top{background:linear-gradient(...,var(--orange),var(--orange-dark))}.
+  theme:{accent:'#bd500e',accentDark:'#a3440d',themeColor:'#bd500e'},
   copy:{
     backHref:'index.html',backLabel:'← Itinerario',
     headerTitle:'🏰 Story Land',

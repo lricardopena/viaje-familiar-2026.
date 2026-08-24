@@ -27,7 +27,15 @@ Servidor HTTP estático local sirviendo la raíz del repo, medido con Chromium v
 - **Contraste:** no verificado cuantitativamente (requeriría capturas + análisis de color, fuera del alcance práctico de esta pasada). Marcado como **no verificable** en esta auditoría — candidato a T3.4 (ticket de seguimiento con herramienta dedicada, ej. axe-core).
 
 ## Resumen de hallazgos de este eje
-- P2 — densidad baja de `aria-*` relativa al volumen de contenido dinámico generado por el core; riesgo no confirmado con lector de pantalla real.
+- ~~P2 — densidad baja de `aria-*`...~~ **✅ RESUELTO/RECLASIFICADO** — ver "Actualización" abajo.
 - P3 — algunos botones secundarios de mapa por debajo de 44px de touch target.
 - P3 — el core no está minificado (444 KB de carga inicial en LEGOLAND es aceptable, pero mejorable).
-- No verificable — contraste de color no medido cuantitativamente en esta pasada.
+- ~~No verificable — contraste de color no medido cuantitativamente en esta pasada.~~ **✅ RESUELTO** — ver "Actualización" abajo.
+
+## Actualización 2026-08-24 — pase real con axe-core (TICKET-5, `audits/04-tickets.md`)
+
+Se corrió `@axe-core/playwright` (reglas WCAG 2.0/2.1 A+AA) contra `storyland.html`/`legoland.html` con datos reales, sesión autenticada inyectada (bypass del gate de `auth.js` sin modificarlo), en las 4 pestañas de cada parque (`tests/accessibility/axe-audit.spec.js`, `npm run test:a11y`). Resultado honesto, sin sobre-generalizar:
+
+- **La hipótesis original de este documento (aria-* escaso → riesgo WCAG 4.1.2) NO se confirmó con la herramienta real.** axe-core reportó **cero violaciones** de `aria-*`/name-role-value en ninguna de las 8 combinaciones página×pestaña. La densidad baja de `aria-*` contada por grep no se tradujo en un defecto detectable — se reclasifica de P2 confirmado a "señal que no se materializó".
+- **En cambio, sí encontró un problema real y distinto** (WCAG 1.4.3, contraste de color) que este documento había marcado como "no verificable": **8 violaciones `serious`** de `color-contrast`, concentradas en 5 valores de color reutilizados en muchos elementos (`--muted`, `--green`, `.tag.hot`/`.priohigh`, y el acento naranja de Story Land usado como fondo con texto blanco). Corregidas — ver `assets/theme-park-core.css` y `parks/story-land.js` (comentarios inline con la razón y el contraste antes/después de cada cambio). Re-corrido tras el fix: **0 violaciones, de cualquier severidad**, en las 8 combinaciones.
+- **Límite honesto:** axe-core automatiza aproximadamente un tercio a la mitad de los criterios WCAG evaluables — cubre estructura/contraste/atributos, no reemplaza una prueba con lector de pantalla real (NVDA/VoiceOver) para flujo de navegación, orden de foco o anuncios dinámicos. Eso sigue sin verificarse.
