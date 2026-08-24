@@ -5,7 +5,7 @@
 > **Actualización 2026-08-24 (post-auditoría):** H1 y H2, los dos únicos P1, y H3 (P2)
 > quedaron resueltos a petición del usuario tras entregar este reporte (commits
 > "TICKET-1", "TICKET-2" y "TICKET-3"). Además, a petición explícita del usuario, se
-> implementó un Third Party Contract Test explícito (verificación estática de
+> implementó un Third Park Contract Test explícito (verificación estática de
 > ausencia de lógica específica de parque + degradación progresiva completa de
 > `reactionSystem`/`shows` + negative contract test) — ver "TICKET-6" en
 > `audits/04-tickets.md`, no derivado de un hallazgo original de esta auditoría sino

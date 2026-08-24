@@ -64,9 +64,9 @@
 
 ---
 
-### TICKET-6 (fuera del reporte original, pedido explícitamente) — ✅ RESUELTO — Third Party Contract Test explícito
+### TICKET-6 (fuera del reporte original, pedido explícitamente) — ✅ RESUELTO — Third Park Contract Test explícito
 
-**Contexto:** el Third Party Contract Test (frontera core/parque genérico) ya estaba parcialmente cubierto por las secciones 1–11 del spec del Theme Park Companion, pero de forma implícita — sin verificación estática de ausencia de lógica específica de parque, sin cobertura explícita de `reactionSystem`/`shows` como degradación progresiva, y sin un negative contract test.
+**Contexto:** el Third Park Contract Test (frontera core/parque genérico) ya estaba parcialmente cubierto por las secciones 1–11 del spec del Theme Park Companion, pero de forma implícita — sin verificación estática de ausencia de lógica específica de parque, sin cobertura explícita de `reactionSystem`/`shows` como degradación progresiva, y sin un negative contract test.
 
 **Archivos tocados:** `tests/theme-park/theme-park-core.spec.js` (reorganizado y extendido, mismo archivo — sin nueva suite), `tests/theme-park/README.md`.
 

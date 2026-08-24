@@ -2,14 +2,14 @@
 
 Dos suites con objetivos **distintos**, en el mismo archivo (`theme-park-core.spec.js`) porque comparten toda la infraestructura (servidor HTTP efímero, helpers de Playwright):
 
-1. **Third Party Contract Test (secciones 0–12)** — protege la **genericidad** de `assets/theme-park-core.js`. Corre contra un fixture sintético (`fixtures/minimal-test-park.js` + `fixtures/minimal-test-park.html`) que nunca comparte ningún id/nombre/zona/tipo de POI con Story Land ni con LEGOLAND New York — ver "Fixture" más abajo. Es, en la práctica, nuestro tercer parque sintético.
+1. **Third Park Contract Test (secciones 0–12)** — protege la **genericidad** de `assets/theme-park-core.js`. Corre contra un fixture sintético (`fixtures/minimal-test-park.js` + `fixtures/minimal-test-park.html`) que nunca comparte ningún id/nombre/zona/tipo de POI con Story Land ni con LEGOLAND New York — ver "Fixture" más abajo. Es, en la práctica, nuestro tercer parque sintético.
 2. **Regression Tests (sección 13)** — protege el **comportamiento** de los parques reales ya en producción (Story Land, LEGOLAND New York), cargando `storyland.html`/`legoland.html` tal cual se sirven hoy.
 
-**Por qué ambas se mantienen:** un cambio puede pasar el Third Party Contract Test (el core sigue siendo genérico) y aun así romper algo específico de un parque real — por ejemplo su `geoCalibration` propio o sus `quickServices` curados. Y a la inversa, un cambio puede no tocar ningún parque real observable y aun así violar el contrato genérico (por ejemplo, introduciendo una rama `if(PARK.id==='...')` que hoy no se ejercita porque ningún parque real la necesita todavía, pero que rompería silenciosamente al agregar un tercer parque). Si la sección 0–12 falla, ese cambio rompió el contrato genérico — no es un problema del fixture. Si la sección 13 falla, el cambio rompió a un parque real concreto, no necesariamente el contrato genérico en sí.
+**Por qué ambas se mantienen:** un cambio puede pasar el Third Park Contract Test (el core sigue siendo genérico) y aun así romper algo específico de un parque real — por ejemplo su `geoCalibration` propio o sus `quickServices` curados. Y a la inversa, un cambio puede no tocar ningún parque real observable y aun así violar el contrato genérico (por ejemplo, introduciendo una rama `if(PARK.id==='...')` que hoy no se ejercita porque ningún parque real la necesita todavía, pero que rompería silenciosamente al agregar un tercer parque). Si la sección 0–12 falla, ese cambio rompió el contrato genérico — no es un problema del fixture. Si la sección 13 falla, el cambio rompió a un parque real concreto, no necesariamente el contrato genérico en sí.
 
 Ambas son parte del contrato arquitectónico documentado en `specs/operations/testing-and-validation.md.asc`: **un tercer parque debe poder agregarse mediante `parks/<park-id>.js` + configuración + thin HTML shell, sin modificar `assets/theme-park-core.js`.**
 
-## Qué cubre el Third Party Contract Test, sección por sección
+## Qué cubre el Third Park Contract Test, sección por sección
 
 | # | Qué prueba |
 |---|---|
@@ -57,7 +57,7 @@ forma reproducible.
 
 Vive bajo `tests/`, no bajo `parks/` — `parks/` está reservado para parques
 reales que forman parte de la aplicación. Es, en la práctica, nuestro tercer
-parque sintético para el Third Party Contract Test. Cubre deliberadamente:
+parque sintético para el Third Park Contract Test. Cubre deliberadamente:
 
 - una atracción con `geo` y elegibilidad mixta (un niño registrado cumple, el
   otro no) — nunca excluida;

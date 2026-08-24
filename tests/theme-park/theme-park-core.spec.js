@@ -524,7 +524,7 @@ async function newPage(browser, opts) {
   console.log('  no la genericidad del core — ambas suites se mantienen)');
   console.log('============================================================');
   console.log('\n=== 13. Regresión contra los parques reales (Story Land, LEGOLAND New York) ===');
-  // A diferencia de las secciones 0-12 (Third Party Contract Test, contra el fixture sintético),
+  // A diferencia de las secciones 0-12 (Third Park Contract Test, contra el fixture sintético),
   // esto carga storyland.html/legoland.html tal cual se sirven en producción —
   // exige explícitamente specs/operations/testing-and-validation.md.asc:
   // "validar con Playwright contra ambos parques además del fixture sintético".
