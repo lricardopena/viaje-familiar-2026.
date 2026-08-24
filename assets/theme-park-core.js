@@ -54,7 +54,7 @@ const MAP_IMAGE=PARK.map&&PARK.map.image;
 // Incluye POIS además de ALL (antes solo indexaba atracciones): sin esto,
 // openParkMap(poiId) / mapApplyAttraction(poiId) — usado por el botón
 // "🗺️ Ver mapa" de poiCardHtml() para cualquier POI con `geo`, y ahora
-// también por los baños con geo (ver nearestRestroomInfo()) — no
+// también por los servicios con geo (ver nearestLocatable()) — no
 // encontraba nada y mostraba el mapa genérico sin pin. IDs de atracciones
 // y de POIs nunca se pisan (verificado: cero colisiones en Story Land y
 // LEGOLAND New York), así que el merge es seguro; el resto de usos de
@@ -62,6 +62,24 @@ const MAP_IMAGE=PARK.map&&PARK.map.image;
 // reciben ids de atracciones reales por construcción — un POI nunca entra
 // a esos caminos porque los POIs no tienen tarjeta de "toggle done".
 const BY_ID={};[...ALL,...POIS].forEach((a,i)=>BY_ID[a.id]={...a,_i:i});
+/* ---------- Entidades localizables (geo genérico, no solo attractions+pois) ----------
+   `attractions`/`pois` son las dos colecciones por defecto que pueden tener `geo` — cualquier
+   parque las trae siempre. `PARK.geoExtraCollections` (opcional, array de nombres de campos en
+   PARK, ej. `['shows']`) permite que OTRAS colecciones (shows, personajes, lo que sea que un
+   parque futuro agregue) también participen de la capa de proximidad/mapa geográfico SIN tocar
+   este archivo — cada entrada de esa colección solo necesita `{id,name,geo?,zone?,mapMarker?}`,
+   mismo contrato mínimo que ya cumplen attractions/pois. Ningún parque existente configura esto
+   hoy (Story Land/LEGOLAND no tienen `geo` en `shows`), así que el comportamiento no cambia para
+   ellos — es un punto de extensión, no una migración obligatoria. */
+const LOCATABLE_COLLECTIONS=['attractions','pois',...(PARK.geoExtraCollections||[])];
+function allLocatableEntities(){
+  let out=[];
+  LOCATABLE_COLLECTIONS.forEach(key=>{
+    const arr=PARK[key];
+    if(Array.isArray(arr))out=out.concat(arr);
+  });
+  return out;
+}
 
 /* ---------- Tema: aplica los colores/textos del parque a la página ----------
    Un único punto que traduce PARK.theme/PARK.copy a la UI ya presente en el
@@ -133,15 +151,40 @@ function proximityLineHtml(geo){
    de ALL con geo + POIs de POIS con geo. Único lugar que arma esta lista
    combinada, para que el mapa geográfico y el cálculo de "cerca de" siempre
    lean del mismo conjunto. */
+/* geoKnownPoints(): normaliza CUALQUIER entidad localizable (ver LOCATABLE_COLLECTIONS arriba) a
+   una forma común {id,type,icon,name,mapNumber,mapMarker,zone,geo,plusCode,nearbyText,attraction}
+   — único lugar que arma esta lista combinada, para que el mapa geográfico y el cálculo de "cerca
+   de" siempre lean del mismo conjunto. `attractions` es la única colección con semántica de
+   recomendación (`attraction` no-null en la salida, `type:'attraction'` fijo); todas las demás
+   colecciones (`pois`, y cualquier `PARK.geoExtraCollections` futura) son puramente informativas
+   — su `type` es el `e.type` propio del registro, o el nombre de la colección si no trae uno
+   (ej. una colección `shows` sin `type` por entrada quedaría categorizada como `'shows'`).
+   mapMarker se incluye siempre (antes solo vivía en el objeto attraction) para que cualquier
+   punto con mapMarker propio pueda ofrecer "🗺️ Ver mapa oficial" — ver officialBtn en
+   mapGeoPopupHtml(). */
 function geoKnownPoints(){
-  return [
-    ...ALL.filter(a=>a.geo).map(a=>({id:a.id,type:'attraction',icon:null,name:a.name,mapNumber:a.mapNumber,mapMarker:a.mapMarker||null,zone:a.zone,geo:a.geo,plusCode:a.plusCode,nearbyText:null,attraction:a})),
-    // mapMarker agregado acá (antes solo vivía en el objeto attraction) para
-    // que un POI con mapMarker propio (ej. los baños con geo estimado desde
-    // anchors) también pueda ofrecer "🗺️ Ver mapa oficial" — ver officialBtn
-    // en mapGeoPopupHtml().
-    ...POIS.filter(p=>p.geo).map(p=>({id:p.id,type:p.type,icon:p.icon,name:p.name,mapNumber:p.mapNumber!=null?p.mapNumber:null,mapMarker:p.mapMarker||null,zone:p.zone,geo:p.geo,plusCode:p.plusCode,nearbyText:p.nearbyText,attraction:null})),
-  ];
+  let out=[];
+  LOCATABLE_COLLECTIONS.forEach(key=>{
+    const arr=PARK[key];
+    if(!Array.isArray(arr))return;
+    const isAttractions=key==='attractions';
+    arr.filter(e=>e.geo).forEach(e=>{
+      out.push({
+        id:e.id,
+        type:isAttractions?'attraction':(e.type||key),
+        icon:e.icon||null,
+        name:e.name,
+        mapNumber:e.mapNumber!=null?e.mapNumber:null,
+        mapMarker:e.mapMarker||null,
+        zone:e.zone,
+        geo:e.geo,
+        plusCode:e.plusCode,
+        nearbyText:e.nearbyText||null,
+        attraction:isAttractions?e:null,
+      });
+    });
+  });
+  return out;
 }
 function zoneLine(a){return a.mapNumber!=null?`📍 Mapa #${a.mapNumber} · ${a.zone}`:`📍 ${a.zone}`}
 
@@ -212,23 +255,32 @@ function eligibilityConfidenceNote(a){
 function eligibilityFactHtml(a){
   const summ=eligibilitySummary(a);
   if(!summ){
-    // Story Land y cualquier atracción sin `restrictions`: comportamiento
-    // idéntico al original (una sola fila con el flag `adult` general).
-    return `<div class="factrow"><div class="fact">📏 Altura<b>✅ Puede subir</b></div><div class="fact">👨‍👦 Adulto<b>${a.adult?'Requerido':'No requerido'}</b></div></div>`;
+    // Sin `restrictions` y/o sin `family.children`: NO se puede verificar la altura — nunca se
+    // afirma "✅ Puede subir" basándose únicamente en la ausencia de datos (bug corregido — ver
+    // SPECIFICATIONS.md.asc, "Elegibilidad: unknown nunca es ✅"). Lo único que sí es un dato real
+    // en este caso es el flag genérico `adult` (acompañante requerido o no), que se muestra tal
+    // cual — mismo comportamiento visible de siempre para Story Land en ESE campo, pero la altura
+    // ya no miente.
+    return `<div class="factrow"><div class="fact">📏 Altura<b class="priomed">❓ Sin verificar</b></div><div class="fact">👨‍👦 Adulto<b>${a.adult?'Requerido':'No requerido'}</b></div></div>`;
   }
-  const rows=summ.map(({child,elig})=>`<div class="fact">${child.name}${child.heightApprox?' (~alt.)':''}<b class="${elig.status==='cannot-ride'?'priohigh':elig.status==='with-adult'?'priomed':''}">${elig.label}</b></div>`).join('');
+  const rows=summ.map(({child,elig})=>`<div class="fact">${child.name}${child.heightApprox?' (~alt.)':''}<b class="${elig.status==='cannot-ride'?'priohigh':elig.status==='with-adult'?'priomed':elig.status==='unknown'?'priomed':''}">${elig.label}</b></div>`).join('');
   return `<div class="factrow">${rows}</div>${eligibilityConfidenceNote(a)}`;
 }
-/* Penalización suave (no exclusión) cuando NINGÚN niño de la familia puede
-   subir (ni solo ni acompañado) — nunca decide por la familia, solo evita
-   que una atracción "solo para adultos" domine la recomendación de un día
-   pensado en familia (item de la spec: "no queremos que el día esté
-   centrado en rides intensos"). */
-const ADULT_ONLY_PENALTY=40;
-function adultOnlyPenalty(a){
+/* isReallyIneligibleForFamily(a): HARD CONSTRAINT, no un puntaje suave — cuando la elegibilidad
+   real (no `unknown`) de TODOS los niños de la familia es `cannot-ride`, ningún adulto de la
+   familia puede disfrutar tampoco (no hay adultIds/perfil de adulto en el modelo de datos), así
+   que la atracción queda excluida de candidateList() igual que done/closed/discarded — ningún
+   bonus de scoring (imperdible, cercanía GPS, fila corta) puede traerla de vuelta. Antes de esta
+   pasada era un ADULT_ONLY_PENALTY=40 blando: en teoría, una pila suficiente de bonus todavía
+   podía hacerla ganar como recomendación pese a que NADIE de la familia puede subir — eso ya no
+   puede pasar. `unknown` (falta de datos, ver eligibilityForChild) NUNCA cuenta como inelegible —
+   solo excluye cuando la inelegibilidad está realmente confirmada por datos. Sin `restrictions` o
+   sin `family.children` (Story Land, o cualquier atracción sin el campo) esta función siempre
+   devuelve false — no hay base de datos para declarar inelegibilidad real, y no inventamos una. */
+function isReallyIneligibleForFamily(a){
   const summ=eligibilitySummary(a);
-  if(!summ||!summ.length)return 0;
-  return summ.every(({elig})=>elig.status==='cannot-ride')?ADULT_ONLY_PENALTY:0;
+  if(!summ||!summ.length)return false;
+  return summ.every(({elig})=>elig.status==='cannot-ride');
 }
 /* Razón compacta "👧 apta para..." para reasonsFor() — SIEMPRE respaldada
    por datos reales (restrictions+family.children, o el flag genérico
@@ -714,19 +766,53 @@ function toggleMapHelp(){
    "📍 Mapa del parque" y "🚻 ¿Dónde hay un baño?", ambos en la pestaña Tips). */
 let mapViewType='oficial';
 let mapGeoZoomMode='full';
-const MAP_GEO_ALL_FILTERS=['attraction','restroom','food','help'];
-let mapGeoFilters=new Set(['attraction','restroom','food']); // por defecto, sin saturar el mapa
-/* Ningún POI trae type:'help' — es el nombre del botón/chip de filtro
-   ("🩹 Ayuda"), no un tipo de dato. Sin este mapeo, mapGeoFilters.has(p.type)
-   nunca era true para 'firstaid'/'familycare' aunque el chip "Ayuda"
-   estuviera activo (bug encontrado al agregar First Aid/Family Care a
-   LEGOLAND New York — Story Land nunca lo mostró porque no define ningún
-   POI de esos dos tipos). mapGeoFilterCategory() traduce el type real del
-   POI/atracción a la categoría de filtro que le corresponde; cualquier
-   type sin entrada acá usa su propio nombre como categoría (comportamiento
-   de siempre para 'attraction'/'restroom'/'food'). */
-const MAP_GEO_FILTER_CATEGORY={firstaid:'help',familycare:'help'};
-function mapGeoFilterCategory(type){ return MAP_GEO_FILTER_CATEGORY[type]||type; }
+/* ---------- Categorías de filtro del mapa geográfico (genéricas, derivadas de datos) ----------
+   Nunca hay una lista fija de categorías en el core: 'attraction' es la única fija (attractions
+   siempre existe), todo lo demás sale de los `type` de PARK.pois REALMENTE presentes. Un parque
+   puede opcionalmente agrupar varios `type` bajo una sola categoría de filtro vía
+   `PARK.map.poiFilterGroups` (ej. LEGOLAND agrupa `firstaid`+`familycare` bajo `'help'` porque
+   tiene pocos POIs de cada uno — ver parks/legoland-new-york.js); sin configurarlo, cada `type` es
+   su propia categoría. Un tipo de servicio nuevo ('water'/'locker'/'charging'/'shopping'/lo que
+   sea) obtiene su propio chip de filtro automáticamente, sin tocar este archivo. */
+function mapGeoFilterCategory(type){
+  const groups=(PARK.map&&PARK.map.poiFilterGroups)||{};
+  return groups[type]||type;
+}
+function mapGeoAllCategories(){
+  const cats=['attraction'];
+  POIS.forEach(p=>{ const c=mapGeoFilterCategory(p.type); if(!cats.includes(c))cats.push(c); });
+  return cats;
+}
+/* mapGeoCategoryTypes(cat): el inverso de mapGeoFilterCategory() — todos los `type` de POI que
+   caen bajo una categoría de filtro. Usado para armar el conjunto de items a buscar "más cercano"
+   (nearestOfTypes) cuando la categoría agrupa más de un `type`. */
+function mapGeoCategoryTypes(cat){ return [...new Set(POIS.filter(p=>mapGeoFilterCategory(p.type)===cat).map(p=>p.type))]; }
+/* Ícono/etiqueta de un chip de filtro. `PARK.map.poiFilterGroupLabels` (opcional) nombra
+   explícitamente una categoría agrupada (ej. `{help:{icon:'🩹',label:'Ayuda'}}`); `'attraction'`
+   usa un ícono fijo (no hay POI que lo represente); cualquier otra categoría deriva su
+   ícono/etiqueta de poiTypeLabel() del primer `type` que agrupa — nunca hardcodeado por nombre. */
+function filterCategoryMeta(cat){
+  if(cat==='attraction')return {icon:'🎢',label:'Atracciones'};
+  const overrides=(PARK.map&&PARK.map.poiFilterGroupLabels)||{};
+  if(overrides[cat])return overrides[cat];
+  const types=mapGeoCategoryTypes(cat);
+  const label=types.length?poiTypeLabel(types[0]):capitalizeType(cat);
+  const sp=label.indexOf(' ');
+  return sp>0?{icon:label.slice(0,sp),label:label.slice(sp+1)}:{icon:'📍',label};
+}
+// Filtros activos por defecto al abrir el mapa geográfico: 'attraction' + hasta
+// MAP_GEO_DEFAULT_ACTIVE_MAX categorías de POI (en orden de primera aparición en PARK.pois), para
+// no saturar el mapa de entrada — mismo criterio de siempre. Un parque puede fijar el conjunto
+// exacto vía `PARK.map.defaultGeoFilters` (array de categorías) si el default automático no le
+// sirve.
+const MAP_GEO_DEFAULT_ACTIVE_MAX=3;
+function mapGeoDefaultFilters(){
+  const all=mapGeoAllCategories();
+  const cfg=PARK.map&&PARK.map.defaultGeoFilters;
+  if(cfg&&cfg.length)return new Set(cfg.filter(c=>all.includes(c)));
+  return new Set(all.slice(0,1+MAP_GEO_DEFAULT_ACTIVE_MAX));
+}
+let mapGeoFilters=mapGeoDefaultFilters();
 let mapGeoMap=null,mapGeoTileLayer=null,mapGeoMarkersById={},mapGeoTileTimer=null,mapGeoTileOk=false;
 
 function mapSetViewType(type){
@@ -920,9 +1006,26 @@ function mapGeoToggleFilter(name){
   if(!mapGeoFilters.size)mapGeoFilters.add(name); // no permitir quedar sin ningún filtro activo
   renderMapGeo();
 }
-function mapGeoSetAllFilter(){ mapGeoFilters=new Set(MAP_GEO_ALL_FILTERS); renderMapGeo(); }
+function mapGeoSetAllFilter(){ mapGeoFilters=new Set(mapGeoAllCategories()); renderMapGeo(); }
+/* Los chips del filtro (#mapGeoFilters) se generan en JS, no en el HTML — así el esqueleto
+   HTML del parque (legoland.html/storyland.html/cualquier parque nuevo) no necesita listar
+   categorías fijas ("Atracciones"/"Baños"/"Comida"/"Ayuda") a mano; simplemente refleja las que
+   este PARK realmente tiene (ver mapGeoAllCategories()). Se construyen una sola vez por sesión —
+   las categorías no cambian mientras la página está abierta. */
+let mapGeoFilterChipsBuilt=false;
+function ensureMapGeoFilterChips(){
+  if(mapGeoFilterChipsBuilt)return;
+  const container=document.getElementById('mapGeoFilters');
+  if(!container)return;
+  container.innerHTML=mapGeoAllCategories().map(cat=>{
+    const meta=filterCategoryMeta(cat);
+    return `<button type="button" data-filter="${cat}" onclick="mapGeoToggleFilter('${cat}')">${meta.icon} ${meta.label}</button>`;
+  }).join('')+'<button type="button" data-filter="all" onclick="mapGeoSetAllFilter()">Todos</button>';
+  mapGeoFilterChipsBuilt=true;
+}
 function renderMapGeo(){
   ensureGeoMap();
+  ensureMapGeoFilterChips();
   const a=mapCurrentAttraction;
   const banner=document.getElementById('mapGeoBanner');
   if(!updateQuickServiceBanner()){
@@ -937,7 +1040,7 @@ function renderMapGeo(){
     }
   }
   document.querySelectorAll('#mapGeoFilters button[data-filter]').forEach(btn=>{
-    btn.classList.toggle('active',btn.dataset.filter==='all'?mapGeoFilters.size===MAP_GEO_ALL_FILTERS.length:mapGeoFilters.has(btn.dataset.filter));
+    btn.classList.toggle('active',btn.dataset.filter==='all'?mapGeoFilters.size===mapGeoAllCategories().length:mapGeoFilters.has(btn.dataset.filter));
   });
   mapGeoRenderMarkers();
   mapGeoRenderNoGeoList();
@@ -968,96 +1071,80 @@ function renderMapGeo(){
         anchor ("cerca de Fire Academy, a ~40 m de tu posición") — nunca
         una distancia al baño mismo que no se calculó.
    Devuelve null si no hay GPS o no hay ningún baño en absoluto. */
-const RESTROOM_GEO_CONFIDENCE_RANK={confirmed_on_site:0,official_map:1,approximate:2};
-function nearestRestroomInfo(){
+/* ---------- Capacidad única de proximidad/ranking ("nearest of") ----------
+   nearestLocatable(items): UNA sola implementación reutilizable para "¿cuál de estos puntos está
+   más cerca?" — reemplaza los dos algoritmos casi idénticos que existían antes (uno para baños,
+   otro copiado/generalizado para el resto de servicios). Cualquier capacidad nueva que necesite
+   "el/los más cercanos de un conjunto" (baños, comida, ayuda, un tipo de servicio que todavía no
+   existe, o incluso atracciones) llama a esta misma función — no se escribe un algoritmo de
+   ranking nuevo por tipo de servicio.
+     1. Si CUALQUIER `item` del conjunto tiene `geo` (medido o estimado), la distancia real
+        (Haversine) manda siempre — nunca una inferencia de zona desplaza algo con ubicación
+        conocida que esté geográficamente más cerca. Entre los que sí tienen `geo`, se ordena por
+        distancia real y, solo en un empate exacto de metros, por nivel de confianza
+        (GEO_CONFIDENCE_RANK: `confirmed_on_site` > `official_map` > `approximate` > sin
+        especificar) — un desempate, nunca un filtro que excluya un candidato más cercano de
+        menor confianza.
+     2. Solo si NINGÚN `item` del conjunto tiene `geo` todavía, cae a inferencia de zona: el que
+        esté en la MISMA zona que el punto real conocido (geoKnownPoints()) más cercano al GPS,
+        con la distancia real a ESE anchor — nunca una distancia al ítem mismo que no se calculó.
+   Devuelve null sin GPS o sin ningún `item` en el conjunto. `ranked` incluye el resto de
+   candidatos con `geo` ordenados, para quien necesite mostrar "el segundo/tercero más cercano". */
+const GEO_CONFIDENCE_RANK={confirmed_on_site:0,official_map:1,approximate:2};
+function nearestLocatable(items){
   if(!mapGpsState.coords)return null;
+  if(!items||!items.length)return null;
   const gps=mapGpsState.coords;
-  const restrooms=POIS.filter(p=>p.type==='restroom');
-  if(!restrooms.length)return null;
-  const withGeo=restrooms.filter(r=>r.geo);
-  if(withGeo.length){
-    const ranked=withGeo.map(r=>({
-      r,
-      d:haversineMeters(gps,r.geo),
-      tier:RESTROOM_GEO_CONFIDENCE_RANK[r.geo.confidence]!=null?RESTROOM_GEO_CONFIDENCE_RANK[r.geo.confidence]:3,
-    })).sort((a,b)=>a.d-b.d||a.tier-b.tier);
-    const best=ranked[0];
-    return {restroom:best.r,meters:Math.round(best.d),exact:true,confidence:best.r.geo.confidence||null};
-  }
-  const known=geoKnownPoints();
-  const nearestKnown=known.length?known.map(p=>({p,d:haversineMeters(gps,p.geo)})).sort((a,b)=>a.d-b.d)[0]:null;
-  const zoneMatch=nearestKnown&&restrooms.find(r=>r.zone===nearestKnown.p.zone);
-  if(zoneMatch)return {restroom:zoneMatch,meters:null,exact:false,anchorName:nearestKnown.p.name,anchorMeters:Math.round(nearestKnown.d)};
-  return null;
-}
-function nearestRestroomBannerHtml(){
-  const info=nearestRestroomInfo();
-  if(!info)return mapGpsState.coords
-    ?'' // hay GPS pero ni siquiera hay un anchor conocido cerca — no hay nada honesto que decir todavía
-    :'🚻 Activa "📍 Mi ubicación" para ver el baño más cercano — mientras tanto, todos los baños conocidos aparecen abajo.';
-  const r=info.restroom,zoneTxt=r.zone?` — ${r.zone}`:'';
-  // Plantillas pedidas explícitamente: con coordenada conocida SÍ se muestra una distancia (en
-  // línea recta, nunca "caminando"); sin coordenada del baño, NUNCA se muestra una distancia al
-  // baño mismo — solo la referencia de a qué anchor conocido está cerca.
-  if(info.exact)return `🚻 <b>Baño más cercano</b> · ~${info.meters} m en línea recta — ${r.name}${zoneTxt}`;
-  return `🚻 <b>Baño cercano</b> · cerca de ${info.anchorName} (~${info.anchorMeters} m en línea recta de tu posición) — ${r.name}${zoneTxt}`;
-}
-/* Refresca el banner de baño más cercano si el visor de baños está
-   abierto ahora mismo (filtro reducido a solo 'restroom' — ver
-   openRestroomFinder()). No hace nada si el usuario está viendo otra
-   pestaña/filtro, para no pisar el banner de "atracción sin geo". Se
-   llama desde renderMapGeo() (al abrir/cambiar filtros) y desde
-   mapGpsOnSuccess() (cuando llega o se actualiza el GPS) — así, si el
-   usuario ya había concedido el permiso, tocar "🚻 ¿Dónde hay un baño?"
-   muestra el más cercano sin ningún toque adicional. */
-/* nearestServiceInfo(types): igual mecánica que nearestRestroomInfo() (distancia real manda,
-   fallback a inferencia de zona solo si NINGÚN POI del grupo tiene `geo`) pero genérica para
-   cualquier grupo de tipos de POI — usada por los accesos rápidos nuevos (🍔 Comida, 🩹 Ayuda). No
-   reemplaza a nearestRestroomInfo() (se deja intacta, ya validada) — evita tocar código de baños ya
-   probado mientras generaliza el resto. */
-function nearestServiceInfo(types){
-  if(!mapGpsState.coords)return null;
-  const gps=mapGpsState.coords;
-  const items=POIS.filter(p=>types.includes(p.type));
-  if(!items.length)return null;
   const withGeo=items.filter(p=>p.geo);
   if(withGeo.length){
     const ranked=withGeo.map(p=>({
-      p,d:haversineMeters(gps,p.geo),
-      tier:RESTROOM_GEO_CONFIDENCE_RANK[p.geo.confidence]!=null?RESTROOM_GEO_CONFIDENCE_RANK[p.geo.confidence]:3,
-    })).sort((a,b)=>a.d-b.d||a.tier-b.tier);
+      item:p,
+      meters:Math.round(haversineMeters(gps,p.geo)),
+      tier:GEO_CONFIDENCE_RANK[p.geo.confidence]!=null?GEO_CONFIDENCE_RANK[p.geo.confidence]:3,
+    })).sort((a,b)=>a.meters-b.meters||a.tier-b.tier);
     const best=ranked[0];
-    return {item:best.p,meters:Math.round(best.d),exact:true};
+    return {item:best.item,meters:best.meters,exact:true,confidence:best.item.geo.confidence||null,ranked};
   }
   const known=geoKnownPoints();
   const nearestKnown=known.length?known.map(p=>({p,d:haversineMeters(gps,p.geo)})).sort((a,b)=>a.d-b.d)[0]:null;
   const zoneMatch=nearestKnown&&items.find(p=>p.zone===nearestKnown.p.zone);
-  if(zoneMatch)return {item:zoneMatch,meters:null,exact:false,anchorName:nearestKnown.p.name,anchorMeters:Math.round(nearestKnown.d)};
+  if(zoneMatch)return {item:zoneMatch,meters:null,exact:false,anchorName:nearestKnown.p.name,anchorMeters:Math.round(nearestKnown.d),ranked:[]};
   return null;
 }
-function quickServiceBannerHtml(types,icon,label){
-  const info=nearestServiceInfo(types);
+/* nearestOfTypes(types): atajo sobre nearestLocatable() para "el POI más cercano de estos
+   `type`s" — types es un array de strings, sin ningún nombre fijo (no asume 'restroom'/'food'/
+   etc., cualquier type que un parque use funciona igual). Usada por servicesHtml()/
+   quickServicesHtml()/los banners del mapa geográfico. */
+function nearestOfTypes(types){ return nearestLocatable(POIS.filter(p=>types.includes(p.type))); }
+/* Plantilla de banner "X más cercano" — genérica sobre icon/label, reutilizada para cualquier
+   categoría de acceso rápido (baños, comida, o lo que un parque agregue). */
+function nearestServiceBannerHtml(types,icon,label){
+  const info=nearestOfTypes(types);
   if(!info)return mapGpsState.coords
-    ?''
+    ?'' // hay GPS pero ni siquiera hay un anchor conocido cerca — no hay nada honesto que decir todavía
     :`${icon} Activa "📍 Mi ubicación" para ver ${label.toLowerCase()} más cercano — mientras tanto, todos los puntos conocidos aparecen abajo.`;
   const zoneTxt=info.item.zone?` — ${info.item.zone}`:'';
+  // Plantillas pedidas explícitamente: con coordenada conocida SÍ se muestra una distancia (en
+  // línea recta, nunca "caminando"); sin coordenada del punto, NUNCA se muestra una distancia al
+  // punto mismo — solo la referencia de a qué anchor conocido está cerca.
   if(info.exact)return `${icon} <b>${label} más cercano</b> · ~${humanDistanceLabel(info.meters)} en línea recta — ${info.item.name}${zoneTxt}`;
   return `${icon} <b>${label} cercano</b> · cerca de ${info.anchorName} (~${humanDistanceLabel(info.anchorMeters)} en línea recta de tu posición) — ${info.item.name}${zoneTxt}`;
 }
-/* updateQuickServiceBanner(): generaliza updateNearestRestroomBanner() (que se deja arriba
-   intacta, ver nota) a cualquiera de los accesos rápidos — se activa solo cuando el filtro del
-   mapa geográfico quedó reducido a una única categoría de servicio (restroom/food/help) y no hay
-   atracción seleccionada, mismo criterio de antes. 'help' agrupa firstaid+familycare (ver
-   MAP_GEO_FILTER_CATEGORY) — banner conjunto para el grupo, mismo criterio que ya usa el filtro. */
+/* updateQuickServiceBanner(): refresca el banner de "más cercano" del mapa geográfico cuando el
+   filtro quedó reducido a una única categoría de servicio y no hay atracción seleccionada — se
+   llama desde renderMapGeo() (al abrir/cambiar filtros) y desde mapGpsOnSuccess() (cuando llega o
+   se actualiza el GPS), así tocar un acceso rápido muestra el más cercano sin ningún toque
+   adicional si el usuario ya había concedido el permiso. Genérico: la categoría activa decide qué
+   `type`s agrupar vía mapGeoCategoryTypes() (ver más abajo, deriva de PARK.map.poiFilterGroups) —
+   nunca asume 'restroom'/'food'/'help' como nombres fijos. */
 function updateQuickServiceBanner(){
   if(mapGeoFilters.size!==1||mapCurrentAttraction)return false;
-  const filter=[...mapGeoFilters][0];
+  const cat=[...mapGeoFilters][0];
   const banner=document.getElementById('mapGeoBanner');
-  let html='';
-  if(filter==='restroom')html=nearestRestroomBannerHtml();
-  else if(filter==='food')html=quickServiceBannerHtml(['food'],'🍴','Comida');
-  else if(filter==='help')html=quickServiceBannerHtml(['firstaid','familycare'],'🩹','Ayuda (First Aid / Family Care)');
-  else return false;
+  if(cat==='attraction')return false; // "atracciones" no tiene banner de más cercano — eso lo cubre "Estás aquí"/mapGpsUpdateDistanceLine
+  const types=mapGeoCategoryTypes(cat);
+  const meta=filterCategoryMeta(cat);
+  const html=nearestServiceBannerHtml(types,meta.icon,meta.label);
   banner.hidden=!html;
   if(html)banner.innerHTML=html;
   return true;
@@ -1070,7 +1157,7 @@ function updateQuickServiceBanner(){
 function openRestroomFinder(){ openParkMap(null,{forceView:'geo',geoFilterOnly:'restroom'}); }
 function openParkGeoMap(){ openParkMap(null,{forceView:'geo'}); }
 /* openServiceQuickView(type): igual patrón que openRestroomFinder(), generalizado para cualquier
-   tipo de servicio de los accesos rápidos nuevos (ver quickServicesHtml() más abajo). */
+   tipo de servicio de los accesos rápidos (ver quickServicesHtml() más abajo). */
 function openServiceQuickView(type){ openParkMap(null,{forceView:'geo',geoFilterOnly:type}); }
 
 /* ---------- Geolocalización del usuario ("📍 Mi ubicación") ----------
@@ -1347,8 +1434,9 @@ function loadState(){
   if(!s.deferred)s.deferred={};                       // id -> {atCount, zone} cuando se marca "fila muy larga"
   if(!('recommendationCount' in s))s.recommendationCount=0; // avanza con cada acción, usado para el cooldown
   if(!s.skipped)s.skipped={};                          // id -> {atCount} cuando se toca "saltar por ahora"
-  // id -> {range:'0-10'|'10-20'|'20-40'|'40+', at:timestamp} — fila observada a mano por la
-  // familia (ver "Tiempo de espera manual" más abajo). Migración defensiva: un estado guardado
+  // id -> {range,observedAt,source,ttlMs} — observación de fila (ver "Observación de fila" más
+  // abajo; waitObservation() también acepta la forma anterior {range,at} sin `source`/`ttlMs`
+  // explícitos, generada por una pasada previa de esta misma rama). Migración defensiva: un estado guardado
   // antes de esta pasada simplemente no tiene esta clave — no se borra ningún progreso existente.
   if(!s.waitTimes)s.waitTimes={};
   return s;
@@ -1358,53 +1446,85 @@ function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 function getStatus(id){return state.status[id]||'pending'}
 function setStatus(id,val){state.status[id]=val;save();renderAll()}
 
-/* ---------- Tiempo de espera manual ("¿cuánta fila hay?") ----------
-   Genérico para cualquier parque — no depende de ninguna API externa de
-   tiempos de espera (a propósito, no en esta pasada). La familia registra
-   a mano el rango que observaron parados en la fila; ese dato:
-     1. Ajusta el scoring mientras esté "vigente" (WAIT_EXPIRY_MS) — ver
-        waitTimeScoreAdjust() y computeScore().
-     2. Sigue MOSTRÁNDOSE aunque haya caducado para el scoring ("dato
-        antiguo"), hasta que la familia lo reemplace o lo borre — nunca
-        desaparece solo por caducar, sería perder información útil
-        ("¿hace cuánto lo vieron?" sigue siendo relevante aunque ya no
-        deba mover la recomendación).
-   Toggle genérico: tocar el mismo rango de nuevo lo borra — mismo patrón
-   que cycleStatus() para el resto de los estados de la app. */
+/* ---------- Observación de fila ("¿cuánta fila hay?") ----------
+   Genérico para cualquier parque — no depende de ninguna API externa de tiempos de espera (a
+   propósito, no en esta pasada). Modelo de dato — una OBSERVACIÓN independiente del `status` de
+   la atracción, no un campo más de él (`done`/`closed`/`discarded` viven en `state.status`; esto
+   vive aparte en `state.waitTimes`, y las dos cosas se combinan solo en isHardExcluded()/
+   computeScore(), nunca se confunden):
+     state.waitTimes[id] = { range, observedAt, source, ttlMs }
+   - `range`: hoy siempre uno de WAIT_RANGES ('0-10'/'10-20'/'20-40'/'40+'), un valor discreto
+     elegido a mano. El campo se llama `range` y no `value` porque toda la UI/scoring de esta
+     pasada trabaja con rangos, pero nada impide que un `source` futuro use `value` en minutos —
+     ver más abajo.
+   - `observedAt`: timestamp de cuándo se registró (antes se llamaba `at`; waitObservation() lee
+     ambos nombres por compatibilidad con datos guardados en una pasada anterior de esta misma
+     rama, sin perder ese progreso).
+   - `source`: de dónde vino el dato. Hoy solo `'manual'` (la familia lo registra a mano). El
+     campo existe desde ahora para que un `source:'official'` (feed oficial del parque) o
+     `'external'` (API de terceros) puedan agregarse en el futuro simplemente escribiendo ese
+     valor al guardar la observación — waitTimeScoreAdjust()/reasonCandidates() ya leen `source`
+     de forma genérica, ninguno de los dos necesitaría cambiar.
+   - `ttlMs`: cuánto dura vigente ESTA observación para el scoring — default WAIT_DEFAULT_TTL_MS
+     (~40 min, dentro del rango 30-45 min pedido), pero cada observación puede traer su propio TTL
+     (un futuro `source:'official'` con refresco cada 5 min declararía un `ttlMs` más corto).
+   Caducidad: pasado `ttlMs`, `waitTimeScoreAdjust()` devuelve 0 (deja de mover el scoring), pero
+   la observación SIGUE MOSTRÁNDOSE como "dato antiguo" (`waitTimeStatusText()`) hasta que la
+   familia la reemplace o la borre — nunca desaparece sola, sería perder información útil.
+   Toggle genérico: tocar el mismo rango de nuevo lo borra — mismo patrón que cycleStatus() para
+   el resto de los estados de la app. */
 const WAIT_RANGES=['0-10','10-20','20-40','40+'];
 const WAIT_RANGE_LABEL={'0-10':'0–10 min','10-20':'10–20 min','20-40':'20–40 min','40+':'40+ min'};
-const WAIT_EXPIRY_MS=40*60*1000; // ~40 min — dentro del rango 30-45 min pedido
+const WAIT_DEFAULT_TTL_MS=40*60*1000; // ~40 min — dentro del rango 30-45 min pedido
 // Ajuste de score por rango: pequeño bonus / neutral (bonus chico) / penalización moderada /
 // penalización fuerte. Todos muy por debajo de TIER_W (100): una fila corta puede desempatar entre
 // candidatos parecidos, pero nunca hace que algo de tier bajo le gane a un imperdible pendiente, ni
 // que una fila larga saque a un imperdible de la recomendación (solo lo compite, con la explicación
-// dejando claro que la fila es larga — ver reasonsFor()).
+// dejando claro que la fila es larga — ver reasonCandidates()). Mismo mapa para cualquier `source`
+// — un `range` '20-40' pesa igual venga de dónde venga.
 const WAIT_SCORE={'0-10':14,'10-20':4,'20-40':-35,'40+':-80};
-function waitTimeInfo(id){
+/* waitObservation(id): lee la observación vigente (si hay) con su forma normalizada, sea cual sea
+   el `source` — único punto que interpreta state.waitTimes[id]. */
+function waitObservation(id){
   const w=state.waitTimes&&state.waitTimes[id];
   if(!w)return null;
-  const ageMs=Date.now()-w.at;
-  return {range:w.range,at:w.at,ageMin:Math.floor(ageMs/60000),expired:ageMs>WAIT_EXPIRY_MS};
+  const observedAt=w.observedAt!=null?w.observedAt:w.at; // `at`: forma anterior de esta misma rama, compatibilidad
+  const ttlMs=w.ttlMs!=null?w.ttlMs:WAIT_DEFAULT_TTL_MS;
+  const ageMs=Date.now()-observedAt;
+  return {range:w.range,observedAt,source:w.source||'manual',ttlMs,ageMin:Math.floor(ageMs/60000),expired:ageMs>ttlMs};
 }
-function setWaitTime(id,range){
+// Nombre preexistente conservado (menos ripple en el resto del archivo) — mismo dato que
+// waitObservation(), que es ahora la implementación real.
+function waitTimeInfo(id){ return waitObservation(id); }
+/* recordWaitObservation(id,range,opts): guarda una observación — `opts.source` (default
+   'manual') y `opts.ttlMs` (default WAIT_DEFAULT_TTL_MS) quedan abiertos para cuando un source
+   'official'/'external' necesite valores propios. setWaitTime() (nombre que ya usa toda la UI) es
+   el atajo manual de siempre: mismo rango de nuevo = borrar. */
+function recordWaitObservation(id,range,opts){
+  opts=opts||{};
   if(!state.waitTimes)state.waitTimes={};
-  if(state.waitTimes[id]&&state.waitTimes[id].range===range)delete state.waitTimes[id]; // mismo rango de nuevo = borrar
-  else state.waitTimes[id]={range,at:Date.now()};
+  const existing=state.waitTimes[id];
+  if(existing&&existing.range===range&&(existing.source||'manual')===(opts.source||'manual')){
+    delete state.waitTimes[id];
+  }else{
+    state.waitTimes[id]={range,observedAt:Date.now(),source:opts.source||'manual',ttlMs:opts.ttlMs||WAIT_DEFAULT_TTL_MS};
+  }
   save();renderAll();
 }
+function setWaitTime(id,range){ recordWaitObservation(id,range); }
 function clearWaitTime(id){
   if(state.waitTimes)delete state.waitTimes[id];
   save();renderAll();
 }
 function waitTimeScoreAdjust(a){
-  const info=waitTimeInfo(a.id);
+  const info=waitObservation(a.id);
   if(!info||info.expired)return 0;
   return WAIT_SCORE[info.range]||0;
 }
 /* Texto compacto "10–20 min · hace 8 min" / "20–40 min · dato antiguo" —
    sin ícono (los call sites deciden cuál usar según contexto). */
 function waitTimeStatusText(id){
-  const info=waitTimeInfo(id);
+  const info=waitObservation(id);
   if(!info)return null;
   const ageTxt=info.expired?'dato antiguo':`hace ${info.ageMin<1?'<1':info.ageMin} min`;
   return `${WAIT_RANGE_LABEL[info.range]} · ${ageTxt}`;
@@ -1438,7 +1558,7 @@ setInterval(()=>{ if(state.waitTimes&&Object.keys(state.waitTimes).length)render
            + childAffinityBonus(familySuitability) + timeOfDayBonus(agua,
            weatherSuitability aproximada por calor) + groupEarlyBonus
            + reactionBonus + restBonus + closingSoonBonus
-           - deferredPenalty(waitTimeScore) - skipPenalty - adultOnlyPenalty
+           - deferredPenalty(waitTimeScore) - skipPenalty
 
    La prioridad (tier) manda: cada nivel vale TIER_W puntos, y la suma de
    los bonus de contexto normalmente no alcanza un nivel completo — así un
@@ -1448,7 +1568,10 @@ setInterval(()=>{ if(state.waitTimes&&Object.keys(state.waitTimes).length)render
    necesidad, pero no puede "inventar" prioridad donde no la hay.
    Las restricciones de seguridad (elegibilidad por niño) SIEMPRE se
    muestran de forma prominente sobre la tarjeta, nunca ocultas detrás del
-   score — ver eligibilityFactHtml() en el core y adultOnlyPenalty().
+   score — ver eligibilityFactHtml() en el core. La inelegibilidad REAL
+   (todos los niños `cannot-ride`) ya no es un puntaje suave dentro de esta
+   fórmula — es un hard constraint que excluye en candidateList(), ver
+   isReallyIneligibleForFamily() e isHardExcluded() más abajo.
 
    Pesos ajustables aquí abajo — están comentados para que cambiarlos más
    adelante (o durante el día, si algo no se siente bien) sea fácil. */
@@ -1652,25 +1775,38 @@ function computeScore(a){
   let skipPenalty=isOnSkipCooldown(a.id)?SKIP_PENALTY:0;
   return priorityScore+sameZoneBonus(a)+proximityBonus(a)+gpsProximityBonus(a)+childBonus(a)+timeOfDayBonus(a)
     +groupEarlyBonus(a)+reactionBonus(a)+restBonus(a)+closingSoonBonus(a)+waitTimeScoreAdjust(a)
-    -deferredPenalty-skipPenalty-adultOnlyPenalty(a);
+    -deferredPenalty-skipPenalty;
 }
-/* candidateList(): TODO lo que no esté "done", "closed" ni "discarded" —
-   incluye "repeat", para que los favoritos puedan volver a competir más
-   adelante en vez de desaparecer del todo. "closed" (atracción
-   temporalmente cerrada — mantenimiento, clima, etc.) se excluye igual que
-   "done": no tiene sentido seguir recomendándola mientras esté marcada así.
-   "discarded" (la familia decidió explícitamente que NO quiere hacerla) se
-   excluye de forma permanente — a diferencia de "closed"/"later"/"skipped",
-   ningún bonus de scoring (imperdible, favorita del niño, cercanía, misma
-   zona, agua, prioridad alta) puede traerla de vuelta mientras esté
-   descartada; la decisión explícita de la familia siempre gana. A
-   diferencia de "done", ni "closed" ni "discarded" significan que ya la
-   disfrutaron — por eso ninguno de los dos cuenta para "Imperdibles: x/N"
-   ni aparece en Favoritas, solo dejan de competir.
-   Se recalcula por completo en cada llamada: no hay itinerario guardado,
-   solo el estado actual de cada atracción. */
+/* ---------- Hard constraints vs. soft signals ----------
+   Formalizado esta pasada (antes vivía implícito, repartido entre el filtro de candidateList() y
+   un puntaje suave para inelegibilidad). Regla: un HARD CONSTRAINT excluye una atracción de
+   candidateList() por completo, ANTES de que computeScore() se evalúe siquiera — ningún soft
+   signal (proximidad, fila corta, imperdible, favorita) puede revertirlo. Un SOFT SIGNAL solo
+   reordena DENTRO del conjunto que ya pasó los hard constraints.
+   Hard constraints reconocidos hoy — todos evaluados por isHardExcluded():
+     - status 'done'/'closed'/'discarded' (ver getStatus())
+     - inelegibilidad REAL confirmada por datos (isReallyIneligibleForFamily() — nunca por
+       ausencia de datos, eso es 'unknown', no inelegible)
+     - a.unavailable===true — reservado para disponibilidad futura (temporada/horario cerrado por
+       calendario, no por acción manual de la familia); ningún dato de parks/*.js lo usa hoy, un
+       parque puede optar por declararlo sin tocar el core.
+   Todo lo demás (tier/tarjeta de prioridad, sameZoneBonus, proximityBonus, gpsProximityBonus,
+   childBonus, timeOfDayBonus, groupEarlyBonus, reactionBonus, restBonus, closingSoonBonus,
+   waitTimeScoreAdjust, deferredPenalty/skipPenalty) es soft signal: ajusta el orden, nunca decide
+   quién compite. */
+function isHardExcluded(a){
+  const s=getStatus(a.id);
+  if(s==='done'||s==='closed'||s==='discarded')return true;
+  if(isReallyIneligibleForFamily(a))return true;
+  if(a.unavailable===true)return true;
+  return false;
+}
+/* candidateList(): TODO lo que no esté hard-excluido (ver isHardExcluded arriba) — incluye
+   "repeat", para que los favoritos puedan volver a competir más adelante en vez de desaparecer
+   del todo. Se recalcula por completo en cada llamada: no hay itinerario guardado, solo el estado
+   actual de cada atracción. */
 function candidateList(){
-  return ALL.filter(a=>!['done','closed','discarded'].includes(getStatus(a.id)))
+  return ALL.filter(a=>!isHardExcluded(a))
     .map(a=>({...a,tier:effectiveTier(a),score:computeScore(a),deferred:isOnCooldown(a.id),skipCooldown:isOnSkipCooldown(a.id)}))
     .sort((a,b)=>b.score-a.score||a._i-b._i);
 }
@@ -1710,44 +1846,62 @@ function whyNow(a){
   if(status==='later')return `Ya pasó un rato desde que la fila estaba muy larga — vale la pena volver a intentarlo. ${a.why||''}`;
   return a.why||'';
 }
-/* Razones cortas (entre 0 y 4 — nunca se fuerza un mínimo, solo se
-   muestran las que de verdad tienen datos detrás) que explican por qué se
-   sugiere esto ahora mismo, sin convertir la tarjeta en un párrafo largo
-   ni mostrar el score numérico. El orden de los "if" es la prioridad
-   editorial: lo más específico al contexto actual va primero, así
-   slice(0,4) muestra lo más relevante. Vocabulario de íconos fijo (para
-   que la familia aprenda a leerlos de un vistazo): ⭐ imperdible/prioridad
-   · 📍 cercana (GPS real) · 👧 apta para los niños · 🗺️ misma zona ·
-   🧭 buena siguiente parada por ubicación (nearbyAttractions) · 💦 buen
-   momento para refrescarse · 🔁 favorita/repetir · ⏱/🕐 fila corta/larga
-   registrada a mano. Genérico en el core — ningún ícono ni texto es
-   específico de LEGOLAND ni de Story Land. */
-function reasonsFor(a){
-  let r=[],status=getStatus(a.id);
-  if(status==='repeat')r.push('🔁 La quería repetir.');
-  if(status==='later'&&!isOnCooldown(a.id))r.push('🕐 La fila larga anterior ya puede revisarse.');
-  if(a.tier<=1&&status==='pending')r.push('⭐ Sigue siendo un imperdible pendiente.');
-  if(sameZoneBonus(a))r.push('🗺️ Ya estás en esta zona.');
-  else if(proximityBonus(a))r.push('🧭 Buena siguiente parada — está cerca de lo último que hicieron.');
-  else if(gpsProximityBonus(a)){
-    const gm=gpsDistanceMeters(a.geo);
-    if(gm!=null)r.push(`📍 A ${humanDistanceLabel(gm)}`);
-  }
-  (PARK.priorityGroups||[]).forEach(g=>{
-    if(g.ids.includes(a.id)&&g.ids.some(id=>id!==a.id&&BY_ID[id]&&BY_ID[id].zone===a.zone&&['pending','later'].includes(getStatus(id))))r.push(g.reasonLabel);
-  });
-  if(timeOfDayBonus(a))r.push('💦 Buen momento para refrescarse.');
+/* ---------- Registro de razones (reasonsFor) ----------
+   Abstracción {reasonKey, reasonLabel, displayPriority, scoreDelta, active} pedida explícitamente
+   — agregar una razón nueva (ej. cuando un `source` de fila 'official'/'external' llegue, o
+   cualquier señal futura) es agregar UNA entrada a reasonCandidates(), no un "if" más disperso
+   por el código. `active` decide si aplica a esta atracción/estado ahora mismo; `displayPriority`
+   (menor = más prioritaria/específica) ordena cuáles mostrar primero cuando hay más de
+   REASON_DISPLAY_LIMIT aplicables; `scoreDelta` documenta, para quien audite una razón, cuánto
+   pesa realmente en computeScore() — no es lo que se le muestra a la familia (nunca se expone el
+   número), es la trazabilidad razón↔peso para quien mantiene el motor.
+   Vocabulario de íconos fijo (para que la familia aprenda a leerlos de un vistazo): ⭐
+   imperdible/prioridad · 📍 cercana (GPS real) · 👧 apta para los niños · 🗺️ misma zona · 🧭 buena
+   siguiente parada por ubicación (nearbyAttractions) · 💦 buen momento para refrescarse · 🔁
+   favorita/repetir · ⏱/🕐 fila corta/larga registrada. Genérico en el core — ningún ícono, texto
+   ni `reasonKey` es específico de LEGOLAND ni de Story Land. */
+const REASON_DISPLAY_LIMIT=4;
+function priorityGroupReasonCandidates(a){
+  return (PARK.priorityGroups||[]).map((g,i)=>({
+    reasonKey:`priority-group-${i}`,
+    reasonLabel:g.reasonLabel,
+    displayPriority:6,
+    scoreDelta:null, // el bonus real (groupEarlyBonus) es condicional a doneTotalCount(), no 1:1 con esta razón puntual
+    active:g.ids.includes(a.id)&&g.ids.some(id=>id!==a.id&&BY_ID[id]&&BY_ID[id].zone===a.zone&&['pending','later'].includes(getStatus(id))),
+  }));
+}
+function reasonCandidates(a,status){
+  const gm=gpsDistanceMeters(a.geo);
+  const wait=waitObservation(a.id);
   const childR=childReasonFor(a,status);
-  if(childR)r.push(childR);
-  if(restBonus(a))r.push('😌 Buena opción para descansar.');
-  if(closingSoonBonus(a))r.push('⏰ Quedan pocas horas — mejor no dejarla para el final.');
-  const waitInfo=waitTimeInfo(a.id);
-  if(waitInfo&&!waitInfo.expired){
-    r.push(waitInfo.range==='0-10'||waitInfo.range==='10-20'
-      ?`⏱ Fila ${WAIT_RANGE_LABEL[waitInfo.range]} (registrada)`
-      :`🕐 Fila larga registrada (${WAIT_RANGE_LABEL[waitInfo.range]})`);
-  }
-  return r.slice(0,4);
+  const sameZone=!!sameZoneBonus(a);
+  const nextStop=!sameZone&&!!proximityBonus(a);
+  const gpsNear=!sameZone&&!nextStop&&!!gpsProximityBonus(a)&&gm!=null;
+  return [
+    {reasonKey:'repeat',reasonLabel:'🔁 La quería repetir.',displayPriority:0,scoreDelta:null,active:status==='repeat'},
+    {reasonKey:'later-ready',reasonLabel:'🕐 La fila larga anterior ya puede revisarse.',displayPriority:1,scoreDelta:0,active:status==='later'&&!isOnCooldown(a.id)},
+    {reasonKey:'must-pending',reasonLabel:'⭐ Sigue siendo un imperdible pendiente.',displayPriority:2,scoreDelta:null,active:a.tier<=1&&status==='pending'},
+    {reasonKey:'same-zone',reasonLabel:'🗺️ Ya estás en esta zona.',displayPriority:3,scoreDelta:SAME_ZONE_BONUS,active:sameZone},
+    {reasonKey:'next-stop',reasonLabel:'🧭 Buena siguiente parada — está cerca de lo último que hicieron.',displayPriority:4,scoreDelta:PROXIMITY_BONUS,active:nextStop},
+    {reasonKey:'gps-near',reasonLabel:gpsNear?`📍 A ${humanDistanceLabel(gm)}`:'',displayPriority:5,scoreDelta:gpsNear?gpsProximityBonus(a):0,active:gpsNear},
+    ...priorityGroupReasonCandidates(a),
+    {reasonKey:'water',reasonLabel:'💦 Buen momento para refrescarse.',displayPriority:7,scoreDelta:timeOfDayBonus(a)||null,active:!!timeOfDayBonus(a)},
+    {reasonKey:'child',reasonLabel:childR||'',displayPriority:8,scoreDelta:null,active:!!childR},
+    {reasonKey:'rest',reasonLabel:'😌 Buena opción para descansar.',displayPriority:9,scoreDelta:AFTER_LUNCH_BONUS,active:!!restBonus(a)},
+    {reasonKey:'closing-soon',reasonLabel:'⏰ Quedan pocas horas — mejor no dejarla para el final.',displayPriority:10,scoreDelta:CLOSING_SOON_BONUS,active:!!closingSoonBonus(a)},
+    {reasonKey:'wait-short',reasonLabel:wait?`⏱ Fila ${WAIT_RANGE_LABEL[wait.range]} (registrada)`:'',displayPriority:11,scoreDelta:wait?WAIT_SCORE[wait.range]:null,active:!!wait&&!wait.expired&&(wait.range==='0-10'||wait.range==='10-20')},
+    {reasonKey:'wait-long',reasonLabel:wait?`🕐 Fila larga registrada (${WAIT_RANGE_LABEL[wait.range]})`:'',displayPriority:12,scoreDelta:wait?WAIT_SCORE[wait.range]:null,active:!!wait&&!wait.expired&&(wait.range==='20-40'||wait.range==='40+')},
+  ];
+}
+/* Razones cortas (entre 0 y REASON_DISPLAY_LIMIT — nunca se fuerza un mínimo, solo se muestran
+   las que de verdad tienen datos detrás) que explican por qué se sugiere esto ahora mismo, sin
+   convertir la tarjeta en un párrafo largo ni mostrar el score numérico. */
+function reasonsFor(a){
+  return reasonCandidates(a,getStatus(a.id))
+    .filter(r=>r.active&&r.reasonLabel)
+    .sort((x,y)=>x.displayPriority-y.displayPriority)
+    .slice(0,REASON_DISPLAY_LIMIT)
+    .map(r=>r.reasonLabel);
 }
 /* tipFor(a): el tip por atracción vive directamente en el dato (a.tip) —
    cada parque lo escribe en su park.js. Un reactionSystem activo puede
@@ -1760,14 +1914,16 @@ function tipFor(a){
 }
 /* prioLabel(a): recibe un candidato (id + tier + deferred/skipCooldown
    opcionales, como los que produce candidateList()). El estado "repeat" se
-   revisa primero porque manda sobre el tier numérico. "closed" y
-   "discarded" también se revisan primero, aunque en la práctica solo se
-   llega acá para una de esas dos desde el detalle del checklist
-   (candidateList() ya las excluye de la recomendación) — mostrar su tier
-   numérico ahí sería engañoso, como si siguieran compitiendo. */
+   revisa primero porque manda sobre el tier numérico. "closed", "discarded"
+   e "inelegible real" también se revisan primero, aunque en la práctica solo
+   se llega acá para uno de esos casos desde el detalle del checklist
+   (candidateList() ya los excluye de la recomendación vía isHardExcluded())
+   — mostrar su tier numérico ahí sería engañoso, como si siguieran
+   compitiendo. */
 function prioLabel(a){
   if(getStatus(a.id)==='discarded')return {t:'🙅 NO LA QUEREMOS HACER',c:'priolow'};
   if(getStatus(a.id)==='closed')return {t:'🚫 TEMPORALMENTE CERRADA',c:'priolow'};
+  if(BY_ID[a.id]&&isReallyIneligibleForFamily(BY_ID[a.id]))return {t:'🚫 NO APTA PARA LA FAMILIA',c:'priolow'};
   if(getStatus(a.id)==='repeat')return {t:'🔁 REPETIR (favorita)',c:'priorepeat'};
   if(a.deferred)return {t:'🕐 EN ESPERA (fila larga)',c:'priomed'};
   if(a.skipCooldown)return {t:'⏭️ SALTADA HACE POCO',c:'priomed'};
@@ -2170,10 +2326,29 @@ function renderFavoritas(){
    POIS (PARK.pois) nunca compite por la recomendación — es puramente
    informativo, igual que en Story Land. Agrupado por tipo con su propio
    ícono/etiqueta; un parque puede traer tipos que otro no usa. */
-const POI_TYPE_LABEL={food:'🍴 Comida',restroom:'🚻 Baños',firstaid:'🩹 First Aid',
+/* Etiquetas "bonitas" conocidas de antemano para tipos de POI comunes — pura conveniencia (mejor
+   que mostrar el `type` crudo), NUNCA una lista cerrada: un `type` que no está acá simplemente cae
+   al fallback derivado de datos en poiTypeLabel() — agregar un tipo de servicio nuevo
+   ('water'/'locker'/'charging'/'shopping'/lo que sea) nunca requiere tocar esta tabla ni el resto
+   del core. Un parque puede sobreescribir cualquier entrada (incluidas estas) vía
+   `PARK.poiTypeLabels`, con prioridad sobre esta tabla. */
+const POI_TYPE_LABEL_DEFAULTS={food:'🍴 Comida',restroom:'🚻 Baños',firstaid:'🩹 First Aid',
   familycare:'👶 Family Care',locker:'🔒 Lockers',water:'🚰 Estaciones de agua',playground:'🛝 Playgrounds',show:'🎭 Shows',
   character:'👋 Personajes',store:'🛍️ Tiendas',entrance:'🚪 Entradas',parking:'🅿️ Estacionamiento',
   ev:'🔌 Carga EV'};
+function capitalizeType(s){ return (s||'').replace(/[-_]/g,' ').replace(/^./,c=>c.toUpperCase()); }
+/* poiTypeLabel(type): "<ícono> <Etiqueta>" para agrupar una sección de servicios o un acceso
+   rápido. Orden de prioridad: PARK.poiTypeLabels (config explícita del parque) → tabla de
+   conveniencia de arriba → derivado de los datos mismos (ícono del primer POI de ese tipo +
+   nombre del tipo capitalizado) — así cualquier tipo nuevo siempre produce algo razonable sin
+   tocar el core. */
+function poiTypeLabel(type){
+  const overrides=PARK.poiTypeLabels||{};
+  if(overrides[type])return overrides[type];
+  if(POI_TYPE_LABEL_DEFAULTS[type])return POI_TYPE_LABEL_DEFAULTS[type];
+  const first=POIS.find(p=>p.type===type);
+  return `${(first&&first.icon)||'📍'} ${capitalizeType(type)}`;
+}
 function poiCardHtml(p){
   const near=p.nearbyText?`<small>${p.nearbyText}</small>`:'';
   const mapBtn=p.geo?`<button class="zonemapbtn" onclick="openParkMap('${p.id}')">🗺️ Ver mapa</button>`:'';
@@ -2205,7 +2380,7 @@ function servicesHtml(){
         return da-db;
       });
     }
-    html+=`<div class="miniSectTitle">${POI_TYPE_LABEL[t]||t}</div><div class="minilist">${items.map(poiCardHtml).join('')}</div>`;
+    html+=`<div class="miniSectTitle">${poiTypeLabel(t)}</div><div class="minilist">${items.map(poiCardHtml).join('')}</div>`;
   });
   return html;
 }
@@ -2214,26 +2389,38 @@ function servicesHtml(){
    filtrado al tipo elegido (mismo visor que "🚻 ¿Dónde hay un baño?", ver openServiceQuickView),
    donde ya existen "Cómo llegar"/Google Maps, badge de procedencia/confianza y ver el resto de
    puntos cercanos (mapGeoPopupHtml, sin cambios). Genérico: lee PARK.pois — un parque sin alguno
-   de estos tipos simplemente no muestra esa ficha (no hardcodea nada de LEGOLAND). */
-const QUICK_SERVICE_TYPES=[
-  {type:'restroom',icon:'🚻',label:'Baño'},
-  {type:'food',icon:'🍔',label:'Comida'},
-  {type:'firstaid',icon:'🩹',label:'First Aid'},
-  {type:'familycare',icon:'🧃',label:'Descanso'},
-];
+   de estos tipos simplemente no muestra esa ficha (nada hardcodeado de ningún parque).
+
+   `PARK.quickServices` (opcional, array `[{type,icon,label}]`) deja que un parque elija
+   explícitamente cuáles mostrar y en qué orden — LEGOLAND lo usa para conservar exactamente sus 4
+   accesos históricos (🚻🍔🩹🧃). Sin configurarlo (default), defaultQuickServices() deriva un
+   tile por cada `type` de POI presente, en orden de primera aparición en `PARK.pois`, hasta
+   QUICK_SERVICES_DEFAULT_MAX — sin asumir NINGÚN nombre de type fijo, así que un parque con tipos
+   completamente distintos (`water`/`locker`/`charging`/`shopping`/lo que sea) obtiene accesos
+   rápidos razonables sin declarar nada ni tocar el core. */
+const QUICK_SERVICES_DEFAULT_MAX=4;
+function defaultQuickServices(){
+  const seen=[];
+  POIS.forEach(p=>{ if(!seen.includes(p.type))seen.push(p.type); });
+  return seen.slice(0,QUICK_SERVICES_DEFAULT_MAX).map(type=>{
+    const label=poiTypeLabel(type); // "<ícono> <Etiqueta>"
+    const sp=label.indexOf(' ');
+    return sp>0?{type,icon:label.slice(0,sp),label:label.slice(sp+1)}:{type,icon:'📍',label};
+  });
+}
+function quickServiceList(){
+  return (PARK.quickServices&&PARK.quickServices.length)?PARK.quickServices:defaultQuickServices();
+}
+/* Ranking unificado (nearestOfTypes -> nearestLocatable, ver más arriba) — el mismo camino tanto
+   para baños como para cualquier otro tipo de servicio, sin ninguna rama especial por nombre de
+   tipo. */
 function quickServiceTileHtml(t){
-  let sub;
-  if(t.type==='restroom'){
-    const info=nearestRestroomInfo();
-    sub=info&&info.exact?`~${humanDistanceLabel(info.meters)}`:info?`cerca de ${info.anchorName}`:'Ver lista';
-  }else{
-    const near=nearestServiceInfo([t.type]);
-    sub=near&&near.exact?`~${humanDistanceLabel(near.meters)}`:'Ver lista';
-  }
+  const near=nearestOfTypes([t.type]);
+  const sub=near&&near.exact?`~${humanDistanceLabel(near.meters)}`:near?`cerca de ${near.anchorName}`:'Ver lista';
   return `<button class="quicksvc-tile" onclick="openServiceQuickView('${t.type}')"><span class="ic">${t.icon}</span><span class="lbl">${t.label}</span><span class="sub">${sub}</span></button>`;
 }
 function quickServicesHtml(){
-  const present=QUICK_SERVICE_TYPES.filter(t=>POIS.some(p=>p.type===t.type));
+  const present=quickServiceList().filter(t=>POIS.some(p=>p.type===t.type));
   if(!present.length)return '';
   return `<div class="quicksvc">
     <div class="miniSectTitle" style="margin-top:0">🧭 Accesos rápidos</div>

@@ -394,7 +394,29 @@ window.PARK={
     // Bricktopia, Brick Street y Miniland siguen sin ningún punto confirmed_on_site, y NINJAGO
     // World necesita al menos un tercer punto bien distribuido antes de que un piecewise local ahí
     // tenga sentido.
+    //
+    // poiFilterGroups/poiFilterGroupLabels (config de parque, NO del core — ver
+    // assets/theme-park-core.js mapGeoFilterCategory()/filterCategoryMeta()): LEGOLAND agrupa
+    // firstaid+familycare bajo un único chip de filtro "🩹 Ayuda" porque tiene pocos POIs de cada
+    // tipo (2 y 1) — sin esta config, cada type sería su propia categoría (comportamiento por
+    // defecto del core, sin necesidad de declarar nada). defaultGeoFilters fija qué categorías
+    // empiezan activas al abrir el mapa (mismo conjunto que antes de generalizar esto: atracciones
+    // + baños + comida, sin saturar el mapa con ayuda/tienda/etc. de entrada).
+    poiFilterGroups:{firstaid:'help',familycare:'help'},
+    poiFilterGroupLabels:{help:{icon:'🩹',label:'Ayuda'}},
+    defaultGeoFilters:['attraction','restroom','food'],
   },
+  // quickServices (config de parque — sin esto, el core derivaría un default automático de los
+  // `type` de `pois` en orden de aparición, que para este archivo daría food/store/restroom/
+  // firstaid, no lo que la familia realmente necesita a mano mientras camina). Se conserva
+  // explícitamente el conjunto curado de siempre: baño, comida, primeros auxilios, y
+  // descanso/family care.
+  quickServices:[
+    {type:'restroom',icon:'🚻',label:'Baño'},
+    {type:'food',icon:'🍔',label:'Comida'},
+    {type:'firstaid',icon:'🩹',label:'First Aid'},
+    {type:'familycare',icon:'🧃',label:'Descanso'},
+  ],
   storageKey:'legoland_ny_state_v1',
   mustIds:['dragon','dragonsapprentice','fireacademy','legofactory','ninjagoride','miniland'],
   calmIds:['miniland','buildtest','brickparty','steppingtones','duploexpress'],
