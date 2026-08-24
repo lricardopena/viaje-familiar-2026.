@@ -10,8 +10,6 @@ Para descifrarlo:
 gpg --output HANDOVER.md --decrypt HANDOVER.md.asc
 ```
 
-GPG pedirá la contraseña de forma interactiva.
+GPG pedirá la contraseña de forma interactiva. La contraseña se obtiene por el mecanismo autorizado del proyecto — no está documentada aquí ni en ningún archivo del repositorio.
 
-**Pista de contraseña (solo para el propietario):** es la misma que la del wifi de casa.
-
-La carpeta `specs/` contiene, con el mismo esquema de cifrado y la misma contraseña, las especificaciones técnicas/de arquitectura/de diseño del proyecto (`specs/SPECIFICATIONS.md.asc`) — ver `specs/README.md`. `HANDOVER.md.asc` se enfoca en decisiones de negocio/viaje; `specs/SPECIFICATIONS.md.asc` en cómo está construido y debe comportarse el sitio.
+La carpeta `specs/` contiene, con el mismo esquema de cifrado y la misma contraseña, las especificaciones técnicas/de arquitectura/de diseño del proyecto, divididas en documentos temáticos bajo `specs/architecture/`, `specs/product/` y `specs/operations/` — ver `specs/README.md` para el índice completo. `HANDOVER.md.asc` se enfoca en decisiones de negocio/viaje; `specs/` en cómo está construido y debe comportarse el sitio.

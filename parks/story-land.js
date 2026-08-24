@@ -1,6 +1,6 @@
 /* parks/story-land.js — datos y configuración de Story Land para el
    Theme Park Companion (assets/theme-park-core.js). Instancia #1 del motor
-   reutilizable — ver specs/SPECIFICATIONS.md.asc sección 22.
+   reutilizable — ver specs/architecture/theme-park-core.md.asc.
 
    Migrado 1:1 desde la implementación original de storyland.html (agosto
    2026) al separar el core reutilizable de los datos del parque: mismos
@@ -23,7 +23,8 @@
 
    Metadata geográfica (zone/mapNumber/nearbyAttractions/mapMarker/geo):
    documentación completa de procedencia y método de calibración conservada
-   en specs/SPECIFICATIONS.md.asc sección 21 (no se repite acá para no
+   en specs/architecture/geolocation-and-maps.md.asc y
+   specs/operations/data-provenance.md.asc (no se repite acá para no
    duplicar contenido — mismos datos, ninguno cambiado en esta migración). */
 window.PARK={
   id:'story-land',
@@ -43,7 +44,7 @@ window.PARK={
   },
   map:{
     url:'https://hfe.widen.net/view/pdf/icf5sgszuz/STL26_General_ParkMap_Download.pdf?t.download=true&u=exbmhu', // PDF oficial 2026 — fuente de verdad; enlace externo "Abrir PDF oficial" (fuera de la app, nunca embebido)
-    image:'assets/storyland-map-2026.webp', // imagen local generada a partir del PDF oficial (ver specs/SPECIFICATIONS.md.asc sección 21)
+    image:'assets/storyland-map-2026.webp', // imagen local generada a partir del PDF oficial (ver specs/architecture/geolocation-and-maps.md.asc)
     center:[44.1168,-71.1805],
     // Transformación afín (lat/lng → %x,%y sobre storyland-map-2026.webp),
     // ajustada offline por mínimos cuadrados (numpy.lstsq) a partir de las 6
@@ -52,7 +53,7 @@ window.PARK={
     // Movida acá (antes vivía como constante fija en theme-park-core.js) al
     // generalizar el motor para más de un parque — mismos 6 coeficientes,
     // mismo resultado numérico que siempre tuvo Story Land. Detalle completo
-    // (script, residuales) en specs/SPECIFICATIONS.md.asc sección 21.
+    // (script, residuales) en specs/operations/data-provenance.md.asc.
     geoCalibration:{ax:-24598.225084,bx:5992.442921,cx:1511778.056777,ay:-951.387361,by:-13334.325079,cy:-907130.644129,
       controlPointIds:['polar','roar','bamboo','raptour','antiquecars','loopylab'],fittedOn:'2026-08'},
   },

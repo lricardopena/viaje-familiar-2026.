@@ -3,7 +3,7 @@
    ============================================================================
    Extraído de la implementación original de Story Land (agosto 2026) al
    separarla en "core reutilizable + park.js por parque" — ver
-   specs/SPECIFICATIONS.md.asc sección 22. Este archivo NO contiene ningún
+   specs/architecture/theme-park-core.md.asc. Este archivo NO contiene ningún
    dato ni texto específico de un parque: todo lo que varía por parque vive
    en window.PARK, cargado por un <script> previo (parks/story-land.js,
    parks/legoland-new-york.js, ...). Story Land y cualquier parque nuevo
@@ -12,7 +12,7 @@
 
    Contrato de window.PARK (ver parks/story-land.js y
    parks/legoland-new-york.js para instancias reales, y
-   specs/SPECIFICATIONS.md.asc sección 22 para el detalle campo por campo):
+   specs/architecture/park-contract.md.asc para el detalle campo por campo):
      id, name, emoji, theme:{accent,accentDark,themeColor}
      copy:{backHref,backLabel,headerTitle,mapOfficialTitle,mapAltText,mapNote,
            doneTitle,doneBody,resetConfirm}
@@ -257,7 +257,7 @@ function eligibilityFactHtml(a){
   if(!summ){
     // Sin `restrictions` y/o sin `family.children`: NO se puede verificar la altura — nunca se
     // afirma "✅ Puede subir" basándose únicamente en la ausencia de datos (bug corregido — ver
-    // SPECIFICATIONS.md.asc, "Elegibilidad: unknown nunca es ✅"). Lo único que sí es un dato real
+    // specs/architecture/family-and-eligibility.md.asc, "unknown nunca es ✅"). Lo único que sí es un dato real
     // en este caso es el flag genérico `adult` (acompañante requerido o no), que se muestra tal
     // cual — mismo comportamiento visible de siempre para Story Land en ESE campo, pero la altura
     // ya no miente.
@@ -286,8 +286,8 @@ function eligibilityFactHtml(a){
    inelegible aquí tampoco. Sin `restrictions` o sin `family.children` (Story Land, o cualquier
    atracción sin el campo) esta función siempre devuelve false — no hay base de datos para
    afirmar nada, y no se inventa una.
-   Ver "PARK.family — evolución futura hacia participantes genéricos" en
-   specs/SPECIFICATIONS.md.asc: el modelo debería poder crecer hacia `PARK.family.members` (con un
+   Ver "Evolución futura hacia participantes genéricos" en
+   specs/architecture/family-and-eligibility.md.asc: el modelo debería poder crecer hacia `PARK.family.members` (con un
    `role`/tipo por participante) sin asumir que `children` representa a todos los que pueden usar
    una atracción — esta función es exactamente el punto donde esa limitación importa. */
 function allRegisteredChildrenIneligible(a){
@@ -887,7 +887,7 @@ function mapGeoListItemHtml(p){
   return `<div class="mapgeo-item"><span class="ic">${p.icon||'📍'}</span><div class="txt"><b>${label}</b><small>Ubicación registrada</small></div><a href="${gmapsUrl}" target="_blank" rel="noopener noreferrer">Abrir en Maps ↗</a></div>`;
 }
 /* Badge del punto según procedencia de `geo` (genérico, cualquier parque —
-   ver jerarquía de fuentes en specs/SPECIFICATIONS.md.asc y en el handoff
+   ver jerarquía de fuentes en specs/architecture/geolocation-and-maps.md.asc y en el handoff
    de investigación de LEGOLAND New York):
      - 'onsite-plus-code' (Story Land): medido en sitio con Plus Code —
        texto histórico preservado tal cual para no cambiar la UI existente.
@@ -1813,8 +1813,8 @@ function computeScore(a){
    "nadie de la familia puede subir" (ej.: 2 adultos + 2 niños, atracción con mínimo 54" que
    ningún niño cumple — los adultos sí podrían subir, y el core no tiene forma de saberlo ni de
    descartarlo con los datos que existen hoy). Ese caso queda como aviso puramente informativo, sin
-   afectar candidateList() ni computeScore() — ver "PARK.family — evolución futura" en
-   specs/SPECIFICATIONS.md.asc para el camino hacia participantes genéricos.
+   afectar candidateList() ni computeScore() — ver "Evolución futura hacia participantes genéricos" en
+   specs/architecture/family-and-eligibility.md.asc para el camino hacia participantes genéricos.
    Todo lo demás (tier/tarjeta de prioridad, sameZoneBonus, proximityBonus, gpsProximityBonus,
    childBonus, timeOfDayBonus, groupEarlyBonus, reactionBonus, restBonus, closingSoonBonus,
    waitTimeScoreAdjust, deferredPenalty/skipPenalty) es soft signal: ajusta el orden, nunca decide

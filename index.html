@@ -36,7 +36,7 @@ function story(x){let names=x.acts.map(a=>a[1]).slice(0,3).join(', ');return `Ho
 const{days,activityDests,hotelDests}=TRIP_DATA;
 // Enlaces al Theme Park Companion (assets/theme-park-core.js) por nombre exacto
 // de actividad — cada parque nuevo solo agrega una entrada acá, no requiere
-// tocar la lógica de renderizado. Ver specs/SPECIFICATIONS.md.asc sección 22.
+// tocar la lógica de renderizado. Ver specs/architecture/theme-park-core.md.asc.
 const COMPANION_LINKS={
   'Story Land':{href:'storyland.html',label:'🎢 Abrir plan interactivo de Story Land'},
   'LEGOLAND New York':{href:'legoland.html',label:'🧱 Abrir plan interactivo de LEGOLAND'},
