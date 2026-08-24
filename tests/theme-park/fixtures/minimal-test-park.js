@@ -14,8 +14,8 @@
    Deliberadamente NO comparte ningún id/nombre/zona/miembro de familia con
    Story Land ni con LEGOLAND New York, para que el test no pueda "pasar por
    accidente" apoyándose en algo que el core solo sepa manejar porque coincide
-   con uno de los otros dos parques. Ver specs/SPECIFICATIONS.md.asc —
-   "Nuevo parque: checklist completa" — para el detalle de qué se está
+   con uno de los otros dos parques. Ver specs/operations/new-park-checklist.md.asc
+   y specs/operations/testing-and-validation.md.asc para el detalle de qué se está
    probando y por qué.
 
    Cobertura deliberada (ver theme-park-core.spec.js para los asserts):
@@ -109,8 +109,8 @@ window.PARK={
     ['🧪','Este parque es un fixture de prueba — no representa ninguna visita real.'],
   ],
   // Familia de prueba, completamente distinta de la familia real usada en LEGOLAND/Story Land —
-  // nombres genéricos, sin relación con ningún dato personal. Ver "PARK.family — evolución futura"
-  // en specs/SPECIFICATIONS.md.asc: el modelo debería poder crecer hacia `PARK.family.members` sin
+  // nombres genéricos, sin relación con ningún dato personal. Ver "Evolución futura hacia
+  // participantes genéricos" en specs/architecture/family-and-eligibility.md.asc: el modelo debería poder crecer hacia `PARK.family.members` sin
   // asumir que `children` representa a todos los que pueden usar una atracción.
   family:{
     children:[

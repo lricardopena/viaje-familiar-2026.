@@ -10,7 +10,7 @@
    Este test es parte del contrato arquitectónico del Theme Park Companion:
    "un tercer parque debe poder agregarse mediante parks/<park-id>.js +
    configuración + thin HTML shell, sin modificar assets/theme-park-core.js"
-   (ver specs/SPECIFICATIONS.md.asc sección 27). Si este test falla contra un
+   (ver specs/operations/testing-and-validation.md.asc). Si este test falla contra un
    cambio al core, ese cambio rompió el contrato genérico — no es un problema
    del fixture.
 

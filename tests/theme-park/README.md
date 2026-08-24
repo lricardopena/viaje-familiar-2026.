@@ -7,7 +7,7 @@ contra un fixture sintético (`fixtures/minimal-test-park.js` +
 con Story Land ni con LEGOLAND New York.
 
 Este test es parte del contrato arquitectónico documentado en
-`specs/SPECIFICATIONS.md.asc` (sección 27): **un tercer parque debe poder
+`specs/operations/testing-and-validation.md.asc`: **un tercer parque debe poder
 agregarse mediante `parks/<park-id>.js` + configuración + thin HTML shell,
 sin modificar `assets/theme-park-core.js`.** Si este test falla contra un
 cambio al core, ese cambio rompió el contrato genérico.
@@ -48,7 +48,7 @@ reales que forman parte de la aplicación. El fixture cubre deliberadamente:
 - una atracción sin `restrictions` — elegibilidad `unknown`, nunca `✅`;
 - una atracción donde **ningún** niño registrado cumple — sigue siendo
   candidata (no es un hard constraint, ver `allRegisteredChildrenIneligible()`
-  en el core y la sección "PARK.family" de `specs/SPECIFICATIONS.md.asc`);
+  en el core y `specs/architecture/family-and-eligibility.md.asc`);
 - una atracción con `unavailable:true` — este sí es un hard constraint
   inequívoco;
 - 1 restroom, 1 POI de comida, y un tipo de POI inventado

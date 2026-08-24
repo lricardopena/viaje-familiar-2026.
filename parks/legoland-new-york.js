@@ -125,7 +125,7 @@
    y splashbattle ya tienen `mapMarker` listo (#83/#87, Pirates) para el
    día que se les agregue `geo` (Plus Code buscado en Maps o medido en el
    parque) — con eso, la calibración quedaría lista para reevaluarse. Ver
-   specs/SPECIFICATIONS.md.asc sección 21bis para el detalle completo
+   specs/operations/data-provenance.md.asc para el detalle completo
    (coeficientes, residual por punto, criterio de activación).
 
    Sexta pasada (2026-08-23, DÍA DE LA VISITA): primeros puntos MEDIDOS EN
@@ -491,7 +491,7 @@ window.PARK={
   restrictions:{minHeightIn:36,adultRequiredBelowIn:42,source:'2026 Accessibility Guide V6 + Height Restrictions Help Center (mínimo 36"; acompañante requerido debajo de 42").',lastVerified:'2026-08-19',confidence:'verified-official'},
   // geo: coordenada de coasterpedia.net (base de datos independiente de coasters), NO oficial de
   // LEGOLAND — centroide/ubicación del coaster, no la entrada de fila medida en sitio. Ver
-  // jerarquía de procedencia geográfica en specs/SPECIFICATIONS.md.asc sección 21bis.
+  // jerarquía de procedencia geográfica en specs/architecture/geolocation-and-maps.md.asc.
   geo:{lat:41.38205,lng:-74.31466,source:'third-party-ride-poi',reference:'ride-poi'},
   tags:['🔥 IMPERDIBLE','🎢 COASTER SUAVE','⭐ PUEDE IR SOLO'],
   why:'Coaster pequeño para entrenar "dragones bebé" — a ~47" los tres niños califican para subir solos, buena primera montaña rusa del día.'},
