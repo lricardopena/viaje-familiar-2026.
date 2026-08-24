@@ -28,7 +28,7 @@
 
 ---
 
-### TICKET-3 (H3, P2) — Test smoke para el itinerario (`index.html`+`data.js`)
+### TICKET-3 (H3, P2) — ✅ RESUELTO — Test smoke para el itinerario (`index.html`+`data.js`)
 
 **Contexto:** cero cobertura de test para la parte de la app que se usa todos los días del viaje. Las funciones de pattern-matching en español (`wicon`, `clothes`, `actIcon`, etc.) fallan silenciosamente ante vocabulario no anticipado.
 

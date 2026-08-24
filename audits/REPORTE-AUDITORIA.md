@@ -2,11 +2,12 @@
 
 **Fecha:** 2026-08-24 · **Alcance:** read-only, todo el repo · **Rama:** `claude/agentic-skill-audit-gubpxq`
 
-> **Actualización 2026-08-24 (post-auditoría):** H1 y H2, los dos únicos P1, quedaron
-> resueltos a petición del usuario tras entregar este reporte (commits "TICKET-1" y
-> "TICKET-2"). El resto de este documento se dejó tal cual se entregó originalmente
-> para conservar el registro de lo que encontró la auditoría — ver
-> `audits/03-hallazgos-consolidados.md` para el detalle de la resolución.
+> **Actualización 2026-08-24 (post-auditoría):** H1 y H2, los dos únicos P1, y H3 (P2)
+> quedaron resueltos a petición del usuario tras entregar este reporte (commits
+> "TICKET-1", "TICKET-2" y "TICKET-3"). El resto de este documento se dejó tal cual
+> se entregó originalmente para conservar el registro de lo que encontró la
+> auditoría — ver `audits/03-hallazgos-consolidados.md` para el detalle de la
+> resolución.
 
 ## Resumen ejecutivo
 
