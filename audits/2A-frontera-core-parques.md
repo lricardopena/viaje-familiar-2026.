@@ -1,6 +1,6 @@
 # T2.A — Frontera core-genérico vs. datos-por-parque
 
-**Skill:** `.claude/skills/theme-park-architecture-audit` (local) · **Alcance:** `assets/theme-park-core.js` (2518 líneas), `assets/theme-park-core.css`, `parks/story-land.js`, `parks/legoland-new-york.js`, `storyland.html`, `legoland.html`.
+**Skill local del proyecto:** `.claude/skills/theme-park-architecture-audit` · **Alcance:** `assets/theme-park-core.js` (2518 líneas), `assets/theme-park-core.css`, `parks/story-land.js`, `parks/legoland-new-york.js`, `storyland.html`, `legoland.html`.
 
 ## Veredicto: ✅ el core se mantiene genérico
 

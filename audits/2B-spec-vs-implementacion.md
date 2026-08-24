@@ -1,6 +1,6 @@
 # T2.B — Implementación vs. especificación (con passphrase)
 
-**Skill:** `agentic-skills/skills/review-implementation-audit` · **Specs auditadas:** `park-contract.md.asc`, `theme-park-core.md.asc`, `recommendation-engine.md.asc`, `family-and-eligibility.md.asc`, `geolocation-and-maps.md.asc`, `observations-and-state.md.asc`, `testing-and-validation.md.asc`.
+**Skill externa:** `review-implementation-audit` · **Specs auditadas:** `park-contract.md.asc`, `theme-park-core.md.asc`, `recommendation-engine.md.asc`, `family-and-eligibility.md.asc`, `geolocation-and-maps.md.asc`, `observations-and-state.md.asc`, `testing-and-validation.md.asc`.
 
 ## Metodología
 

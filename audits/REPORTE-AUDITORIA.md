@@ -62,7 +62,7 @@ El resto (H2, H4–H10) es deuda razonable de posponer — ninguno bloquea el us
 ## Pendiente de registrar
 
 - **H4** debería confirmarse en `HANDOVER.md.asc` (sección de privacidad/decisiones de datos de los niños) si no está ya cubierto ahí — esta sesión no descifró `HANDOVER.md.asc` por regla del plan (requiere pregunta explícita al usuario, no se hizo en este encargo automatizado).
-- El ajuste a **T0.2** (no existe mecanismo nativo de Claude Code para registrar un directorio de skills externo en `settings.json` — ver `audits/01-nota-T0.2.md`) no es un hallazgo del repo, pero vale que quede como contexto para quien reutilice este plan.
+- El ajuste a la antigua **T0.2** (no existe mecanismo nativo de Claude Code para registrar un directorio de skills externo en `settings.json` — ver `audits/01-nota-T0.2.md`) no es un hallazgo del repo, pero vale que quede como contexto para quien reutilice este plan. Desde entonces, las antiguas T0.1/T0.2 se eliminaron del plan por completo: las skills externas son tooling opcional del entorno del agente y no una dependencia del repo (ver `audits/SKILLS-EXTERNAS.md`), y el repo ya no lleva submódulo alguno.
 
 ## Alcance de la auditoría
 

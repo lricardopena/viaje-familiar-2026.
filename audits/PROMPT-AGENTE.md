@@ -1,6 +1,6 @@
 # Prompt para el agente auditor
 
-Copiar el bloque completo de abajo y enviarlo como primer mensaje al agente, en una sesión con acceso al repo `lricardopena/viaje-familiar-2026.` y a `lricardopena/agentic-skills`.
+Copiar el bloque completo de abajo y enviarlo como primer mensaje al agente, en una sesión con acceso al repo `lricardopena/viaje-familiar-2026.`. **No hace falta acceso a ningún repo de skills:** las skills externas que cita el plan son tooling opcional del entorno del agente, no una dependencia de este repo (ver `audits/SKILLS-EXTERNAS.md`).
 
 ---
 
@@ -18,9 +18,8 @@ lo abandones.
 REGLAS DURAS
 1. Es una auditoría, no un refactor. NO modifiques index.html, data.js, assets/**,
    parks/**, auth.js, storyland.html, legoland.html ni ningún archivo de producto.
-   Sólo escribes archivos nuevos bajo audits/ (más .gitmodules y .claude/settings.json
-   en la Fase 0). Antes de commitear, corre `git diff --stat` y verifica que ningún
-   archivo de producto aparece; si aparece, revierte.
+   Sólo escribes archivos nuevos bajo audits/. Antes de commitear, corre `git diff --stat`
+   y verifica que ningún archivo de producto aparece; si aparece, revierte.
 2. HANDOVER.md.asc no se descifra ni se edita. Si un hallazgo debería registrarse ahí,
    anótalo en la sección "Pendiente de registrar" del reporte y sigue adelante.
 3. specs/**/*.md.asc puedes descifrarlas y leerlas, pero SÓLO con una passphrase que yo
@@ -50,7 +49,16 @@ CONTEXTO QUE TE AHORRA ERRORES
   tercero" de "genérico por si acaso". Aplica Chesterton's Fence: antes de marcar algo
   como innecesario, busca en git log y en los comentarios por qué se puso.
 - El repo ya tiene skills locales en .claude/skills/ (theme-park-architecture-audit,
-  add-theme-park). Úsalas donde el plan lo indica en vez de reinventar su análisis.
+  add-theme-park). Están versionadas con el repo y forman parte de sus capacidades:
+  úsalas donde el plan lo indica en vez de reinventar su análisis.
+- Las skills EXTERNAS que cita el plan (coding-kiss, plan-triage, etc.) son tooling
+  opcional de tu entorno, NO una dependencia del repo. Mira primero si ya las tienes
+  disponibles; si sí, léelas desde esa ubicación externa. Si no y una tarea se
+  beneficiaría de verdad, pregúntame dónde están o cómo acceder — no inventes rutas ni
+  asumas acceso a repos privados. Si no te doy acceso, sigue con lo que tengas y
+  documenta qué metodología externa no pudiste usar. Nunca las añadas a git, ni como
+  submódulo, ni copiadas dentro del repo: el checkout es temporal y vive fuera. Ver
+  audits/SKILLS-EXTERNAS.md.
 - Chromium y Playwright ya están instalados. Para la tarea de rendimiento MIDE, no
   estimes: los mapas ilustrados pesan 1.5 MB y 2.0 MB, y el uso real es un teléfono
   dentro de un parque con datos móviles. Los números importan más que las opiniones.

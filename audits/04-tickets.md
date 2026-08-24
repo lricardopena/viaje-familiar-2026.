@@ -1,6 +1,6 @@
 # T3.4 — Tickets accionables
 
-**Skill:** `agentic-skills/skills/plan-to-tickets` · No se abrieron issues en GitHub (fuera de alcance salvo petición explícita).
+**Skill externa:** `plan-to-tickets` · No se abrieron issues en GitHub (fuera de alcance salvo petición explícita).
 
 ---
 

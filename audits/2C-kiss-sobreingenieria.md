@@ -1,6 +1,6 @@
 # T2.C — Sobre-ingeniería y complejidad no ganada
 
-**Skill:** `agentic-skills/skills/coding-kiss` · **Alcance:** `assets/theme-park-core.js` (prioridad), `index.html`, `auth.js`.
+**Skill externa:** `coding-kiss` · **Alcance:** `assets/theme-park-core.js` (prioridad), `index.html`, `auth.js`.
 
 ## Marco aplicado
 

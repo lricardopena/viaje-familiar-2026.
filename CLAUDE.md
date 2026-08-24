@@ -44,6 +44,17 @@ The page is rendered client-side from a single data structure, `TRIP_DATA` (defi
 - EV-charging (`ev` field) entries distinguish "✅ principal/alternativa" (fast NACS DC chargers) from "🔌 backup" (slower J1772 Level 2) — preserve this distinction when editing charging info.
 - **Residential locations are never stored in this public repo.** When the itinerary needs to represent the family's home, use the logical label `"Home"` in `data.js` (`maps`/`activityDests`/`hotelDests` entries, and Google Maps links as `?destination=Home`) — Google Maps resolves it from whichever account opens the link, so no address, residential city, coordinates, Plus Code, or Place ID for the residence is ever committed. In UI copy, show "🏠 Casa" (or "🏠 Regresar a casa") to the user; the literal string "Home" only needs to appear inside the Maps URL/data value, not in visible text.
 
+## Skills: local vs. external
+
+**External skills are optional tooling in the agent's environment, not a dependency of this repo.** The repo is self-contained for product, tests and GitHub Pages: a plain `git clone` (no submodules, no private-repo access, no credentials) is all that's needed to open the site, run `npm test`, or let GitHub Pages build and deploy.
+
+- **Project-local skills** live in `.claude/skills/` (`add-theme-park`, `theme-park-architecture-audit`). They're versioned with the repo because they're part of its specific instructions/capabilities. They stay.
+- **External/private skills** (e.g. the `agentic-skills` collection cited methodologically throughout `audits/`) are agent tooling obtained *outside* the repo, and only when authorized access exists.
+
+When a plan or task wants to use an external skill: first check whether it's already available in the current environment and, if so, read/use it temporarily from that external location; if it isn't and the task would genuinely benefit, ask the user where those skills are or how to access the authorized repository/directory — never invent paths or assume access to private repos. Once the user provides a location or access, clone it temporarily *outside* the repo, use an existing external checkout, or read it from another workspace path. That checkout is temporary tooling: it is never added to git, never turned into a submodule, never copied into the public repo, and never part of the deploy. If the skills aren't available and the user provides no access, continue with the capabilities at hand and document which external methodology couldn't be used. Their absence must never block the build, tests, Pages, or use of the app.
+
+Never re-introduce the dependency by another route: no submodule, subtree, vendored copy, committed symlink, automatic download, PAT, deploy key, or GitHub Action that clones a private repo. Full flow: `audits/SKILLS-EXTERNAS.md`.
+
 ## Decisions & specs — where a change gets recorded
 
 Two encrypted document sets track everything that isn't itself the itinerary content: `HANDOVER.md.asc` (root) and the thematic documents under `specs/` (see `specs/README.md` for the full index). Same GPG scheme, same password (symmetric AES-256, not stored in the repo — see either file's `README.md` for the decrypt/re-encrypt commands). They're split by kind of information, not by importance:

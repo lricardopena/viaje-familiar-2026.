@@ -1,6 +1,6 @@
 # T2.E — Seguridad, privacidad y hardening
 
-**Skill:** `agentic-skills/skills/coding-security-and-hardening` + lente de `/security-review` · **Alcance:** `auth.js`, `auth.css`, `tools/generate-auth-verifier.html`, `localStorage` en el core, geolocalización, `data.js`, `parks/*.js`.
+**Skill externa:** `coding-security-and-hardening` + lente de `/security-review` · **Alcance:** `auth.js`, `auth.css`, `tools/generate-auth-verifier.html`, `localStorage` en el core, geolocalización, `data.js`, `parks/*.js`.
 
 ## 1. Fuga de ubicación residencial: ✅ sin hallazgos
 

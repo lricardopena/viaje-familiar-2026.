@@ -1,6 +1,6 @@
 # T2.G — Cobertura de tests
 
-**Skill:** `agentic-skills/skills/review-implementation-audit` (eje test-coverage) · **Alcance:** `tests/theme-park/theme-park-core.spec.js` vs. superficie real.
+**Skill externa:** `review-implementation-audit` (eje test-coverage) · **Alcance:** `tests/theme-park/theme-park-core.spec.js` vs. superficie real.
 
 ## Lo que sí está cubierto (evidencia: 29 aserciones `check()` en el spec)
 

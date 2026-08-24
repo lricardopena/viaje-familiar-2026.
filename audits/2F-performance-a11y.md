@@ -1,6 +1,6 @@
 # T2.F — Rendimiento y accesibilidad
 
-**Skill:** `agentic-skills/skills/coding-performance-optimization` + `agentic-skills/skills/coding-frontend-ui-engineering` · **Herramienta:** Playwright + Chromium (`/opt/pw-browsers/chromium`, ver nota metodológica en `audits/00-baseline.md` — no se tocó `tests/`).
+**Skill externa:** `coding-performance-optimization` + `coding-frontend-ui-engineering` · **Herramienta:** Playwright + Chromium (`/opt/pw-browsers/chromium`, ver nota metodológica en `audits/00-baseline.md` — no se tocó `tests/`).
 
 ## Mediciones reales (no estimaciones)
 
