@@ -1,19 +1,24 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2a7f9e"><title>Nimbus Cove · Prueba de arquitectura</title>
-<!-- synthetic-test.html — esqueleto delgado de prueba, NO una página real del viaje.
-     Prueba el criterio de aceptación arquitectónico: "un tercer parque debe poder agregarse
-     normalmente mediante parks/<park-id>.js + configuración + thin HTML shell, sin modificar
-     assets/theme-park-core.js" — este archivo es exactamente el mismo esqueleto que
-     legoland.html/storyland.html, con el único cambio real siendo el <script src="parks/..."> del
-     final. Deliberadamente SIN auth.css/auth.js: esta página nunca se enlaza desde index.html ni
-     se muestra a la familia — es un fixture de ingeniería, no contenido protegido (ver
-     specs/SPECIFICATIONS.md.asc sección 26 para el porqué de auth.js en las páginas reales). -->
-<link rel="stylesheet" href="assets/leaflet/leaflet.css">
-<script src="assets/leaflet/leaflet.js"></script>
-<link rel="stylesheet" href="assets/theme-park-core.css">
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2a7f9e"><title>Minimal Test Park · Fixture de prueba</title>
+<!-- tests/theme-park/fixtures/minimal-test-park.html — esqueleto delgado de fixture de prueba,
+     NO una página real del viaje ni un parque soportado. Prueba el criterio de aceptación
+     arquitectónico: "un tercer parque debe poder agregarse mediante parks/<park-id>.js +
+     configuración + thin HTML shell, sin modificar assets/theme-park-core.js" — este archivo es
+     exactamente el mismo esqueleto que legoland.html/storyland.html (rutas relativas ajustadas por
+     vivir 3 niveles más abajo, en tests/theme-park/fixtures/), con el único cambio real siendo el
+     <script src="minimal-test-park.js"> del final, que carga desde la MISMA carpeta (no desde
+     parks/ — este fixture vive fuera de parks/ a propósito, ver
+     tests/theme-park/fixtures/minimal-test-park.js). Deliberadamente SIN auth.css/auth.js: esta
+     página nunca se enlaza desde index.html ni se muestra a la familia — es un fixture de
+     ingeniería, no contenido protegido (ver specs/SPECIFICATIONS.md.asc sección 26 para el porqué
+     de auth.js en las páginas reales). Carga el MISMO assets/theme-park-core.js de producción —
+     nunca una copia especial para tests. -->
+<link rel="stylesheet" href="../../../assets/leaflet/leaflet.css">
+<script src="../../../assets/leaflet/leaflet.js"></script>
+<link rel="stylesheet" href="../../../assets/theme-park-core.css">
 </head><body>
 <main class="app">
 <div class="top">
-<div class="row"><a class="back" id="backLink" href="#">← Salir</a><h1 id="parkHeaderTitle">🌊 Nimbus Cove (prueba)</h1><span style="width:70px"></span></div>
+<div class="row"><a class="back" id="backLink" href="#">← Salir</a><h1 id="parkHeaderTitle">🧪 Minimal Test Park</h1><span style="width:70px"></span></div>
 <div class="progress"><div class="stats"><span id="progTxt">…</span><span id="mustTxt"></span></div><div class="pbar"><i id="progBar" style="width:0%"></i></div></div>
 </div>
 
@@ -109,7 +114,7 @@
       </div>
     </div>
     <div class="mapsheet-geo" id="mapSheetGeo" hidden>
-      <!-- Los chips de filtro se generan en JS (ensureMapGeoFilterChips(), assets/theme-park-core.js)
+      <!-- Los chips de filtro se generan en JS (ensureMapGeoFilterChips(), ../../../assets/theme-park-core.js)
            a partir de las categorías reales de este PARK — nunca hardcodeados acá. -->
       <div class="mapgeo-filters" id="mapGeoFilters"></div>
       <div class="mapgeo-banner" id="mapGeoBanner" hidden></div>
@@ -138,6 +143,6 @@
   </div>
 </div>
 
-<script src="parks/synthetic-test-park.js"></script>
-<script src="assets/theme-park-core.js"></script>
+<script src="minimal-test-park.js"></script>
+<script src="../../../assets/theme-park-core.js"></script>
 </body></html>

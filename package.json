@@ -1,0 +1,12 @@
+{
+  "name": "viaje-familiar-2026-tests",
+  "private": true,
+  "description": "Tooling de pruebas SOLO para tests/ — el sitio en sí sigue siendo 100% estático, sin build ni package manager (ver CLAUDE.md). Este package.json no participa del despliegue en GitHub Pages.",
+  "scripts": {
+    "test": "node tests/theme-park/theme-park-core.spec.js",
+    "test:theme-park": "node tests/theme-park/theme-park-core.spec.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}

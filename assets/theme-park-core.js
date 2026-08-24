@@ -264,20 +264,33 @@ function eligibilityFactHtml(a){
     return `<div class="factrow"><div class="fact">📏 Altura<b class="priomed">❓ Sin verificar</b></div><div class="fact">👨‍👦 Adulto<b>${a.adult?'Requerido':'No requerido'}</b></div></div>`;
   }
   const rows=summ.map(({child,elig})=>`<div class="fact">${child.name}${child.heightApprox?' (~alt.)':''}<b class="${elig.status==='cannot-ride'?'priohigh':elig.status==='with-adult'?'priomed':elig.status==='unknown'?'priomed':''}">${elig.label}</b></div>`).join('');
-  return `<div class="factrow">${rows}</div>${eligibilityConfidenceNote(a)}`;
+  // "Ningún niño registrado cumple" es informativo, NUNCA una exclusión — ver
+  // allRegisteredChildrenIneligible() más abajo para por qué esto no puede convertirse en un hard
+  // constraint: PARK.family solo modela `children` hoy, no adultos, así que el core no tiene base
+  // para afirmar que NADIE de la familia puede disfrutar la atracción.
+  const noneNote=allRegisteredChildrenIneligible(a)
+    ?'<div class="tipline">🚫 Ningún niño registrado cumple los requisitos de esta atracción — puede seguir siendo válida para los adultos u otros participantes no registrados.</div>':'';
+  return `<div class="factrow">${rows}</div>${noneNote}${eligibilityConfidenceNote(a)}`;
 }
-/* isReallyIneligibleForFamily(a): HARD CONSTRAINT, no un puntaje suave — cuando la elegibilidad
-   real (no `unknown`) de TODOS los niños de la familia es `cannot-ride`, ningún adulto de la
-   familia puede disfrutar tampoco (no hay adultIds/perfil de adulto en el modelo de datos), así
-   que la atracción queda excluida de candidateList() igual que done/closed/discarded — ningún
-   bonus de scoring (imperdible, cercanía GPS, fila corta) puede traerla de vuelta. Antes de esta
-   pasada era un ADULT_ONLY_PENALTY=40 blando: en teoría, una pila suficiente de bonus todavía
-   podía hacerla ganar como recomendación pese a que NADIE de la familia puede subir — eso ya no
-   puede pasar. `unknown` (falta de datos, ver eligibilityForChild) NUNCA cuenta como inelegible —
-   solo excluye cuando la inelegibilidad está realmente confirmada por datos. Sin `restrictions` o
-   sin `family.children` (Story Land, o cualquier atracción sin el campo) esta función siempre
-   devuelve false — no hay base de datos para declarar inelegibilidad real, y no inventamos una. */
-function isReallyIneligibleForFamily(a){
+/* allRegisteredChildrenIneligible(a): señal PURAMENTE INFORMATIVA — nunca un hard constraint ni un
+   puntaje de scoring. Antes de esta pasada, "todos los niños de `family.children` son
+   `cannot-ride`" se interpretaba como "ningún miembro de la familia puede disfrutar la
+   atracción" y excluía la atracción entera de candidateList() (incluso antes de eso, como un
+   ADULT_ONLY_PENALTY=40 suave). Ese supuesto es incorrecto: `PARK.family` modela hoy solo
+   `children` — no hay ningún dato sobre adultos en el esquema — así que "los niños registrados no
+   cumplen" NO implica "nadie de la familia puede subir" (ej.: 2 adultos + 2 niños, atracción con
+   mínimo 54", ningún niño cumple — los adultos sí podrían subir; el core no tiene forma de saberlo
+   ni de descartarlo). Por eso esta función solo alimenta un aviso visible
+   ("🚫 Ningún niño registrado cumple", ver eligibilityFactHtml()) — nunca decide quién compite por
+   la recomendación. `unknown` (falta de datos, ver eligibilityForChild) nunca cuenta como
+   inelegible aquí tampoco. Sin `restrictions` o sin `family.children` (Story Land, o cualquier
+   atracción sin el campo) esta función siempre devuelve false — no hay base de datos para
+   afirmar nada, y no se inventa una.
+   Ver "PARK.family — evolución futura hacia participantes genéricos" en
+   specs/SPECIFICATIONS.md.asc: el modelo debería poder crecer hacia `PARK.family.members` (con un
+   `role`/tipo por participante) sin asumir que `children` representa a todos los que pueden usar
+   una atracción — esta función es exactamente el punto donde esa limitación importa. */
+function allRegisteredChildrenIneligible(a){
   const summ=eligibilitySummary(a);
   if(!summ||!summ.length)return false;
   return summ.every(({elig})=>elig.status==='cannot-ride');
@@ -1568,10 +1581,13 @@ setInterval(()=>{ if(state.waitTimes&&Object.keys(state.waitTimes).length)render
    necesidad, pero no puede "inventar" prioridad donde no la hay.
    Las restricciones de seguridad (elegibilidad por niño) SIEMPRE se
    muestran de forma prominente sobre la tarjeta, nunca ocultas detrás del
-   score — ver eligibilityFactHtml() en el core. La inelegibilidad REAL
-   (todos los niños `cannot-ride`) ya no es un puntaje suave dentro de esta
-   fórmula — es un hard constraint que excluye en candidateList(), ver
-   isReallyIneligibleForFamily() e isHardExcluded() más abajo.
+   score — ver eligibilityFactHtml() en el core. Que TODOS los niños
+   registrados sean `cannot-ride` NO excluye la atracción ni penaliza su
+   score — `PARK.family` solo modela `children` hoy, no adultos, así que
+   el core no tiene base para asumir que nadie de la familia puede
+   disfrutarla; ese caso solo genera un aviso informativo (ver
+   allRegisteredChildrenIneligible()/eligibilityFactHtml()). Ver
+   isHardExcluded() más abajo para lo que sí excluye de verdad.
 
    Pesos ajustables aquí abajo — están comentados para que cambiarlos más
    adelante (o durante el día, si algo no se siente bien) sea fácil. */
@@ -1778,18 +1794,27 @@ function computeScore(a){
     -deferredPenalty-skipPenalty;
 }
 /* ---------- Hard constraints vs. soft signals ----------
-   Formalizado esta pasada (antes vivía implícito, repartido entre el filtro de candidateList() y
-   un puntaje suave para inelegibilidad). Regla: un HARD CONSTRAINT excluye una atracción de
-   candidateList() por completo, ANTES de que computeScore() se evalúe siquiera — ningún soft
-   signal (proximidad, fila corta, imperdible, favorita) puede revertirlo. Un SOFT SIGNAL solo
-   reordena DENTRO del conjunto que ya pasó los hard constraints.
+   Formalizado en una pasada anterior (antes vivía implícito, repartido entre el filtro de
+   candidateList() y un puntaje suave para inelegibilidad). Regla: un HARD CONSTRAINT excluye una
+   atracción de candidateList() por completo, ANTES de que computeScore() se evalúe siquiera —
+   ningún soft signal (proximidad, fila corta, imperdible, favorita) puede revertirlo. Un SOFT
+   SIGNAL solo reordena DENTRO del conjunto que ya pasó los hard constraints. La barra para un hard
+   constraint es CERTEZA suficiente para excluir — nunca una inferencia sobre datos incompletos
+   (`unknown` nunca se convierte en una decisión positiva ni negativa).
    Hard constraints reconocidos hoy — todos evaluados por isHardExcluded():
      - status 'done'/'closed'/'discarded' (ver getStatus())
-     - inelegibilidad REAL confirmada por datos (isReallyIneligibleForFamily() — nunca por
-       ausencia de datos, eso es 'unknown', no inelegible)
-     - a.unavailable===true — reservado para disponibilidad futura (temporada/horario cerrado por
-       calendario, no por acción manual de la familia); ningún dato de parks/*.js lo usa hoy, un
-       parque puede optar por declararlo sin tocar el core.
+     - a.unavailable===true — señal explícita e inequívoca de que la atracción no está disponible
+       para NINGÚN participante aplicable (reservado para disponibilidad futura por
+       temporada/horario, no por acción manual de la familia); ningún dato de parks/*.js lo usa
+       hoy, un parque puede optar por declararlo sin tocar el core.
+   Explícitamente NO es un hard constraint: que todos los `family.children` registrados sean
+   `cannot-ride` (ver allRegisteredChildrenIneligible()) — `PARK.family` modela hoy solo
+   `children`, no adultos ni otros participantes, así que "los niños no cumplen" nunca implica
+   "nadie de la familia puede subir" (ej.: 2 adultos + 2 niños, atracción con mínimo 54" que
+   ningún niño cumple — los adultos sí podrían subir, y el core no tiene forma de saberlo ni de
+   descartarlo con los datos que existen hoy). Ese caso queda como aviso puramente informativo, sin
+   afectar candidateList() ni computeScore() — ver "PARK.family — evolución futura" en
+   specs/SPECIFICATIONS.md.asc para el camino hacia participantes genéricos.
    Todo lo demás (tier/tarjeta de prioridad, sameZoneBonus, proximityBonus, gpsProximityBonus,
    childBonus, timeOfDayBonus, groupEarlyBonus, reactionBonus, restBonus, closingSoonBonus,
    waitTimeScoreAdjust, deferredPenalty/skipPenalty) es soft signal: ajusta el orden, nunca decide
@@ -1797,7 +1822,6 @@ function computeScore(a){
 function isHardExcluded(a){
   const s=getStatus(a.id);
   if(s==='done'||s==='closed'||s==='discarded')return true;
-  if(isReallyIneligibleForFamily(a))return true;
   if(a.unavailable===true)return true;
   return false;
 }
@@ -1915,15 +1939,18 @@ function tipFor(a){
 /* prioLabel(a): recibe un candidato (id + tier + deferred/skipCooldown
    opcionales, como los que produce candidateList()). El estado "repeat" se
    revisa primero porque manda sobre el tier numérico. "closed", "discarded"
-   e "inelegible real" también se revisan primero, aunque en la práctica solo
+   y "unavailable" también se revisan primero, aunque en la práctica solo
    se llega acá para uno de esos casos desde el detalle del checklist
    (candidateList() ya los excluye de la recomendación vía isHardExcluded())
    — mostrar su tier numérico ahí sería engañoso, como si siguieran
-   compitiendo. */
+   compitiendo. Que todos los niños registrados sean `cannot-ride` NO
+   aparece acá — no es un hard constraint (ver allRegisteredChildrenIneligible()
+   más arriba), la atracción sigue compitiendo con su tier normal; ese aviso
+   vive en eligibilityFactHtml(), no en la prioridad. */
 function prioLabel(a){
   if(getStatus(a.id)==='discarded')return {t:'🙅 NO LA QUEREMOS HACER',c:'priolow'};
   if(getStatus(a.id)==='closed')return {t:'🚫 TEMPORALMENTE CERRADA',c:'priolow'};
-  if(BY_ID[a.id]&&isReallyIneligibleForFamily(BY_ID[a.id]))return {t:'🚫 NO APTA PARA LA FAMILIA',c:'priolow'};
+  if(BY_ID[a.id]&&BY_ID[a.id].unavailable===true)return {t:'🚫 NO DISPONIBLE',c:'priolow'};
   if(getStatus(a.id)==='repeat')return {t:'🔁 REPETIR (favorita)',c:'priorepeat'};
   if(a.deferred)return {t:'🕐 EN ESPERA (fila larga)',c:'priomed'};
   if(a.skipCooldown)return {t:'⏭️ SALTADA HACE POCO',c:'priomed'};
