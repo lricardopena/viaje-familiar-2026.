@@ -1,6 +1,6 @@
-# Plan de auditoría — `viaje-familiar-2026` con las skills de `agentic-skills`
+# Plan de auditoría — `viaje-familiar-2026` con skills externas opcionales
 
-**Estado:** listo para ejecutar · **Repo auditado:** `lricardopena/viaje-familiar-2026.` · **Fuente de skills:** `lricardopena/agentic-skills`
+**Estado:** listo para ejecutar · **Repo auditado:** `lricardopena/viaje-familiar-2026.` · **Skills externas:** tooling opcional del entorno del agente (ver `audits/SKILLS-EXTERNAS.md`)
 **Modo:** auditoría **read-only** — este plan produce *hallazgos*, no parches. Los arreglos son un segundo encargo, posterior y separado.
 
 ---
@@ -17,7 +17,9 @@ Sitio estático, sin build, sin package manager para el sitio (sólo `tests/` ti
 | Tests | `tests/theme-park/theme-park-core.spec.js` + fixtures (`minimal-test-park.js/.html`), Playwright | Único test suite del repo |
 | Docs | `CLAUDE.md`, `README.md`, `specs/**/*.md.asc` (cifrado), `HANDOVER.md.asc` (cifrado) | |
 
-Skills locales ya existentes en `.claude/skills/`: `theme-park-architecture-audit`, `add-theme-park`. **No duplicar su trabajo — reutilizarlas donde el plan lo indica.**
+Skills locales ya existentes en `.claude/skills/`: `theme-park-architecture-audit`, `add-theme-park`. Están versionadas con el repo porque forman parte de sus instrucciones y capacidades específicas. **No duplicar su trabajo — reutilizarlas donde el plan lo indica.**
+
+> **Nomenclatura de skills.** Un nombre en `código` **sin ruta** (p. ej. `coding-kiss`) es una **skill externa opcional**: tooling del entorno del agente, *no* una dependencia de este repo — se cita para explicar la metodología, no como archivo que deba existir aquí. Las nativas de Claude Code se marcan "(nativa)" y las locales se citan con su ruta `.claude/skills/…`. Flujo completo en `audits/SKILLS-EXTERNAS.md`.
 
 ### Reglas duras (no negociables)
 
@@ -38,18 +40,17 @@ Skills locales ya existentes en `.claude/skills/`: `theme-park-architecture-audi
 
 ## Fase 0 — Preparación (secuencial, bloquea todo lo demás)
 
-### T0.1 · Vendorear `agentic-skills` como submódulo
-- **Skill:** — (git puro)
-- **Pasos:** `git submodule add -b main https://github.com/lricardopena/agentic-skills.git agentic-skills` en la raíz del repo. Ubicación fija: raíz, nombre `agentic-skills`, **no** dentro de `skills/`.
-- **Entregable:** `.gitmodules` + gitlink, commiteados.
-- **DoD:** `agentic-skills/skills/coding-kiss/SKILL.md` existe y es legible.
-- **Si falla** (sin acceso de red o de repo): fallback — leer las skills desde `/home/user/agentic-skills` si ya está clonado, y marcar T0.1 como `OMITIDA — usando clon local`. El resto del plan no depende del submódulo, sólo de poder leer los `SKILL.md`.
-
-### T0.2 · Registrar la ruta de skills en la config del proyecto
-- **Skill:** `update-config` (nativa de Claude Code)
-- **Pasos:** añadir `agentic-skills/skills/` a las rutas de skills en `.claude/settings.json` para que se autodescubran junto a las locales.
-- **DoD:** las skills de la colección aparecen invocables sin ruta absoluta.
-- **Nota:** si esto genera conflicto con las skills locales por nombre, ganan las locales — documentarlo en el reporte, no renombrar nada.
+### T0.1 · Resolver skills externas opcionales
+- **Skill:** — (ninguna)
+- **Regla:** las skills externas son **tooling opcional del entorno del agente, no una dependencia del repo**. Ver `audits/SKILLS-EXTERNAS.md` para el flujo completo.
+- **Pasos:**
+  1. Detectar si las skills externas que citan las tareas de abajo están disponibles en el entorno actual del agente.
+  2. Si existen, registrar únicamente que se usarán **desde una ruta externa** (una línea en el entregable de la tarea que las use).
+  3. Si no existen y una tarea se beneficiaría realmente de ellas, pedir al usuario su ubicación o acceso **cuando haga falta** — sin inventar rutas ni asumir acceso a repos privados.
+  4. Nunca añadirlas al repo (ni submódulo, ni subtree, ni copia vendoreada, ni symlink commiteado, ni descarga automática, ni PAT/deploy key/Action que clone un repo privado).
+- **DoD:** se sabe qué skills externas hay disponibles y cuáles no; ninguna de ellas quedó registrada en git.
+- **Nota histórica:** este plan tenía originalmente un T0.1 ("vendorear la colección de skills como submódulo") y un T0.2 ("registrar la ruta de skills en `.claude/settings.json`"). Ambas se eliminaron: hacían que el repo público dependiera del checkout de un repo privado, lo que rompía el build de GitHub Pages. Ver `audits/01-nota-T0.2.md`. La numeración T0.3 se conserva para no romper referencias.
+- **Si no hay ninguna disponible:** el plan sigue igual. Las citas a skills externas describen *metodología*; el agente ejecuta cada eje con las capacidades que tenga y documenta en el entregable qué metodología externa no pudo utilizar. **La ausencia de estas skills no bloquea el build, los tests, Pages ni el uso de la aplicación.**
 
 ### T0.3 · Baseline verde
 - **Pasos:** `npm install` y `npm test` (Playwright). Registrar el resultado **antes** de auditar.
@@ -61,7 +62,7 @@ Skills locales ya existentes en `.claude/skills/`: `theme-park-architecture-audi
 ## Fase 1 — Reconocimiento (secuencial, alimenta la Fase 2)
 
 ### T1.1 · Mapa del codebase y presupuesto de complejidad
-- **Skill:** `agentic-skills/skills/meta-improve-codebase-architecture`
+- **Skill:** `meta-improve-codebase-architecture`
 - **Alcance:** todo el repo.
 - **Pasos:** escanear buscando "deepening opportunities". Producir el reporte HTML visual que la skill genera. **No** ejecutar la fase de "grill" interactiva — el agente corre sin humano; en su lugar, listar todas las oportunidades detectadas con su justificación.
 - **Entregable:** `audits/01-arquitectura-scan.md` + el HTML que produzca la skill en `audits/01-arquitectura-scan.html`.
@@ -87,28 +88,28 @@ Skills locales ya existentes en `.claude/skills/`: `theme-park-architecture-audi
 - **Entregable:** `audits/2A-frontera-core-parques.md`.
 
 ### T2.B · Implementación vs. especificación `[requiere passphrase]`
-- **Skill:** `agentic-skills/skills/review-implementation-audit`
+- **Skill:** `review-implementation-audit`
 - **Alcance:** Theme Park Companion completo, auditado contra `specs/architecture/park-contract.md.asc`, `specs/architecture/theme-park-core.md.asc`, `specs/architecture/recommendation-engine.md.asc`, `specs/architecture/family-and-eligibility.md.asc`, `specs/architecture/geolocation-and-maps.md.asc`, `specs/architecture/observations-and-state.md.asc`.
 - **Pasos:** por cada requisito de las specs, clasificar: `implementado` / `parcial` / `faltante` / `contradicho` / `no verificable`. Incluir *scope creep*: comportamiento en el código que ninguna spec pidió.
 - **Entregable:** `audits/2B-spec-vs-implementacion.md` con una fila por requisito y su evidencia (`archivo:línea`).
 - **Fallback sin passphrase:** ejecutar sólo contra el contrato documentado en el comentario de cabecera de `assets/theme-park-core.js`, y marcar el alcance reducido de forma visible al inicio del archivo.
 
 ### T2.C · Sobre-ingeniería y complejidad no ganada `[sin-specs]`
-- **Skill:** `agentic-skills/skills/coding-kiss`
+- **Skill:** `coding-kiss`
 - **Alcance:** `assets/theme-park-core.js` (prioridad — 148 KB en un archivo), `index.html`, `auth.js`.
 - **Pregunta guía:** ¿qué complejidad presente **no** está ganada por evidencia? Abstracciones especulativas, knobs de configuración que ningún parque usa, capas de indirección con un solo implementador, generalización prematura.
 - **Matiz importante:** el core *debe* ser genérico por diseño (es el contrato del repo). Distinguir "genérico porque hay dos parques y habrá un tercero" (justificado) de "genérico por si acaso" (no justificado). **Chesterton's Fence aplica fuerte aquí** — antes de marcar algo como innecesario, buscar en `git log` y en los comentarios por qué se puso.
 - **Entregable:** `audits/2C-kiss-sobreingenieria.md`.
 
 ### T2.D · Claridad y simplificación `[sin-specs]`
-- **Skill:** `agentic-skills/skills/coding-code-simplification` + `agentic-skills/skills/coding-codebase-design`
+- **Skill:** `coding-code-simplification` + `coding-codebase-design`
 - **Alcance:** mismo que T2.C, más `parks/*.js`.
 - **Pregunta guía:** refactors que **no cambian comportamiento** y mejoran legibilidad/navegabilidad. Usar el vocabulario de "deep modules" para proponer dónde debería ir cada seam si `theme-park-core.js` se partiera.
 - **Restricción de estilo:** `data.js` es una-entrada-por-línea a propósito, y `index.html` es denso a propósito (`CLAUDE.md`). **No reportar "reformatear" como hallazgo** — es una convención deliberada.
 - **Entregable:** `audits/2D-simplificacion.md`, con cada propuesta clasificada por esfuerzo (S/M/L) y riesgo de regresión.
 
 ### T2.E · Seguridad, privacidad y hardening `[sin-specs]`
-- **Skill:** `agentic-skills/skills/coding-security-and-hardening` + `/security-review` (nativa)
+- **Skill:** `coding-security-and-hardening` + `/security-review` (nativa)
 - **Alcance:** `auth.js`, `auth.css`, `tools/generate-auth-verifier.html`, manejo de `localStorage` en el core, permisos de geolocalización, todo dato embebido en `data.js` y `parks/*.js`.
 - **Checklist específico de este repo:**
   1. ¿Hay alguna dirección/coordenada/Plus Code/Place ID **residencial** commiteado? (Ver regla 4 — reportar sin transcribir.) Verificar que la convención `"Home"` se respeta en `maps`, `activityDests`, `hotelDests` y en las URLs de Maps.
@@ -119,7 +120,7 @@ Skills locales ya existentes en `.claude/skills/`: `theme-park-architecture-audi
 - **Entregable:** `audits/2E-seguridad-privacidad.md`.
 
 ### T2.F · Rendimiento y accesibilidad `[sin-specs]`
-- **Skill:** `agentic-skills/skills/coding-performance-optimization` + `agentic-skills/skills/coding-frontend-ui-engineering`
+- **Skill:** `coding-performance-optimization` + `coding-frontend-ui-engineering`
 - **Alcance:** carga de `index.html`, `storyland.html`, `legoland.html`.
 - **Foco de rendimiento:** los mapas ilustrados pesan **1.5 MB y 2.0 MB** (`assets/*-map-2026.webp`) y `theme-park-core.js` son 148 KB sin minificar. **Contexto de uso real: teléfono, en un parque, con datos móviles y batería limitada.** Evaluar: ¿se cargan eager o lazy? ¿hay versiones responsive? ¿cuánto tarda el primer render en 4G lenta? ¿Leaflet se carga aunque el usuario nunca abra el mapa geográfico?
 - **Foco de accesibilidad:** WCAG en los controles del Companion, contraste, tamaño de *touch target* (se usa con una mano, al sol), foco de teclado, `aria-*` en los toggles de progreso.
@@ -127,7 +128,7 @@ Skills locales ya existentes en `.claude/skills/`: `theme-park-architecture-audi
 - **Entregable:** `audits/2F-performance-a11y.md` con mediciones reales (peso transferido, tiempo hasta interactivo) y no sólo opiniones.
 
 ### T2.G · Cobertura de tests `[sin-specs]`
-- **Skill:** `agentic-skills/skills/review-implementation-audit` (eje de test-coverage)
+- **Skill:** `review-implementation-audit` (eje de test-coverage)
 - **Alcance:** `tests/theme-park/theme-park-core.spec.js` vs. la superficie real del core.
 - **Pregunta guía:** ¿qué comportamiento **parece implementado pero no está verificado por ningún test**? Priorizar: motor de recomendación, elegibilidad por niño, lógica de zonas/cooldown, persistencia en `localStorage`, y el itinerario (`index.html` + `data.js`) que **no tiene tests en absoluto**.
 - **Entregable:** `audits/2G-cobertura-tests.md`, con los gaps ordenados por "qué se rompe en el viaje si esto falla".
@@ -137,12 +138,12 @@ Skills locales ya existentes en `.claude/skills/`: `theme-park-architecture-audi
 ## Fase 3 — Consolidación (secuencial, requiere toda la Fase 2 terminada)
 
 ### T3.1 · Deduplicar y priorizar
-- **Skill:** `agentic-skills/skills/plan-triage`
+- **Skill:** `plan-triage`
 - **Pasos:** leer los siete archivos de Fase 2. Fusionar hallazgos duplicados (T2.C y T2.D se van a solapar; T2.B y T2.G también). Asignar P0–P3 según la escala de arriba. Ordenar por **impacto en el viaje real**, no por elegancia técnica.
 - **Entregable:** `audits/03-hallazgos-consolidados.md` — una tabla única, cada fila: `ID | severidad | eje | archivo:línea | hallazgo | evidencia | arreglo propuesto | esfuerzo`.
 
 ### T3.2 · Verificación adversarial de los P0/P1
-- **Skill:** `agentic-skills/skills/review-doubt-driven-development`
+- **Skill:** `review-doubt-driven-development`
 - **Pasos:** para **cada** hallazgo P0 y P1, revisar con contexto fresco: ¿la evidencia realmente sostiene la afirmación? ¿el `archivo:línea` dice lo que el hallazgo dice? Degradar o eliminar los que no sobrevivan.
 - **Entregable:** actualizar `audits/03-hallazgos-consolidados.md` marcando cada P0/P1 como `CONFIRMADO` o `DEGRADADO a Pn` con una línea de por qué.
 - **Por qué esta tarea existe:** un reporte de auditoría con falsos positivos en el tope se deja de leer. Es más barato descartarlos ahora.
@@ -158,7 +159,7 @@ Skills locales ya existentes en `.claude/skills/`: `theme-park-architecture-audi
   6. Alcance de la auditoría: qué se auditó, qué **no**, y qué quedó bloqueado por falta de passphrase.
 
 ### T3.4 · Tickets accionables
-- **Skill:** `agentic-skills/skills/plan-to-tickets`
+- **Skill:** `plan-to-tickets`
 - **Pasos:** convertir los hallazgos P0/P1/P2 confirmados en tickets autocontenidos: contexto, archivos a tocar, criterio de aceptación, cómo verificar.
 - **Entregable:** `audits/04-tickets.md`. **No abrir issues en GitHub** salvo que el usuario lo pida.
 
@@ -168,7 +169,7 @@ Skills locales ya existentes en `.claude/skills/`: `theme-park-architecture-audi
 
 ### T4.1 · Commit y push
 - **Rama:** `claude/agentic-skill-audit-gubpxq` (única rama permitida).
-- **Pasos:** commitear todo `audits/` + `.gitmodules`/gitlink + el cambio de `.claude/settings.json`. Push con `git push -u origin claude/agentic-skill-audit-gubpxq`.
+- **Pasos:** commitear todo `audits/` (nada fuera de `audits/`; ninguna skill externa entra al repo). Push con `git push -u origin claude/agentic-skill-audit-gubpxq`.
 - **Verificación previa al commit:** `git diff --stat` no debe mostrar cambios en `index.html`, `data.js`, `assets/**`, `parks/**`, `auth.js`, `*.html` de producto, `HANDOVER.md.asc`, ni `specs/**`. Si los muestra, revertirlos — este encargo es read-only sobre el producto.
 - **No crear PR** salvo petición explícita.
 
@@ -180,8 +181,8 @@ Resumen en el chat: cuántos hallazgos por severidad, los 3 principales, qué qu
 ## Grafo de dependencias
 
 ```
-T0.1 → T0.2 ┐
-T0.3 ───────┴→ T1.1 ─┐
+T0.1 ┐
+T0.3 ┴→ T1.1 ─┐
              T1.2 ───┴→ [ T2.A  T2.B  T2.C  T2.D  T2.E  T2.F  T2.G ]  (paralelas)
                                               │
                                               └→ T3.1 → T3.2 → T3.3 → T3.4 → T4.1 → T4.2

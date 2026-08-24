@@ -1,6 +1,6 @@
 # T3.1/T3.2 — Hallazgos consolidados y verificación adversarial
 
-**Skill T3.1:** `agentic-skills/skills/plan-triage` (deduplicación/priorización) · **Skill T3.2:** `agentic-skills/skills/review-doubt-driven-development` (verificación adversarial de P0/P1)
+**Skill externa T3.1:** `plan-triage` (deduplicación/priorización) · **Skill externa T3.2:** `review-doubt-driven-development` (verificación adversarial de P0/P1)
 
 ## Deduplicación aplicada
 

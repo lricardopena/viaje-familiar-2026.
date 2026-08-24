@@ -1,6 +1,6 @@
 # T2.D — Claridad y simplificación
 
-**Skill:** `agentic-skills/skills/coding-code-simplification` + `agentic-skills/skills/coding-codebase-design` · **Alcance:** `assets/theme-park-core.js`, `parks/*.js`, `index.html`.
+**Skill externa:** `coding-code-simplification` + `coding-codebase-design` · **Alcance:** `assets/theme-park-core.js`, `parks/*.js`, `index.html`.
 
 **Restricción respetada:** `data.js` (una entrada por línea) e `index.html` (denso) son convención deliberada documentada en `CLAUDE.md` — no se reporta "reformatear" como hallazgo en ninguno de los dos.
 
