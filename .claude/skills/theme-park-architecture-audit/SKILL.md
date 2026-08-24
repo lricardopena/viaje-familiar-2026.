@@ -83,17 +83,83 @@ files, shells, or specs since this was written, include those too:
   doesn't mention, that capability is real and covered.
 - `specs/architecture/theme-park-core.md.asc`, `park-contract.md.asc`,
   `geolocation-and-maps.md.asc`, `family-and-eligibility.md.asc`,
-  `recommendation-engine.md.asc`, `observations-and-state.md.asc` — canonical
-  architecture docs. Per `specs/README.md` and `CLAUDE.md`, these may be
-  decrypted and read proactively without asking, using a passphrase obtained
-  only through a legitimate channel already available in your environment —
-  never guessed, invented, or requested from the user to paste in chat. If
-  no legitimate channel is available in your context, say so explicitly in
-  the audit output rather than fabricating spec content, and fall back to
-  the code itself (header comments + both adapters + the test fixture) as
-  the source of truth — the code is normative regardless of spec access.
-  Never print, log, or persist the passphrase; delete any decrypted `.md`
-  plaintext before finishing.
+  `recommendation-engine.md.asc`, `observations-and-state.md.asc` — the
+  **approved architecture specifications**. Per `specs/README.md` and
+  `CLAUDE.md`, these may be decrypted and read proactively without asking,
+  using a passphrase obtained only through a legitimate channel already
+  available in your environment — never guessed, invented, or requested
+  from the user to paste in chat. Never print, log, or persist the
+  passphrase; delete any decrypted `.md` plaintext before finishing. **If
+  no legitimate channel is available, say so explicitly in the audit
+  output** (`unable_to_verify`, see the next section) rather than
+  fabricating spec content — but do not treat that gap as itself a finding,
+  and do not treat the code as having silently inherited the specs'
+  authority. Continue the audit on the evidence that *is* available (core
+  header, runtime reads, adapters, tests, git history) and say plainly that
+  specification alignment was not fully verified.
+
+## Specification vs. implementation — evidence, not automatic authority
+
+This repo has (at least) three distinct kinds of evidence, and none of them
+automatically outranks the others:
+
+1. **Approved architecture specifications** (`specs/architecture/*.md.asc`)
+   — the team's recorded, deliberate design decisions.
+2. **Contract/documentation kept alongside the code** (the header comment
+   in `assets/theme-park-core.js`, adapter header comments) — meant to
+   track the specs, but maintained by hand and therefore able to lag.
+3. **Actually implemented behavior** (runtime reads in the core, what the
+   adapters populate, what `tests/theme-park/theme-park-core.spec.js`
+   exercises and asserts) — what the app really does today.
+
+When (2) and (3) already agree but you can't read (1), that's simply
+**`unable_to_verify`** for the specification dimension — proceed using (2)
+and (3), state the limitation, and do not report it as a finding on its
+own.
+
+When any two of these disagree — most importantly when the specs say one
+thing and the implementation does another — **do not automatically rewrite
+or reinterpret the approved architecture to match implementation drift, and
+do not automatically assume the specification is stale.** Investigate the
+discrepancy (git history/changelog entries in the specs themselves often
+say *when* and *why* something changed — see the "Historial resumido"
+section pattern used in this repo's specs) and classify it:
+
+```yaml
+architecture_alignment:
+  status: aligned | implementation_drift | specification_drift |
+    intentional_evolution | unresolved_contradiction | unable_to_verify
+  dimension: <what was compared, e.g. "geoCalibration activation criteria">
+  evidence:
+    specification: <what the spec says, or "not readable">
+    implementation: <what the code/adapters/tests actually do>
+  notes:
+```
+
+- `implementation_drift` — the spec is the intended design and the code
+  quietly diverged from it (a real bug/regression to fix, or at minimum a
+  MAJOR finding).
+- `specification_drift` — the code reflects a real, working decision the
+  spec document never caught up to (a documentation fix to propose, not a
+  code change).
+- `intentional_evolution` — evidence (changelog entries, comments, commit
+  history) shows the divergence was a deliberate later decision that the
+  spec simply hasn't been updated to reflect yet — closely related to
+  `specification_drift` but worth naming when there's explicit evidence of
+  intent, not just guesswork.
+- `unresolved_contradiction` — you cannot tell which side is correct from
+  available evidence; do not silently pick one. Surface it explicitly (at
+  least MAJOR) and say what additional evidence or a human decision would
+  resolve it.
+- `unable_to_verify` — the specification side of the comparison couldn't be
+  read (no legitimate passphrase channel). Not itself a finding.
+
+Do not use `documentation-drift` (the finding category, see below) as a
+shortcut past this — that category is for a spec-vs-code discrepancy you
+have already classified as `specification_drift` or `implementation_drift`
+through this process, or for a purely internal drift (e.g. the core's own
+header comment listing a field the code no longer reads), never a
+placeholder for "these disagree and I picked one."
 
 ## Durable audit state
 
@@ -108,6 +174,7 @@ theme_park_architecture_audit:
   shells: [storyland.html, legoland.html, ...]
   specs_consulted: []
   discovered_capabilities: []      # optional contract fields actually consumed
+  architecture_alignment: []       # list of {dimension, status, evidence} — see next section
   candidate_findings: []
   validated_findings: []
   third_park_test:
@@ -128,12 +195,24 @@ reproducible.
 
 ### Step 2 — Derive the current `window.PARK` contract
 
-Derive it from three places, in this priority order when they disagree:
-1. `assets/theme-park-core.js` header comment (authoritative intent).
-2. Actual runtime reads of `PARK.*` in the core (`grep -n "PARK\."`) —
-   this is what's *really* consumed, which can be broader than the header
-   documents if a comment went stale.
-3. Both real adapters, to see what's actually populated.
+Derive it by cross-checking, not by picking one source and trusting it:
+1. `specs/architecture/park-contract.md.asc`, if readable — the approved
+   contract.
+2. `assets/theme-park-core.js` header comment — the contract as documented
+   next to the code.
+3. Actual runtime reads of `PARK.*` in the core (`grep -n "PARK\."`) — what
+   the engine *really* consumes, which can be broader (or narrower) than
+   either document if something went stale.
+4. Both real adapters, to see what's actually populated.
+
+When these agree, the contract is simply their union — no conflict to
+resolve. When they disagree (a field the spec documents that nothing reads,
+a field the code reads that no doc mentions, a field the header documents
+differently than the spec), that's a data point for the
+`architecture_alignment` classification above, not something to
+silently resolve by rank. If (1) is unreadable, derive the contract from
+(2)-(4) and mark the specification side `unable_to_verify` rather than
+treating (2) as having become authoritative by default.
 
 Classify each field as **required**, **optional (degrades cleanly when
 absent)**, **capability-specific** (only meaningful when a related
@@ -248,15 +327,49 @@ third_park_test:
     new_files: []
     modified_existing_files: []
     core_changes: []
-    unsupported_requirements: []
+    unsupported_requirements: []       # each tagged with a capability_gap.evidence_class, see below
   verdict: pass | pass_with_generic_core_evolution | fail
 ```
 
 If the hypothetical park needs `if (PARK.id === '<new-park>')` in the core,
-that's a finding. If it instead reveals a capability worth generalizing
-(e.g. "shows with per-show `restrictions`" isn't supported by anything
-today), that's **legitimate generic evolution to recommend**, not a
-violation — write it up as a capability gap, not as leakage.
+that's a finding — always. If it instead reveals a capability worth
+generalizing (e.g. "shows with per-show `restrictions`" isn't supported by
+anything today), that's a **capability gap**, not leakage — but a
+capability gap is not automatically a recommendation to build anything.
+Classify it first:
+
+```yaml
+capability_gap:
+  evidence_class: real_current_requirement | observed_existing_park_need |
+    credible_near_term_requirement | hypothetical_stress_test_only
+```
+
+- `real_current_requirement` / `observed_existing_park_need` — Story Land
+  or LEGOLAND (or another real park already onboarded) actually needs this
+  today.
+- `credible_near_term_requirement` — not needed by an existing park, but a
+  concrete, stated plan (a real park the family intends to add soon, an
+  explicit user request) will need it.
+- `hypothetical_stress_test_only` — surfaced purely by this skill's own
+  fictitious dry-run park, invented specifically to stress a dimension the
+  automated fixture doesn't cover. **A hypothetical park can test whether
+  the architecture has a path for generic evolution; it cannot, by itself,
+  justify building that evolution.** A gap in this class:
+  - does NOT justify implementing the capability;
+  - must NOT be presented as P0/P1 or as current technical debt;
+  - must NOT trigger a core modification;
+  - stays recorded as a stress-test result only, unless real evidence later
+    promotes it to one of the other three classes.
+
+This reclassifies the verdict rule: reserve `pass_with_generic_core_evolution`
+for a gap backed by `real_current_requirement`,
+`observed_existing_park_need`, or `credible_near_term_requirement`. When
+the *only* gap found is `hypothetical_stress_test_only`, the verdict is
+still **`pass`** — the seam held, nothing needed the core — with a note
+alongside it: `hypothetical generic evolution path identified`. See
+`references/third-park-test.md` for the worked example and the full
+rationale (avoiding speculative abstractions while still keeping the
+conceptual test valuable).
 
 ### Step 7 — Addition-over-modification test (when a diff/history is available)
 
@@ -295,13 +408,19 @@ hardcode.)
 For each candidate finding, confirm: (1) it's runtime behavior, not a
 comment/doc; (2) it's genuinely park-specific, not a generic rule that
 happens to read naturally for one park; (3) the current contract can't
-already express it; (4) if not, there's a real capability gap, not just an
-unused field; (5) there's multi-adapter evidence where relevant; (6) fixing
-it would deepen the seam, not just relocate a shallow special case; (7) no
-spec explicitly authorizes the current behavior as an intentional,
-documented boundary decision (e.g. the extensive `geoCalibration`
-non-activation reasoning in `parks/legoland-new-york.js` is a deliberate,
-documented data-quality decision, not an architecture bug).
+already express it; (4) if not, there's a real capability gap (classified
+per Step 6, not automatically `hypothetical_stress_test_only` just because
+it's inconvenient, but also not inflated past what the evidence supports);
+(5) there's multi-adapter evidence where relevant; (6) fixing it would
+deepen the seam, not just relocate a shallow special case; (7) if a spec
+and the observed behavior disagree, you ran the `architecture_alignment`
+comparison from the "Specification vs. implementation" section above
+instead of assuming either side automatically wins — e.g. the extensive
+`geoCalibration` non-activation reasoning in `parks/legoland-new-york.js`
+looks like it could be a spec/code mismatch at a glance, but investigating
+it (the adapter's own header comment explains the residual-analysis
+criteria in detail) shows it's a deliberate, documented data-quality
+decision — `aligned`, not a finding.
 
 ## Finding schema
 
@@ -312,7 +431,13 @@ finding:
   category: hardcoded-park-logic | hardcoded-entity-id | hardcoded-zone |
     capability-gap | contract-leak | boundary-validation |
     duplicated-adapter-logic | shallow-abstraction | unsupported-third-park |
+    specification-drift | implementation-drift | unresolved-contradiction |
     documentation-drift | other
+  # specification-drift/implementation-drift/unresolved-contradiction come
+  # from the architecture_alignment classification (see the
+  # "Specification vs. implementation" section) — use documentation-drift
+  # only for drift that isn't a spec-vs-code disagreement (e.g. the core's
+  # own header comment vs. its actual fields).
   claim:
   evidence: []          # file:line, or npm test output
   affected_files: []
@@ -338,9 +463,22 @@ duplicated across adapters that should be a core default; a capability
 implemented on the wrong side of the boundary; an assumption that
 meaningfully limits extension but has a workaround today.
 
-**ADVISORY** — documentation drift (header comment vs. actual fields);
-naming inconsistency; optional-default improvements; non-urgent abstraction
-opportunities.
+**ADVISORY** — a resolved `specification_drift`/`intentional_evolution`
+(the spec doc just needs updating, behavior is fine); internal
+header-comment-vs-actual-fields drift; naming inconsistency; optional-default
+improvements; non-urgent abstraction opportunities. A
+`hypothetical_stress_test_only` capability gap from the conceptual Third
+Park Test is not a finding at all (see Step 6) — record it in
+`capability_gaps`, not in `findings`.
+
+An `architecture_alignment` result of `unresolved_contradiction` is at
+least MAJOR by default (it's a live design ambiguity someone has to
+resolve, not cosmetic drift) — escalate to BLOCKING only if the ambiguity
+sits directly on the core/park boundary (e.g. it's unclear whether a
+behavior is supposed to be generic or park-specific). A confirmed
+`implementation_drift` is MAJOR or BLOCKING depending on whether the drift
+already broke the generic-core invariant (BLOCKING) or is just inconsistent
+with intent without breaking it (MAJOR).
 
 Do not inflate severity — most audits of this codebase, given its existing
 discipline, should turn up ADVISORY findings at most.
@@ -356,13 +494,14 @@ theme_park_architecture_audit:
     shells: []
     specs_consulted: []
   contract_summary: {}
+  architecture_alignment: []   # [{dimension, status, evidence, notes}], per the section above
   third_park_test:
     automated_result:
     verdict:
     new_files: []
     modified_existing_files: []
     core_changes_required: []
-    capability_gaps: []
+    capability_gaps: []        # [{description, evidence_class}] — evidence_class per Step 6
   findings:
     blocking: []
     major: []
@@ -377,8 +516,11 @@ can act on without parsing YAML.
 
 - [ ] Read the current core header comment and grepped its `PARK.*` reads.
 - [ ] Read both real park adapters (or all park adapters, if more exist).
-- [ ] Consulted the relevant specs, or explicitly noted why not (no
-      legitimate passphrase channel available).
+- [ ] Consulted the relevant specs, or explicitly recorded
+      `architecture_alignment: unable_to_verify` for the dimensions that
+      couldn't be checked (no legitimate passphrase channel available) —
+      never silently treated the code as having inherited the specs'
+      authority.
 - [ ] Ran `npm test` (automated Third Park Test) and recorded the result.
 - [ ] Distinguished runtime hardcodes from comments/history/docs.
 - [ ] Evaluated capability degradation, not just literal park-ID checks.
@@ -386,20 +528,26 @@ can act on without parsing YAML.
       different from the automated fixture.
 - [ ] Every published finding carries file:line or test-output evidence.
 - [ ] Distinguished park-specific leakage from legitimate generic evolution
+      (and correctly evidence-classed any capability gap — see Step 6)
       or from an intentional, spec-documented boundary decision.
+- [ ] For every spec-vs-implementation disagreement found, ran the
+      `architecture_alignment` classification (investigated, didn't assume
+      either side wins) instead of defaulting to `documentation-drift`.
 - [ ] Did not recommend moving park-specific data into the core.
 - [ ] Did not recommend duplicating generic behavior into every adapter.
+- [ ] Did not recommend implementing a `hypothetical_stress_test_only`
+      capability gap, or present one as current debt/P0/P1.
 - [ ] Verified optional capabilities degrade cleanly (no crash/blank on
       absence).
-- [ ] Checked specs vs. implementation for drift, when specs were readable.
 
 ## Stop conditions
 
 Finish only when a Third Park Test verdict can be emitted, all published
-findings are validated (not merely candidate), no high-severity candidate
-remains uninvestigated, or the output explicitly states what missing
-evidence (e.g. no spec access, `npm test` couldn't run) prevented full
-completion — never silently omit a step.
+findings are validated (not merely candidate), every `architecture_alignment`
+comparison attempted has a status (including `unable_to_verify` where
+honest), no high-severity candidate remains uninvestigated, or the output
+explicitly states what missing evidence (e.g. no spec access, `npm test`
+couldn't run) prevented full completion — never silently omit a step.
 
 ## References
 
@@ -411,5 +559,7 @@ completion — never silently omit a step.
 
 These specs remain canonical (`specs/architecture/*.md.asc`); the references
 here are Theme Park Companion-specific application notes, not a duplicate
-source of truth — if code and specs disagree, say so as a
-`documentation-drift` finding rather than silently picking one.
+source of truth. If code and specs disagree, run the
+`architecture_alignment` classification from the "Specification vs.
+implementation" section — investigate and classify the discrepancy, never
+silently pick a side.

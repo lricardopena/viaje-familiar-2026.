@@ -1,97 +1,103 @@
-# Park onboarding field checklist
+# Park onboarding validation checklist
 
-Re-derive the authoritative field list from
-`assets/theme-park-core.js`'s header comment before using this — it's a
-convenience checklist, not the contract itself.
+This is an **onboarding validation checklist**, not a copy of the
+`window.PARK` contract. The contract has exactly one place it's allowed to
+live authoritatively — three, really, and they must agree:
+`specs/architecture/park-contract.md.asc`, the header comment in
+`assets/theme-park-core.js`, and what the core actually reads at runtime.
+This file must never become a fourth, independently-drifting copy of that
+contract.
 
-## Top-level `window.PARK`
+## Derive the contract fresh, every time
 
-| Field | Required? | Notes |
-|---|---|---|
-| `id` | required | stable, unique, kebab-case (`legoland-new-york`) |
-| `name` | required | display name |
-| `emoji` | required | shows in header/back-link default |
-| `theme.{accent,accentDark,themeColor}` | required | colors applied by `applyParkTheme()` |
-| `copy.{backHref,backLabel,headerTitle,mapOfficialTitle,mapAltText,mapNote,doneTitle,doneBody,resetConfirm}` | required | user-facing strings; `lunchTip` etc. are adapter-specific extras, not core-read |
-| `map.url` | required | official map link, opened externally |
-| `map.image` | optional | omit (don't invent) if no vendored image exists — engine falls back cleanly |
-| `map.center` | required | `[lat,lng]` for the geographic map's initial view — use a **public** venue coordinate, never a residential address (see `CLAUDE.md`'s "Home" privacy rule if this park is ever near the family's home) |
-| `map.geoCalibration` | optional | only with defensible control points — see SKILL.md Step 7 |
-| `map.poiFilterGroups` / `poiFilterGroupLabels` | optional | only if the default per-type filter grouping is wrong for this park |
-| `map.defaultGeoFilters` | optional | which filter categories start active on the geographic map |
-| `storageKey` | required | unique localStorage key, `<something>_state_v1` |
-| `attractions` | required | at least one; see entity table below |
-| `pois` | optional | `[]` is valid if genuinely no services are tracked yet |
-| `mustIds` | optional | `[]` valid |
-| `calmIds` | optional | used by "modo tranquilo"; `[]` valid |
-| `childFavoriteIds` | optional | `[]` valid |
-| `waterIds` | optional | `[]` valid |
-| `categories` | required | `[[key,label],...]` — drives the checklist tab's grouping |
-| `priorityGroups` | optional | `[]` valid |
-| `reactionSystem` | optional | `null` valid (LEGOLAND) |
-| `tips` | optional | `[]` valid, but usually worth populating |
-| `family` | optional | `null` valid (Story Land); if present, `children:[{name,ageYears,heightIn,heightApprox}]` |
-| `shows` | optional | `[]` valid; add `geo` per-show only alongside `geoExtraCollections:['shows']` |
-| `closingTime` | optional | `null` valid; `'HH:MM'` activates the closing-soon score bonus |
-| `geoExtraCollections` | optional | array of `PARK` field names beyond `attractions`/`pois` that carry `geo` |
-| `quickServices` | optional | curated `[{type,icon,label}]`; omit to let the core derive from `pois` |
-| `poiTypeLabels` | optional | override/extend the default type→label table |
+Before onboarding a park, derive the current contract from:
 
-## Per-attraction
+1. `specs/architecture/park-contract.md.asc`, if a legitimate passphrase
+   channel is available — the approved contract.
+2. `assets/theme-park-core.js`'s docblock/header comment — the contract as
+   documented next to the code.
+3. Actual `PARK.*` reads in the core (`grep -n "PARK\."
+   assets/theme-park-core.js`) — what's really consumed today.
+4. Both current real adapters (`parks/story-land.js`,
+   `parks/legoland-new-york.js`, and any others already onboarded) — what's
+   actually populated in practice.
+5. `tests/theme-park/fixtures/minimal-test-park.js` — the automated
+   fixture, which deliberately exercises degradation paths (missing map,
+   undeclared `quickServices`, an invented POI type, etc.) that make good
+   examples of what's genuinely optional.
 
-| Field | Required? | Notes |
-|---|---|---|
-| `id` | required | unique across attractions **and** POIs |
-| `name` | required | |
-| `cat` | required | must match one of `categories`' keys |
-| `adult` | optional | generic accompaniment flag, shown when `restrictions`/`family` aren't both present |
-| `zone` | optional | free text; used for grouping/orientation, not required |
-| `mapNumber` | optional | only if the official map numbers attractions |
-| `mapMarker.{x,y}` | optional | % position on `map.image`; only if you actually measured it off the image |
-| `mapRegion` | optional | one of the 3×3 grid keys in the core, for a coarse "front-left"-style hint |
-| `visualLandmark` | optional | free text fallback when no `mapRegion`/`mapMarker` |
-| `nearbyMapNumbers` / `nearbyAttractions` | optional | arrays of map numbers / attraction ids — validate these resolve (Step 11) |
-| `tags` | optional | short chips |
-| `why` / `tip` | optional | narrative copy |
-| `priorityTier` | optional | lower sorts first; omit to fall to the core's default tiering |
-| `waterBoostTier` | optional | only for water attractions needing a heat-dependent boost |
-| `restrictions.{minHeightIn,maxHeightIn,adultAccompaniedMinHeightIn,adultRequiredBelowIn,adultRequiredBelowInAndAge,minAge,maxAge,minAgeUnaccompanied,soloOnly,source,lastVerified,confidence}` | optional | only populate what you can source; leave the rest absent, not zero/false |
-| `geo.{lat,lng,source,reference,confidence}` | optional | `confidence` one of `confirmed_on_site` \| `official_map` \| `approximate`; never omit `source`/`reference` when `geo` is present |
-| `plusCode` | optional | raw string, informational |
-| `unavailable` | optional | the **one** true hard constraint the core enforces — use only for a genuinely closed/removed attraction, not "we don't want to do this one" |
+**Do not use this checklist as a static field contract.** If the core
+grows `PARK.someNewCapability` tomorrow, this file does not need editing
+for that fact alone to be usable — Step 1 of the `add-theme-park` skill
+already points here, and this document's job is to make sure you *look it
+up fresh* rather than to enumerate it for you. If sources (1)-(4) disagree
+with each other, don't silently pick one — that's exactly the
+`architecture_alignment` situation `theme-park-architecture-audit`
+classifies; flag it for that skill rather than guessing during onboarding.
 
-## Per-POI
+A few fields worth knowing by name because they come up on nearly every
+park (**examples, not an exhaustive or authoritative schema** — always
+re-check against the live sources above): `id`, `name`, `theme`, `copy`,
+`map`, `storageKey`, `attractions`, `pois`, `categories` tend to be required
+in practice; `family`, `reactionSystem`, `shows`, `closingTime`,
+`map.geoCalibration`, `quickServices`, `geoExtraCollections`,
+`poiTypeLabels` tend to be optional with a documented fallback. Confirm the
+actual required/optional split against the sources above before treating
+either list as settled — it can and has changed as the engine gained
+capabilities.
 
-| Field | Required? | Notes |
-|---|---|---|
-| `id` | required | unique across POIs **and** attractions |
-| `type` | required | open string — `restroom`, `food`/`dining`, `firstaid`/`first-aid`, `familycare`/`family-care`, `locker`, `charging`, `water`, `shopping`/`store`, `entrance`, `parking`, or a genuinely new type |
-| `icon` | optional | emoji; falls back to a type-derived default |
-| `name` | required | |
-| `zone` | optional | |
-| `mapNumber` / `mapMarker` | optional | same semantics as attractions |
-| `plusCode` / `geo` | optional | same provenance model as attractions |
-| `amenities` | optional | free-form object, e.g. `{accessible, babyChanging}` — leave fields `null` rather than guessing |
-| `nearbyText` | optional | human-readable relative reference when no `geo`/`mapMarker` |
-| `source` | optional | e.g. `'official-map'` |
+## Validation checklist
 
-## Provenance / confidence conventions already in use
+Use this to drive the actual onboarding workflow (mirrors
+`add-theme-park/SKILL.md`'s steps — see there for the full rationale
+behind each item):
 
-Follow `parks/legoland-new-york.js`'s established model rather than
-inventing a new one:
+- [ ] **Park identity**: `id` is stable, unique, kebab-case, and doesn't
+      collide with any existing park's `id` or `storageKey`.
+- [ ] **ID uniqueness within the park**: no duplicate attraction ids, no
+      duplicate POI ids, and no attraction/POI id collision (the core
+      merges both into one `BY_ID` lookup — a collision silently shadows
+      one entity).
+- [ ] **Reference integrity**: every id referenced by `mustIds`, `calmIds`,
+      `childFavoriteIds`, `waterIds`, `priorityGroups[].ids`,
+      `reactionSystem.triggerId`/`targetId`, `attraction.nearbyAttractions`,
+      and `map.geoCalibration.controlPointIds` (if present) actually
+      resolves to a real entity in this park's data.
+- [ ] **Provenance**: every `geo`/`restrictions` value that isn't plainly
+      obvious carries a `source`/`confidence` (following the 3-level model
+      already established in `parks/legoland-new-york.js` —
+      `confirmed_on_site` > `official_map` > `approximate`), and nothing
+      uncertain is presented as confirmed. Unknown stays unknown/absent
+      rather than estimated.
+- [ ] **Optional-capability absence**: the park still works correctly with
+      whatever it genuinely lacks (no `family`, no `shows`, no
+      `reactionSystem`, no `geoCalibration`, no illustrated map, POIs
+      without `geo`, no zones) — verified by inspection or a quick manual
+      run-through, not assumed.
+- [ ] **Map support matches actual capability**: an illustrated map image
+      is only vendored if one genuinely exists; `geoCalibration` is only
+      enabled with defensible, well-distributed control points (see
+      `add-theme-park/SKILL.md` Step 7); nothing is invented to make the
+      map viewer "look complete."
+- [ ] **Thin shell**: the new HTML shell diffs against every existing shell
+      as exactly title/theme-color/h1/`<script src="parks/...">` — nothing
+      else (see `add-theme-park/SKILL.md` Step 8, which makes this a
+      literal `diff` run, not a visual check).
+- [ ] **Browser smoke test**: the new park actually renders in a browser —
+      no console errors, a recommendation appears, cards/map/services
+      render, checklist state persists — not just "the JS parsed."
+- [ ] **Regression**: Story Land and LEGOLAND New York (and any other
+      already-onboarded real park) still work after this change.
+- [ ] **Architecture audit**: `theme-park-architecture-audit` has been run
+      against the diff and returned zero BLOCKING findings before this
+      park is considered complete.
 
-- `geo.confidence`: `'confirmed_on_site'` (Plus Code measured standing at
-  the spot) > `'official_map'` (park-published coordinate) >
-  `'approximate'` (estimated by cross-referencing nearby confirmed anchors
-  — document `geo.estimatedFrom`).
-- `restrictions.confidence`: `'verified-official'` when two independent
-  official sources agree; otherwise mark it and surface the
-  "confirm before queueing" note the core already renders via
-  `eligibilityConfidenceNote()`.
-- When a value is genuinely unconfirmed, prefer `null`/absent over a
-  best-guess number — the core is built to show "❓ unverified" honestly
-  rather than a false "✅".
-- Record *how* each pass of data collection happened in the adapter's own
-  header comment (source URLs, dates, what's still outstanding) — this
-  repo's convention is a running provenance log at the top of each
-  `parks/<id>.js` file, not a separate doc.
+## What NOT to duplicate here
+
+Field-by-field contract documentation, capability matrices, and the POI
+`type` extensibility rules all belong in
+`specs/architecture/park-contract.md.asc` (or, if that's unreadable this
+session, in the core's own header comment) — not in this file. If you find
+yourself writing out the full shape of `restrictions` or `map.*` here to
+"make it easier," stop — that's the duplication this document exists to
+avoid, and it's exactly what goes stale first.

@@ -61,10 +61,17 @@ Before writing anything, read:
   — that variance is the point: it shows what's actually optional.
 - `specs/architecture/park-contract.md.asc` and
   `specs/architecture/theme-park-core.md.asc`, if a legitimate passphrase
-  channel is available in your environment (see the audit skill's Ground
-  Truth section for the read policy — never guess/invent/ask the user to
-  paste it in chat). If unavailable, say so and proceed from the code,
-  which is normative regardless.
+  channel is available in your environment (see
+  `theme-park-architecture-audit`'s "Specification vs. implementation"
+  section for the full read policy and evidence model — never
+  guess/invent/ask the user to paste it in chat). If unavailable, say so
+  explicitly and proceed from the code (header comment + both adapters +
+  the test fixture) — but treat that as `unable_to_verify` for the spec
+  dimension, not as the code having automatically become the authoritative
+  contract. If something you read in the code contradicts what little spec
+  content you do have access to, don't silently pick a side — flag it for
+  `theme-park-architecture-audit` (Step 15) to classify properly rather
+  than resolving it yourself mid-onboarding.
 - `tests/theme-park/fixtures/minimal-test-park.js` — a good second example
   of "what's genuinely optional", since it deliberately omits things both
   real parks happen to have (illustrated map, `quickServices` config,
@@ -287,12 +294,19 @@ acceptance test:
 > Did adding this park introduce park-specific knowledge into the shared
 > core?
 
-If the audit's Third Park Test flags a genuine capability gap (not
-leakage), record it in this skill's completion report as an
-`unresolved_item`/follow-up — implementing a brand-new generic capability
-is out of scope for a routine park-onboarding task unless the park cannot
-function at all without it, in which case stop and get explicit
-authorization before touching the core.
+If the audit flags a capability gap (not leakage) for the park you're
+actually onboarding, it is by construction backed by
+`real_current_requirement`/`observed_existing_park_need` (this is a real
+park, not the audit's own fictitious stress-test park) — record it in this
+skill's completion report as an `unresolved_item`/follow-up. Implementing a
+brand-new generic capability is still out of scope for a routine
+park-onboarding task unless this park cannot function at all without it, in
+which case stop and get explicit authorization before touching the core.
+(The audit's *conceptual* Third Park Test may separately surface
+`hypothetical_stress_test_only` gaps from its own fictitious dry-run park —
+those are not about the park you're onboarding and don't belong in this
+skill's `unresolved_items` at all; they're the audit's own output, not
+yours.)
 
 ## Step 16 — Implementation/spec audit, if available
 
@@ -367,6 +381,7 @@ written.
 | "This service is unique to this park, so I'll reference its ID directly in the core." | Generic service behavior works by `type`, never by a specific POI id — see `poiTypeLabel()`/`quickServiceList()`. |
 | "Two parks already do it the same way, so I'll just hardcode that shared value into the core." | Two real cases are evidence worth flagging for a possible generic capability — not justification to hardcode data into the engine. |
 | "The page opened with no console error, so we're done." | Parsing is not verification — Steps 13-14 (real rendering + regression) and Step 15 (the audit) are still mandatory. |
+| "The audit's conceptual dry run flagged a gap, so I should build it now." | Only if this park's own real needs surfaced it. A gap from the audit's own fictitious stress-test park is `hypothetical_stress_test_only` — it validates that a path *could* exist, it doesn't authorize walking it. |
 
 ## Quality gate
 
@@ -396,6 +411,10 @@ written.
 
 ## References
 
-- `references/park-onboarding-checklist.md` — a field-by-field checklist
-  with the provenance/confidence conventions already established in
-  `parks/legoland-new-york.js`, for use while filling in `parks/<id>.js`.
+- `references/park-onboarding-checklist.md` — an onboarding *validation*
+  checklist (identity, uniqueness, references, provenance, optional-capability
+  absence, map support, thin shell, smoke test, regression, audit) plus
+  where to derive the contract fresh each time. Deliberately not a
+  field-by-field copy of the `window.PARK` contract — that lives in
+  `specs/architecture/park-contract.md.asc` and the core's own header
+  comment, and this file points there instead of duplicating it.
