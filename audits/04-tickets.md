@@ -61,3 +61,25 @@
 **Criterio de aceptación:** correr axe-core (o equivalente) sobre `storyland.html`/`legoland.html` con datos reales cargados, 0 violaciones de severidad "serious"/"critical".
 
 **Cómo verificar:** el reporte de la herramienta, antes/después.
+
+---
+
+### TICKET-6 (fuera del reporte original, pedido explícitamente) — ✅ RESUELTO — Third Party Contract Test explícito
+
+**Contexto:** el Third Party Contract Test (frontera core/parque genérico) ya estaba parcialmente cubierto por las secciones 1–11 del spec del Theme Park Companion, pero de forma implícita — sin verificación estática de ausencia de lógica específica de parque, sin cobertura explícita de `reactionSystem`/`shows` como degradación progresiva, y sin un negative contract test.
+
+**Archivos tocados:** `tests/theme-park/theme-park-core.spec.js` (reorganizado y extendido, mismo archivo — sin nueva suite), `tests/theme-park/README.md`.
+
+**Qué se agregó** (sin tocar el fixture existente `minimal-test-park.js`, reutilizado tal cual como el "tercer parque" sintético):
+- Sección 0 (nueva): verificación estática — un escáner de comentarios propio (`stripJsComments()`) confirma que `assets/theme-park-core.js` nunca compara `PARK.id` contra un literal, nunca tiene `switch(PARK.id)`, y nunca escribe el id de ningún parque real/fixture en código real (solo en comentarios).
+- Sección 1 (extendida): chequeo explícito de los 16 campos Required del contrato (`park-contract.md.asc`) + `candidateList()` no vacía.
+- Sección 4 (extendida): degradación progresiva de `reactionSystem:null` (la "reactcard" nunca se muestra) y `shows:[]` (el banner "empieza pronto" nunca se dispara) — comportamiento observable, no solo `=== undefined`.
+- Sección 9 (extendida): `map.poiFilterGroups` ausente → una categoría de filtro derivada por cada `type` distinto, sin agrupar nada.
+- Sección 10 (relabeleada, sin cambios de lógica): documentado explícitamente como la prueba comportamental complementaria a la sección 0.
+- Sección 12 (nueva): negative contract test — copia en memoria del fixture (servida vía `ctx.route()`, nunca escrita a disco) sin el campo Required `attractions`; prueba que el checker de contrato lo detecta y que el core no finge funcionar.
+
+**Criterio de aceptación:** `npm test` pasa completo; la sección 0 falla si se introduce una rama `PARK.id===...` en el core.
+
+**Verificado:** se insertó temporalmente `if(PARK.id==='story-land'){...}` en `assets/theme-park-core.js`, la sección 0 falló como se esperaba (2 checks), se restauró el archivo antes del commit (`git diff --stat assets/` limpio).
+
+**Resultado final:** `npm test` → 74 (Companion, incluye ambas suites del archivo) + 5 (itinerario) = 79 checks, todos verdes.
